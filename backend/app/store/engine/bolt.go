@@ -238,6 +238,15 @@ func (b *BoltDB) Update(comment store.Comment) error {
 			if curComment.Deleted {
 				return fmt.Errorf("comment %s is deleted", comment.ID)
 			}
+			// if we are toggling approval need to update the post count
+			if curComment.PendingApproval != comment.PendingApproval {
+				val := 1
+				if comment.PendingApproval {
+					// we are sending it back to unapproved
+					val = -1
+				}
+				b.count(tx, comment.Locator.URL, val)
+			}
 			// preserve immutable fields
 			comment.ParentID = curComment.ParentID
 			comment.Locator = curComment.Locator
@@ -466,6 +475,7 @@ func (b *BoltDB) lastComments(siteID string, maximum int, since time.Time) (comm
 // "users" bucket has sub-bucket for each userID, and keeps it as ts:ref.
 // Deleted comments keep their reference there; unless withDeleted is set they are passed over
 // and do not count towards limit or skip.
+// TODO here we pass a "withDeleted" flag, can we do the same for pending comments?
 func (b *BoltDB) userComments(siteID, userID string, limit, skip int, withDeleted bool) (comments []store.Comment, err error) {
 	comments = []store.Comment{}
 
@@ -549,12 +559,13 @@ func (b *BoltDB) isLiveRef(postsBkt *bolt.Bucket, ref []byte) (bool, error) {
 		return false, nil
 	}
 	var c struct {
-		Deleted bool `json:"delete"`
+		Deleted         bool `json:"delete"`
+		PendingApproval bool `json:"pendingApproval"`
 	}
 	if err = json.Unmarshal(data, &c); err != nil {
 		return false, fmt.Errorf("failed to unmarshal comment %s: %w", ref, err)
 	}
-	return !c.Deleted, nil
+	return !c.Deleted && !c.PendingApproval, nil
 }
 
 func (b *BoltDB) checkFlag(req FlagRequest) (val bool) {
@@ -933,7 +944,7 @@ func (b *BoltDB) setInfo(tx *bolt.Tx, comment store.Comment) (store.PostInfo, er
 	}
 	// imports and backup restores create comments out of time order, and may create deleted ones;
 	// a deleted comment is not counted, the same as after a delete, and still sets the first and last time
-	if !comment.Deleted {
+	if !comment.Deleted && !comment.PendingApproval {
 		info.Count++
 	}
 	if info.FirstTS.IsZero() || comment.Timestamp.Before(info.FirstTS) {

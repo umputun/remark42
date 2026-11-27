@@ -30,7 +30,7 @@ type recurData struct {
 }
 
 // MakeTree gets unsorted list of comments and produces Tree
-func MakeTree(comments []store.Comment, sortType string, limit int, offsetID string) *Tree {
+func MakeTree(comments []store.Comment, sortType string, limit int, offsetID string, user store.User, premoderationActive bool) *Tree {
 	if len(comments) == 0 {
 		return &Tree{}
 	}
@@ -41,12 +41,29 @@ func MakeTree(comments []store.Comment, sortType string, limit int, offsetID str
 
 	res.Nodes = []*Node{}
 	for _, rootComment := range topComments {
+
+		// mask text
+		// todo validate if this can use a function from the premoderator
+		authorOrAdmin := user.Admin || rootComment.User.ID == user.ID
+		if premoderationActive && rootComment.PendingApproval {
+			if !authorOrAdmin {
+				rootComment.Text = ""
+				rootComment.Orig = ""
+			}
+		}
+
 		node := Node{Comment: rootComment}
 
-		rd := recurData{}
-		commentsTree := res.proc(comments, &node, &rd, rootComment.ID)
-		// skip deleted with no sub-comments and all sub-comments deleted
-		if rootComment.Deleted && (len(commentsTree.Replies) == 0 || !rd.visible) {
+		rd := recurData{visible: true}
+		commentsTree := res.proc(comments, &node, &rd, rootComment.ID, user, premoderationActive)
+
+		// skip deleted with no sub-comments and all sub-comments deleted and unapproved comments, if premodaration is active
+		hide := rootComment.Deleted
+		if premoderationActive && !authorOrAdmin {
+			hide = hide || rootComment.PendingApproval
+		}
+
+		if (hide && len(commentsTree.Replies) == 0) || !rd.visible {
 			continue
 		}
 
@@ -69,13 +86,23 @@ func (t *Tree) LastComment() string {
 }
 
 // proc makes tree for one top-level comment recursively
-func (t *Tree) proc(comments []store.Comment, node *Node, rd *recurData, parentID string) (result *Node) {
+func (t *Tree) proc(comments []store.Comment, node *Node, rd *recurData, parentID string, user store.User, premoderationActive bool) (result *Node) {
 	if rd.tsModified.IsZero() {
 		rd.tsModified = node.Comment.Timestamp
 	}
 
 	repComments := t.filter(comments, func(comment store.Comment) bool { return comment.ParentID == parentID })
 	for _, rc := range repComments {
+
+		// mask text
+		authorOrAdmin := user.Admin || rc.User.ID == user.ID
+		if premoderationActive && rc.PendingApproval {
+			if !authorOrAdmin {
+				rc.Text = ""
+				rc.Orig = ""
+			}
+		}
+
 		if !rc.Timestamp.IsZero() && rc.Timestamp.After(rd.tsModified) && !rc.Deleted {
 			rd.tsModified = rc.Timestamp
 		}
@@ -83,9 +110,18 @@ func (t *Tree) proc(comments []store.Comment, node *Node, rd *recurData, parentI
 			rd.visible = true // indicates top-level should be visible
 		}
 		rnode := &Node{Comment: rc, Replies: []*Node{}}
+
 		node.Replies = append(node.Replies, rnode)
-		t.proc(comments, rnode, rd, rc.ID)
-		if !rd.visible || (len(rnode.Replies) == 0 && rc.Deleted) { // clean all-deleted subtree
+
+		t.proc(comments, rnode, rd, rc.ID, user, premoderationActive)
+
+		shouldHide := false
+		// if the comment is not approved AND the user is not admin AND it's a leaf, hide it
+		if premoderationActive {
+			shouldHide = !authorOrAdmin && len(rnode.Replies) == 0 && rc.PendingApproval
+		}
+
+		if shouldHide || !rd.visible || (len(rnode.Replies) == 0 && rc.Deleted) { // clean all-deleted subtree
 			node.Replies = node.Replies[:len(node.Replies)-1]
 		}
 	}

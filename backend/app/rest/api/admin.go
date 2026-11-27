@@ -14,6 +14,7 @@ import (
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 
+	"github.com/umputun/remark42/backend/app/notify"
 	"github.com/umputun/remark42/backend/app/rest"
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/engine"
@@ -26,6 +27,8 @@ type admin struct {
 	authenticator *auth.Service
 	readOnlyAge   int
 	migrator      *Migrator
+	premoderator  Premoderator
+	notifyService *notify.Service
 }
 
 type adminStore interface {
@@ -40,6 +43,7 @@ type adminStore interface {
 	SetVerified(siteID, userID string, status bool) error
 	SetReadOnly(locator store.Locator, status bool) error
 	SetPin(locator store.Locator, commentID string, status bool) error
+	ApproveComments(locator store.Locator, commentID string, approveStatus bool, approvePreviousComments bool) (comment store.Comment, err error)
 }
 
 // DELETE /comment/{id}?site=siteID&url=post-url - removes comment
@@ -336,4 +340,34 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, lastCommentsScope))
 	R.RenderJSON(w, R.JSON{"id": commentID, "locator": locator, "pin": pinStatus})
+}
+
+// PUT /comment/{id}/approve?site=siteID&url=post-url - approves comment
+func (a *admin) approveCommentCtrl(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+	approveStatus := r.URL.Query().Get("approved") == "1"
+
+	// todo should we move this into the premoderator struct?
+	var comment store.Comment
+	var err error
+	switch a.premoderator.strategy {
+	// if we use the "ApproveFirst" strategy we need to approve all pending comments once one is approved
+	case PremoderationFirst:
+		comment, err = a.dataService.ApproveComments(locator, id, approveStatus, true)
+	default:
+		comment, err = a.dataService.ApproveComments(locator, id, approveStatus, false)
+	}
+
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't approve comment", rest.ErrInternal)
+		return
+	}
+
+	if a.notifyService != nil {
+		a.notifyService.Submit(notify.Request{Comment: comment})
+	}
+
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope))
+	R.RenderJSON(w, R.JSON{"id": id, "locator": locator, "approved": !comment.PendingApproval})
 }

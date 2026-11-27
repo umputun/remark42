@@ -11,9 +11,11 @@ function getProps(): Props {
     admin: false,
     currentUser: false,
     copied: false,
+    pendingApproval: true,
     bannedUser: false,
     readOnly: false,
     editing: false,
+    deleted: false,
     replying: false,
     onCopy: jest.fn(),
     onDelete: jest.fn(),
@@ -26,6 +28,7 @@ function getProps(): Props {
     onDisableEditing: jest.fn(),
     editable: false,
     editDeadline: undefined,
+    onToggleApprove: jest.fn(),
   };
 }
 describe('<CommentActions/>', () => {

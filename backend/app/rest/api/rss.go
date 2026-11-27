@@ -14,8 +14,10 @@ import (
 )
 
 type rss struct {
-	dataService rssStore
-	cache       LoadingCache
+	// ! todo: what if we pass the premoderator to the store instead?
+	dataService  rssStore
+	premoderator Premoderator
+	cache        LoadingCache
 }
 
 type rssStore interface {
@@ -38,10 +40,12 @@ func (s *rss) postCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	key := cache.NewKey(locator.SiteID).ID(urlKey(r, false)).Scopes(locator.SiteID, locator.URL)
 	s.cachedFeed(w, r, key, func() (string, error) {
-		comments, e := s.dataService.Find(locator, "-time", rest.GetUserOrEmpty(r))
+		user := rest.GetUserOrEmpty(r)
+		comments, e := s.dataService.Find(locator, "-time", user)
 		if e != nil {
 			return "", e
 		}
+		comments = s.premoderator.FilterVisibleTo(comments, user)
 		return s.toRssFeed(locator.URL, comments, "post comments for "+locator.URL)
 	}, "can't find comments", rest.ErrPostNotFound)
 }
@@ -53,10 +57,12 @@ func (s *rss) siteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	key := cache.NewKey(siteID).ID(urlKey(r, false)).Scopes(siteID, lastCommentsScope)
 	s.cachedFeed(w, r, key, func() (string, error) {
-		comments, e := s.dataService.Last(siteID, maxRssItems, time.Time{}, rest.GetUserOrEmpty(r))
+		user := rest.GetUserOrEmpty(r)
+		comments, e := s.dataService.Last(siteID, maxRssItems, time.Time{}, user)
 		if e != nil {
 			return "", e
 		}
+		comments = s.premoderator.FilterVisibleTo(comments, user)
 		return s.toRssFeed(siteID, comments, "site comment for "+siteID)
 	}, "can't get last comments", rest.ErrSiteNotFound)
 }
@@ -73,6 +79,8 @@ func (s *rss) repliesCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return "", fmt.Errorf("can't get last comments: %w", e)
 		}
+		user := rest.GetUserOrEmpty(r)
+		replies = s.premoderator.FilterVisibleTo(replies, user)
 		return s.toRssFeed(siteID, replies, "replies to "+userName)
 	}, "can't get replies", rest.ErrSiteNotFound)
 }

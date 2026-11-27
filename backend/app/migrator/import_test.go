@@ -153,7 +153,7 @@ func shownTree(t *testing.T, ds *service.DataStore) []string {
 			walk(n.Replies, n.Comment.ID)
 		}
 	}
-	walk(service.MakeTree(comments, "time", 0, "").Nodes, "")
+	walk(service.MakeTree(comments, "time", 0, "", store.User{}, true).Nodes, "")
 	return res
 }
 

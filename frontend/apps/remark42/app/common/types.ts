@@ -71,6 +71,7 @@ export interface Comment {
    * still renders, and comment with `hidden` flag completely removed from DOM
    */
   hidden?: boolean;
+  pendingApproval?: boolean;
 }
 export interface Node {
   comment: Comment;

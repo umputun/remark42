@@ -25,13 +25,13 @@ import { commentsPageSize } from 'common/settings';
 /** sets comments, and put pinned comments in cache */
 export const setComments =
   (comments: Node[], pinned?: Comment[]): StoreAction =>
-  (dispatch) => {
-    dispatch({
-      type: COMMENTS_SET,
-      comments,
-      pinned,
-    });
-  };
+    (dispatch) => {
+      dispatch({
+        type: COMMENTS_SET,
+        comments,
+        pinned,
+      });
+    };
 
 function setPage(page: CommentsPage) {
   return { type: COMMENTS_PAGE_SET, page } as const;
@@ -49,10 +49,10 @@ function hideInTree(tree: Node[], state: StoreState): Node[] {
 /** appends comment to tree */
 export const addComment =
   (text: string, title: string, pid?: Comment['id']): StoreAction<Promise<void>> =>
-  async (dispatch) => {
-    const comment = await api.addComment({ text, title, pid });
-    dispatch({ type: COMMENTS_APPEND, pid: pid || null, comment });
-  };
+    async (dispatch) => {
+      const comment = await api.addComment({ text, title, pid });
+      dispatch({ type: COMMENTS_APPEND, pid: pid || null, comment });
+    };
 
 function editComments(comment: Comment): COMMENTS_EDIT_ACTION {
   return { type: COMMENTS_EDIT, comment };
@@ -65,40 +65,47 @@ export function patchComment(patch: Pick<Comment, 'id'> & Partial<Comment>): COM
 /** edits comment in tree */
 export const updateComment =
   (id: Comment['id'], text: string): StoreAction<Promise<void>> =>
-  async (dispatch) => {
-    const comment = await api.updateComment({ id, text });
-    dispatch(editComments(comment));
-  };
+    async (dispatch) => {
+      const comment = await api.updateComment({ id, text });
+      dispatch(editComments(comment));
+    };
+
+export const approveComment =
+  (id: Comment['id'], text: string, approvedBool: boolean): StoreAction<Promise<void>> =>
+    async (dispatch, getState) => {
+      const res = await api.approveComment({ id, text, approved: Number(approvedBool) });
+      dispatch(patchComment({ id: res.id, pendingApproval: !res.approved }));
+    };
 
 /** edits comment in tree */
 export const setPinState =
   (id: Comment['id'], value: boolean): StoreAction<Promise<void>> =>
-  async (dispatch, getState) => {
-    if (value) {
-      await api.pinComment(id);
-    } else {
-      await api.unpinComment(id);
-    }
-    let comment = getState().comments.allComments[id];
-    comment = { ...comment, pin: value, edit: { summary: '', time: new Date().toISOString() } };
-    dispatch(editComments(comment));
-  };
+    async (dispatch, getState) => {
+      if (value) {
+        await api.pinComment(id);
+      } else {
+        await api.unpinComment(id);
+      }
+      let comment = getState().comments.allComments[id];
+      comment = { ...comment, pin: value, edit: { summary: '', time: new Date().toISOString() } };
+      dispatch(editComments(comment));
+    };
 
 /** edits comment in tree */
 export const removeComment =
   (id: Comment['id']): StoreAction<Promise<void>> =>
-  async (dispatch, getState) => {
-    const user = getState().user;
-    if (!user) return;
-    if (user.admin) {
-      await api.removeComment(id);
-    } else {
-      await api.removeMyComment(id);
-    }
-    let comment = getState().comments.allComments[id];
-    comment = { ...comment, delete: true, edit: { summary: '', time: new Date().toISOString() } };
-    dispatch(editComments(comment));
-  };
+    async (dispatch, getState) => {
+      const user = getState().user;
+      if (!user) return;
+      if (user.admin) {
+        await api.removeComment(id);
+      } else {
+        await api.removeMyComment(id);
+      }
+      let comment = getState().comments.allComments[id];
+      comment = { ...comment, delete: true, edit: { summary: '', time: new Date().toISOString() } };
+      dispatch(editComments(comment));
+    };
 
 /** how many comments to ask for from the start of the thread, measured as the request goes out; 0 asks for all */
 type Limit = (state: StoreState) => number;
@@ -119,41 +126,41 @@ const isUndeleted = (comment: Comment) => !comment.delete;
 /** requests the thread from its start and puts it into the store, with or without the loading state */
 const requestComments =
   (withPreloader: boolean, limit: Limit = firstPage): StoreAction<Promise<Tree>> =>
-  async (dispatch, getState) => {
-    threadRequests++;
-    if (withPreloader) dispatch({ type: COMMENTS_REQUEST_FETCHING });
-    let data: Tree;
-    let requestedFor: StoreState['comments']['allComments'];
-    // a response is taken only when the store still holds the comments it was requested for. A
-    // comment posted, edited or voted on while the request was in flight is newer than the
-    // response, which would take the post off the list and put the vote back, so the comments are
-    // requested again. Each request asks for the sort the store holds by then, which a change of
-    // sort has set before it loads the comments, and for the loaded part as it is by then, which a
-    // page that came meanwhile has grown
-    do {
-      requestedFor = getState().comments.allComments;
-      data = await api.getPostComments(getState().comments.sort, { limit: limit(getState()) });
-    } while (getState().comments.allComments !== requestedFor);
-    if (withPreloader) dispatch({ type: COMMENTS_REQUEST_SUCCESS });
-    const countLeft = data.info.count_left || 0;
-    const hidden = Object.keys(getState().hiddenUsers);
-    // the server's list stands in for the pins found in the tree only while part of the thread is
-    // still to come, so a thread that came whole shows its pins in its own order, as it always did
-    const pinned = countLeft > 0 ? data.pinned?.filter((comment) => hidden.indexOf(comment.user.id) === -1) : undefined;
-    const page = {
-      countLeft,
-      lastComment: data.info.last_comment || '',
-      loaded: countComments(data.comments),
-      undeleted: countComments(data.comments, isUndeleted),
+    async (dispatch, getState) => {
+      threadRequests++;
+      if (withPreloader) dispatch({ type: COMMENTS_REQUEST_FETCHING });
+      let data: Tree;
+      let requestedFor: StoreState['comments']['allComments'];
+      // a response is taken only when the store still holds the comments it was requested for. A
+      // comment posted, edited or voted on while the request was in flight is newer than the
+      // response, which would take the post off the list and put the vote back, so the comments are
+      // requested again. Each request asks for the sort the store holds by then, which a change of
+      // sort has set before it loads the comments, and for the loaded part as it is by then, which a
+      // page that came meanwhile has grown
+      do {
+        requestedFor = getState().comments.allComments;
+        data = await api.getPostComments(getState().comments.sort, { limit: limit(getState()) });
+      } while (getState().comments.allComments !== requestedFor);
+      if (withPreloader) dispatch({ type: COMMENTS_REQUEST_SUCCESS });
+      const countLeft = data.info.count_left || 0;
+      const hidden = Object.keys(getState().hiddenUsers);
+      // the server's list stands in for the pins found in the tree only while part of the thread is
+      // still to come, so a thread that came whole shows its pins in its own order, as it always did
+      const pinned = countLeft > 0 ? data.pinned?.filter((comment) => hidden.indexOf(comment.user.id) === -1) : undefined;
+      const page = {
+        countLeft,
+        lastComment: data.info.last_comment || '',
+        loaded: countComments(data.comments),
+        undeleted: countComments(data.comments, isUndeleted),
+      };
+      data.comments = hideInTree(data.comments, getState());
+
+      dispatch(setComments(data.comments, pinned));
+      dispatch(setPage(page));
+      dispatch(setPostInfo(data.info));
+
+      return data;
     };
-    data.comments = hideInTree(data.comments, getState());
-
-    dispatch(setComments(data.comments, pinned));
-    dispatch(setPage(page));
-    dispatch(setPostInfo(data.info));
-
-    return data;
-  };
 
 /**
  * the pages a reload loads by itself while a thread that was on screen is missing from it. A thread
@@ -171,33 +178,33 @@ const MISSING_THREAD_PAGES = 2;
  */
 const requestLoadedPart =
   (withPreloader: boolean): StoreAction<Promise<Tree>> =>
-  async (dispatch, getState) => {
-    // gathered on every attempt, since a page that came while a request was on its way is on screen too,
-    // and kept from the attempts before, since another reload answering meanwhile can shorten the list
-    const onScreen = new Set<Comment['id']>();
-    const limit: Limit = (state) => {
-      state.comments.topComments.forEach((id) => onScreen.add(id));
-      return loadedPart(state);
+    async (dispatch, getState) => {
+      // gathered on every attempt, since a page that came while a request was on its way is on screen too,
+      // and kept from the attempts before, since another reload answering meanwhile can shorten the list
+      const onScreen = new Set<Comment['id']>();
+      const limit: Limit = (state) => {
+        state.comments.topComments.forEach((id) => onScreen.add(id));
+        return loadedPart(state);
+      };
+      const pending = dispatch(requestComments(withPreloader, limit));
+      // taken as the request starts: a change of sort or another reload started later has a loaded part of its own
+      const request = threadRequests;
+      const data = await pending;
+      // a thread hidden by the time of the check is not on screen, and no answer brings it back
+      const isMissing = () => {
+        const { page, topComments, allComments } = getState().comments;
+        if (page.countLeft === 0) return false;
+        const shown = new Set(topComments);
+        return Array.from(onScreen).some((id) => !shown.has(id) && !allComments[id]?.hidden);
+      };
+      for (let pages = 0; pages < MISSING_THREAD_PAGES && request === threadRequests && isMissing(); pages++) {
+        // a page the reader asked for meanwhile may bring the missing threads back by itself
+        await moreComments;
+        if (request !== threadRequests || !isMissing()) break;
+        await dispatch(loadMoreComments());
+      }
+      return data;
     };
-    const pending = dispatch(requestComments(withPreloader, limit));
-    // taken as the request starts: a change of sort or another reload started later has a loaded part of its own
-    const request = threadRequests;
-    const data = await pending;
-    // a thread hidden by the time of the check is not on screen, and no answer brings it back
-    const isMissing = () => {
-      const { page, topComments, allComments } = getState().comments;
-      if (page.countLeft === 0) return false;
-      const shown = new Set(topComments);
-      return Array.from(onScreen).some((id) => !shown.has(id) && !allComments[id]?.hidden);
-    };
-    for (let pages = 0; pages < MISSING_THREAD_PAGES && request === threadRequests && isMissing(); pages++) {
-      // a page the reader asked for meanwhile may bring the missing threads back by itself
-      await moreComments;
-      if (request !== threadRequests || !isMissing()) break;
-      await dispatch(loadMoreComments());
-    }
-    return data;
-  };
 
 /**
  * fetches the first page of comments from server; a preloader takes the place of the list until
@@ -239,61 +246,61 @@ let moreComments: Promise<void> = Promise.resolve();
  */
 export const loadMoreComments =
   ({ rest = false } = {}): StoreAction<Promise<void>> =>
-  (dispatch) => {
-    const call = moreComments.then(() => dispatch(requestMoreComments(rest)));
-    moreComments = call.catch(() => undefined);
-    return call;
-  };
+    (dispatch) => {
+      const call = moreComments.then(() => dispatch(requestMoreComments(rest)));
+      moreComments = call.catch(() => undefined);
+      return call;
+    };
 
 const requestMoreComments =
   (rest: boolean): StoreAction<Promise<void>> =>
-  async (dispatch, getState) => {
-    for (;;) {
-      const { page, sort } = getState().comments;
-      if (page.countLeft === 0) return;
-      const request = threadRequests;
-      const data = await api.getPostComments(sort, {
-        limit: rest ? 0 : commentsPageSize,
-        offsetId: page.lastComment,
-      });
-      if (request !== threadRequests) return;
-      if (getState().comments.page !== page) continue;
+    async (dispatch, getState) => {
+      for (; ;) {
+        const { page, sort } = getState().comments;
+        if (page.countLeft === 0) return;
+        const request = threadRequests;
+        const data = await api.getPostComments(sort, {
+          limit: rest ? 0 : commentsPageSize,
+          offsetId: page.lastComment,
+        });
+        if (request !== threadRequests) return;
+        if (getState().comments.page !== page) continue;
 
-      const added = dropLoadedThreads(data.comments, getState().comments.topComments);
-      const countLeft = data.info.count_left || 0;
-      if (added.length === 0 && countLeft > 0) {
-        await dispatch(requestComments(false, () => page.loaded + commentsPageSize));
-        return;
+        const added = dropLoadedThreads(data.comments, getState().comments.topComments);
+        const countLeft = data.info.count_left || 0;
+        if (added.length === 0 && countLeft > 0) {
+          await dispatch(requestComments(false, () => page.loaded + commentsPageSize));
+          return;
+        }
+
+        const shown = hideInTree(added, getState());
+        const next = {
+          countLeft,
+          lastComment: data.info.last_comment || page.lastComment,
+          loaded: page.loaded + countComments(added),
+          undeleted: page.undeleted + countComments(added, isUndeleted),
+        };
+        dispatch({ type: COMMENTS_APPEND_PAGE, comments: shown });
+        dispatch(setPage(next));
+        dispatch(setPostInfo(data.info));
+
+        if (countLeft === 0 && data.info.count > next.undeleted) {
+          await dispatch(requestComments(false, () => 0));
+          return;
+        }
+        if (shown.length > 0 || countLeft === 0) return;
       }
-
-      const shown = hideInTree(added, getState());
-      const next = {
-        countLeft,
-        lastComment: data.info.last_comment || page.lastComment,
-        loaded: page.loaded + countComments(added),
-        undeleted: page.undeleted + countComments(added, isUndeleted),
-      };
-      dispatch({ type: COMMENTS_APPEND_PAGE, comments: shown });
-      dispatch(setPage(next));
-      dispatch(setPostInfo(data.info));
-
-      if (countLeft === 0 && data.info.count > next.undeleted) {
-        await dispatch(requestComments(false, () => 0));
-        return;
-      }
-      if (shown.length > 0 || countLeft === 0) return;
-    }
-  };
+    };
 
 /** sets mode for comment, either reply or edit */
 export const setCommentMode =
   (mode: StoreState['comments']['activeComment']): StoreAction =>
-  (dispatch) => {
-    if (mode !== null && mode.state === CommentMode.None) {
-      mode = null;
-    }
-    dispatch(unsetCommentMode(mode));
-  };
+    (dispatch) => {
+      if (mode !== null && mode.state === CommentMode.None) {
+        mode = null;
+      }
+      dispatch(unsetCommentMode(mode));
+    };
 
 /** unsets comment mode */
 export function unsetCommentMode(mode: StoreState['comments']['activeComment'] = null) {

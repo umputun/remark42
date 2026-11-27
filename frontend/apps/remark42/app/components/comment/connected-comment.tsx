@@ -9,7 +9,14 @@ import type { FunctionComponent } from 'preact';
 import { h } from 'preact';
 
 import { useAppSelector } from 'store';
-import { addComment, removeComment, updateComment, setPinState, setCommentMode } from 'store/comments/actions';
+import {
+  addComment,
+  removeComment,
+  updateComment,
+  setPinState,
+  setCommentMode,
+  approveComment,
+} from 'store/comments/actions';
 import { blockUser, unblockUser, hideUser, setVerifiedStatus } from 'store/user/actions';
 
 import type { CommentProps } from './comment';
@@ -37,6 +44,7 @@ type ProvidedProps = Pick<
 export const boundActions = bindActions({
   addComment,
   updateComment,
+  approveComment,
   removeComment,
   setReplyEditState: setCommentMode,
   setPinState,

@@ -15,12 +15,14 @@ export type Props = {
   currentUser: boolean | undefined;
   pinned: boolean | undefined;
   copied: boolean | undefined;
+  pendingApproval: boolean | undefined;
   bannedUser: boolean | undefined;
   readOnly: boolean | undefined;
   editing: boolean | undefined;
   replying: boolean | undefined;
   editable: boolean;
   editDeadline: number | undefined;
+  deleted: boolean | undefined;
   onCopy(): void;
   onToggleEditing(): void;
   onDelete(): void;
@@ -30,18 +32,21 @@ export type Props = {
   onBlockUser(ttl: BlockTTL): void;
   onUnblockUser(): void;
   onDisableEditing(): void;
+  onToggleApprove(): void;
 };
 
 export function CommentActions({
   admin,
   pinned,
   copied,
+  pendingApproval,
   readOnly,
   editable,
   editing,
   replying,
   currentUser,
   bannedUser,
+  deleted,
   editDeadline,
   onCopy,
   onToggleEditing,
@@ -52,6 +57,7 @@ export function CommentActions({
   onHideUser,
   onBlockUser,
   onUnblockUser,
+  onToggleApprove,
 }: Props) {
   const intl = useIntl();
 
@@ -101,6 +107,11 @@ export function CommentActions({
             <Button kind="link" size="sm" onClick={onTogglePin}>
               {intl.formatMessage(pinned ? messages.unpin : messages.pin)}
             </Button>
+            {!deleted &&
+              <Button kind="link" size="sm" onClick={onToggleApprove}>
+                {intl.formatMessage(pendingApproval ? messages.approve : messages.disapprove)}
+              </Button>
+            }
             {bannedUser ? (
               <Button kind="link" size="sm" onClick={onUnblockUser}>
                 {intl.formatMessage(messages.unblock)}
@@ -133,5 +144,7 @@ const messages = defineMessages({
   editCountdown: { id: 'comment.edit-countdown', defaultMessage: 'Time left to edit' },
   copied: { id: 'comment.copied', defaultMessage: 'Copied!' },
   copy: { id: 'comment.copy', defaultMessage: 'Copy' },
+  approve: { id: 'comment.approve', defaultMessage: 'Approve' },
+  disapprove: { id: 'comment.disapprove', defaultMessage: 'Disapprove' },
   blockingPeriod: { id: 'comment.blocking-period', defaultMessage: 'Blocked for' },
 });

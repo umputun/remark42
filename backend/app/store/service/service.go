@@ -582,7 +582,6 @@ func (s *DataStore) editComment(locator store.Locator, commentID string, req Edi
 		if req.Admin && s.AdminEdits {
 			return nil
 		}
-
 		// edit allowed in editDuration window only
 		if s.EditDuration > 0 && time.Now().After(comment.Timestamp.Add(s.EditDuration)) {
 			return fmt.Errorf("too late to edit %s", commentID)
@@ -742,6 +741,58 @@ func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment s
 		}
 	}
 	return comment, err
+}
+
+// ApproveComments sets the approved status on comments. The boolean approvePrevious defines
+// whether or not previous message should be approved as well.
+// Returns the approved message.
+func (s *DataStore) ApproveComments(locator store.Locator, commentID string, approveStatus bool, approvePrevious bool) (comment store.Comment, err error) {
+	comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
+	if err != nil {
+		return comment, err
+	}
+
+	if comment.Deleted {
+		return comment, nil
+	}
+
+	comment.PendingApproval = !approveStatus
+	err = s.Engine.Update(comment)
+	if err != nil {
+		return comment, err
+	}
+
+	if !approvePrevious || !approveStatus {
+		return comment, nil
+	}
+
+	// grab the user and all his messages
+	user := comment.User
+	locator.URL = ""
+	comments, err := s.Find(locator, "-time", user)
+	if err != nil {
+		return comment, err
+	}
+
+	// approve the unapproved ones including the one this method was called against
+	for _, c := range comments {
+		// ignore messages from other users
+		if c.User.ID != user.ID {
+			continue
+		}
+		if c.PendingApproval {
+			c.PendingApproval = false
+			err = s.Engine.Update(c)
+			if err != nil {
+				return store.Comment{}, err // perf: we might want to ignore/collect errors?
+			}
+			// send back the new modified comment
+			if c.ID == commentID {
+				comment = c
+			}
+		}
+	}
+	return comment, nil
 }
 
 // Counts returns postID+count list for given comments

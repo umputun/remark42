@@ -139,6 +139,8 @@ type ServerCommand struct {
 		} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
 
+	Premoderation string `long:"premoderation" env:"PREMODERATION" description:"use comments premoderation. Possible values: 'none', 'first', 'all', 'links'"`
+
 	CommonOpts
 }
 
@@ -733,6 +735,11 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 		return nil, fmt.Errorf("failed to make config of ssl server params: %w", err)
 	}
 
+	premoderator, err := api.NewPremoderator(s.Premoderation, dataService)
+	if err != nil {
+		return nil, err
+	}
+
 	srv := &api.Rest{
 		Version:                    s.Revision,
 		DataService:                dataService,
@@ -764,6 +771,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 		DisableSignature:           s.DisableSignature,
 		DisableFancyTextFormatting: s.DisableFancyTextFormatting,
 		ExternalImageProxy:         s.ImageProxy.CacheExternal,
+		Premoderator:               premoderator,
 	}
 
 	// assigned only when there is one: telegramService is an interface field, so a nil

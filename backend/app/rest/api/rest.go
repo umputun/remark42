@@ -67,6 +67,7 @@ type Rest struct {
 	DisableSignature           bool // prevent signature from being added to headers
 	DisableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
 	ExternalImageProxy         bool
+	Premoderator               Premoderator
 
 	SSLConfig         SSLConfig
 	httpsServer       *http.Server
@@ -366,6 +367,7 @@ func (s *Rest) routes() http.Handler {
 		// enforcing timeout buffers the whole response and aborts at the deadline, which would
 		// truncate backups, break waiting, and reject large imports.
 		radmin.HandleFunc("GET /export", s.adminRest.migrator.exportCtrl)
+		radmin.HandleFunc("PUT /comment/{id}/approve", s.adminRest.approveCommentCtrl)
 		radmin.HandleFunc("POST /import", s.adminRest.migrator.importCtrl)
 		radmin.HandleFunc("POST /import/form", s.adminRest.migrator.importFormCtrl)
 		radmin.HandleFunc("POST /remap", s.adminRest.migrator.remapCtrl)
@@ -436,6 +438,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		imageService:     s.ImageService,
 		commentFormatter: s.CommentFormatter,
 		readOnlyAge:      s.ReadOnlyAge,
+		premoderator:     s.Premoderator,
 	}
 
 	privGrp := private{
@@ -449,6 +452,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		telegramService:            s.TelegramService,
 		remarkURL:                  s.RemarkURL,
 		disableFancyTextFormatting: s.DisableFancyTextFormatting,
+		premoderator:               s.Premoderator,
 	}
 
 	admGrp := admin{
@@ -457,11 +461,14 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		cache:         s.Cache,
 		authenticator: s.Authenticator,
 		readOnlyAge:   s.ReadOnlyAge,
+		premoderator:  s.Premoderator,
+		notifyService: s.NotifyService,
 	}
 
 	rssGrp := rss{
-		dataService: s.DataService,
-		cache:       s.Cache,
+		dataService:  s.DataService,
+		premoderator: s.Premoderator,
+		cache:        s.Cache,
 	}
 
 	return pubGrp, privGrp, admGrp, rssGrp
@@ -593,10 +600,19 @@ func encodeJSONWithHTML(v any) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func filterComments(comments []store.Comment, fn func(c store.Comment) bool) []store.Comment {
+// filterComments applies multiple filters to the comments slice.
+// The returned slice contains only those elements that passed all filters.
+func filterComments(comments []store.Comment, funcs ...func(c store.Comment) bool) []store.Comment {
 	filtered := []store.Comment{}
 	for _, c := range comments {
-		if fn(c) {
+		passedAll := true
+		for _, fn := range funcs {
+			if !fn(c) {
+				passedAll = false
+				break
+			}
+		}
+		if passedAll {
 			filtered = append(filtered, c)
 		}
 	}

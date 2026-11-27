@@ -42,12 +42,14 @@ func main() {
 		setupLog(opts.Dbg)
 		// commands implements CommonOptionsCommander to allow passing set of extra options defined for all commands
 		c := command.(cmd.CommonOptionsCommander)
+
 		c.SetCommon(cmd.CommonOpts{
 			RemarkURL:    opts.RemarkURL,
 			SharedSecret: opts.SharedSecret,
 			Revision:     revision,
 		})
 		logDeprecatedParams(c.HandleDeprecatedFlags())
+
 		err := c.Execute(args)
 		if err != nil {
 			log.Printf("[ERROR] failed with %+v", err)

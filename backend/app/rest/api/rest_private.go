@@ -42,6 +42,7 @@ type private struct {
 	telegramService            telegramService
 	remarkURL                  string
 	disableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
+	premoderator               Premoderator
 }
 
 // telegramService is a subset of Telegram service used for setting up user telegram notifications
@@ -177,6 +178,13 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	comment, err := s.premoderator.premoderateComment(comment, user)
+
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "error handling premoderation", rest.ErrPremoderationFailure)
+		return
+	}
+
 	id, err := s.dataService.Create(comment)
 	if errors.Is(err, service.ErrUserBlocked) { // the author got blocked during the title fetch in Create
 		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("rejected"), "user blocked", rest.ErrUserBlocked)
@@ -208,6 +216,8 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	_ = R.EncodeJSON(w, http.StatusCreated, &finalComment)
 }
+
+// todo should this be part of the admin routes??
 
 // PUT /comment/{id}?site=siteID&url=post-url - update comment
 func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {

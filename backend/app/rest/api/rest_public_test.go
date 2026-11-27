@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dlclark/regexp2/v2"
 	"github.com/go-pkgz/auth/v2/token"
 	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
@@ -144,6 +145,7 @@ func TestRest_LoadMissingPicture(t *testing.T) {
 }
 
 func TestRest_PreviewWithMD(t *testing.T) {
+	defer regexp2.StopTimeoutClock() // https://github.com/dlclark/regexp2/issues/63
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
@@ -178,6 +180,7 @@ BKT
 }
 
 func TestRest_PreviewCode(t *testing.T) {
+	defer regexp2.StopTimeoutClock() // https://github.com/dlclark/regexp2/issues/63
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
@@ -760,7 +763,12 @@ func sinceAfter(ts time.Time) string {
 func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 	// test that comment counting is consistent between tree and plain formats
 	// the open-route limit is lifted so the subtests below can run back to back
-	ts, srv, teardown := startupT(t, func(srv *Rest) { srv.openRouteLimiter = 100000 })
+	ts, srv, teardown := startupT(t, func(srv *Rest) {
+		srv.openRouteLimiter = 100000
+		p, err := NewPremoderator("none", srv.DataService)
+		require.NoError(t, err)
+		srv.Premoderator = p
+	})
 	defer teardown()
 
 	commentLocator := store.Locator{URL: "test-url", SiteID: "remark42"}
@@ -891,18 +899,18 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 		{"format=tree&url=test-url&sort=+time", `"info":{"url":"test-url","count":6`},
 		{"format=tree&sort=-score", `"info":{"count":7`},
 		{"format=tree&url=test-url&sort=-score", `"info":{"url":"test-url","count":6`},
-		{"sort=+time", fmt.Sprintf(`"score":-25,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[8])},
-		{"sort=-time", fmt.Sprintf(`"score":1,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[0])},
-		{"sort=+score", fmt.Sprintf(`"score":10,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[2])},
-		{"sort=+score&url=test-url", fmt.Sprintf(`"score":10,"vote":0,"time":%q}],"info":{"url":"test-url","count":6`, formattedTS[2])},
-		{"sort=-score", fmt.Sprintf(`"score":-25,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[8])},
-		{"sort=-score&url=test-url", fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q}],"info":{"url":"test-url","count":6`, formattedTS[6])},
-		{"sort=-time&since=" + sinceTS[4], fmt.Sprintf(`"score":-1,"vote":0,"controversy":2.924017738212866,"time":%q}],"info":{"count":3`, formattedTS[4])},
-		{"sort=-score&since=" + sinceTS[3], fmt.Sprintf(`"score":-25,"vote":0,"time":%q}],"info":{"count":4`, formattedTS[8])},
-		{"sort=-score&url=test-url&since=" + sinceTS[3], fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q}],"info":{"url":"test-url","count":3`, formattedTS[6])},
-		{"sort=+controversy&url=test-url&since=" + sinceTS[5], fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q}],"info":{"url":"test-url","count":1`, formattedTS[6])},
+		{"sort=+time", fmt.Sprintf(`"score":-25,"vote":0,"time":%q,"pendingApproval":false}],"info":{"count":7`, formattedTS[8])},
+		{"sort=-time", fmt.Sprintf(`"score":1,"vote":0,"time":%q,"pendingApproval":false}],"info":{"count":7`, formattedTS[0])},
+		{"sort=+score", fmt.Sprintf(`"score":10,"vote":0,"time":%q,"pendingApproval":false}],"info":{"count":7`, formattedTS[2])},
+		{"sort=+score&url=test-url", fmt.Sprintf(`"score":10,"vote":0,"time":%q,"pendingApproval":false}],"info":{"url":"test-url","count":6`, formattedTS[2])},
+		{"sort=-score", fmt.Sprintf(`"score":-25,"vote":0,"time":%q,"pendingApproval":false}],"info":{"count":7`, formattedTS[8])},
+		{"sort=-score&url=test-url", fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q,"pendingApproval":false}],"info":{"url":"test-url","count":6`, formattedTS[6])},
+		{"sort=-time&since=" + sinceTS[4], fmt.Sprintf(`"score":-1,"vote":0,"controversy":2.924017738212866,"time":%q,"pendingApproval":false}],"info":{"count":3`, formattedTS[4])},
+		{"sort=-score&since=" + sinceTS[3], fmt.Sprintf(`"score":-25,"vote":0,"time":%q,"pendingApproval":false}],"info":{"count":4`, formattedTS[8])},
+		{"sort=-score&url=test-url&since=" + sinceTS[3], fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q,"pendingApproval":false}],"info":{"url":"test-url","count":3`, formattedTS[6])},
+		{"sort=+controversy&url=test-url&since=" + sinceTS[5], fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q,"pendingApproval":false}],"info":{"url":"test-url","count":1`, formattedTS[6])},
 		// three comments of which last one deleted and doesn't have controversy so returned last
-		{"sort=-controversy&url=test-url&since=" + sinceTS[5], fmt.Sprintf(`"score":0,"vote":0,"time":%q,"delete":true}],"info":{"url":"test-url","count":1`, formattedTS[7])},
+		{"sort=-controversy&url=test-url&since=" + sinceTS[5], fmt.Sprintf(`"score":0,"vote":0,"time":%q,"delete":true,"pendingApproval":true}],"info":{"url":"test-url","count":1`, formattedTS[7])},
 		// test readonly status for the post without comments
 		{"url=readonly-test", `"info":{"count":0,"count_left":0,"read_only":true`},
 		{"format=tree&url=readonly-test", `"info":{"count":0,"count_left":0,"read_only":true`},
@@ -1004,6 +1012,8 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 			assert.Equal(t, expectedStatus, code)
 			assert.Contains(t, body, tc.expectedBody)
 			t.Log(body)
+			// prevent hit limiter from engaging
+			time.Sleep(80 * time.Millisecond)
 		})
 	}
 }
@@ -1699,4 +1709,92 @@ func TestRest_AdminFlagAppliesToOwnSite(t *testing.T) {
 	t.Run("anonymous reader", func(t *testing.T) {
 		assert.Equal(t, allRoutes(""), fetch(t, func(*http.Request) {}))
 	})
+}
+
+func TestPremoderation(t *testing.T) {
+	tests := []struct {
+		name                   string
+		premoderation          Premoderation
+		expectedBeforeApproval int
+		expectedAfterApproval  int
+	}{
+		{
+			name:                   "premoderationNone",
+			premoderation:          PremoderationNone,
+			expectedBeforeApproval: 2,
+			expectedAfterApproval:  2,
+		},
+		{
+			name:                   "premoderationAll",
+			premoderation:          PremoderationAll,
+			expectedBeforeApproval: 0,
+			expectedAfterApproval:  1,
+		},
+		{
+			name:                   "premoderationFirst",
+			premoderation:          PremoderationFirst,
+			expectedBeforeApproval: 0,
+			expectedAfterApproval:  2,
+		},
+		{
+			name:                   "premoderationLinks",
+			premoderation:          PremoderationLinks,
+			expectedBeforeApproval: 1,
+			expectedAfterApproval:  2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			// should hide all comments that are not approved
+			ts, _, teardown := startupT(t, func(srv *Rest) {
+				p, err := NewPremoderator(string(tt.premoderation), srv.DataService)
+				require.NoError(t, err)
+				srv.Premoderator = p
+			})
+			defer teardown()
+
+			user := store.User{ID: "user1", Name: "user name 1"}
+			c1 := store.Comment{Text: "[test](https://www.tst.com)", User: user,
+				Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
+			id1 := addComment(t, c1, ts)
+
+			c2 := store.Comment{Text: "c2", User: user,
+				Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
+			id2 := addComment(t, c2, ts)
+
+			assert.NotEqual(t, id1, id2)
+
+			// get all comments
+			res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah")
+			assert.Equal(t, http.StatusOK, code)
+			comments := commentsWithInfo{}
+			err := json.Unmarshal([]byte(res), &comments)
+			assert.NoError(t, err)
+			require.Equal(t, tt.expectedBeforeApproval, len(comments.Comments), fmt.Sprintf("should have %d comments", tt.expectedBeforeApproval))
+			assert.Equal(t, tt.expectedBeforeApproval, comments.Info.Count)
+			assert.Equal(t, false, comments.Info.ReadOnly)
+
+			// approve first  comment
+			client := http.Client{}
+			defer client.CloseIdleConnections()
+			req, err := http.NewRequest(http.MethodPut,
+				fmt.Sprintf("%s/api/v1/admin/comment/"+id1+"/approve?site=remark42&url=https://radio-t.com/blah&approved=1", ts.URL), http.NoBody)
+			assert.NoError(t, err)
+			req.SetBasicAuth("admin", "password")
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+
+			// check returned comments after approval
+			res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah")
+			assert.Equal(t, http.StatusOK, code)
+			comments = commentsWithInfo{}
+			err = json.Unmarshal([]byte(res), &comments)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedAfterApproval, comments.Info.Count) // FIXME: should we also take care of the count?
+			require.Equal(t, tt.expectedAfterApproval, len(comments.Comments), fmt.Sprintf("should have %d comments", tt.expectedAfterApproval))
+		})
+	}
 }

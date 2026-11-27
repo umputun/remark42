@@ -275,6 +275,11 @@ export class Comment extends Component<CommentProps, State> {
     this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
   };
 
+  toggleApproveComment = () => {
+    const currentlyApproved = !Boolean(this.props.data.pendingApproval)
+    this.props.approveComment!(this.props.data.id, this.props.data.text, !currentlyApproved);
+  };
+
   scrollToParent = (evt: Event) => {
     const { pid } = this.props.data;
     const parentCommentNode = document.getElementById(`${COMMENT_NODE_CLASSNAME_PREFIX}${pid}`);
@@ -384,8 +389,12 @@ export class Comment extends Component<CommentProps, State> {
     }
     const goToParentMessage = intl.formatMessage(messages.goToParent);
 
+    console.log('Rendering', o)
     return (
-      <article className={rootClassName} id={props.disabled ? undefined : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
+      <article
+        className={rootClassName}
+        id={props.disabled ? undefined : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}
+      >
         {props.view === 'user' && o.title && (
           <div className={styles.title}>
             <a className={styles.titleLink} href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
@@ -437,6 +446,12 @@ export class Comment extends Component<CommentProps, State> {
             </time>
           </a>
 
+          {(isAdmin || isCurrentUser) && o.pendingApproval && !o.delete && (
+            <span className={styles.warning}>
+              <FormattedMessage id="comment.pending-approval" defaultMessage="Comment pending approval" />
+            </span>
+          )}
+
           {!!props.level && props.level > 0 && props.view === 'main' && (
             <a
               className={styles.threadStarterAnchor}
@@ -476,15 +491,32 @@ export class Comment extends Component<CommentProps, State> {
         </div>
         <div className={styles.body}>
           {(!props.collapsed || props.view === 'pinned') && (
-            <div
-              className={clsx(styles.text, 'raw-content')}
-              ref={this.textNode}
-              // eslint-disable-next-line react/no-danger
-              dangerouslySetInnerHTML={{ __html: o.text }}
-              dir="auto"
-              // a deleted comment shows the widget's own sentence in place of its text
-              data-nosnippet={props.data.delete || undefined}
-            />
+
+            !o.pendingApproval ? (
+              <div
+                className={clsx(styles.text, 'raw-content')}
+                ref={this.textNode}
+                // eslint-disable-next-line react/no-danger
+                dangerouslySetInnerHTML={{ __html: o.text }}
+                dir="auto"
+                // a deleted comment shows the widget's own sentence in place of its text
+                data-nosnippet={props.data.delete || undefined}
+              />
+            ) : isAdmin || isCurrentUser ? (
+              <div
+                className={clsx(styles.text, 'raw-content')}
+                ref={this.textNode}
+                // eslint-disable-next-line react/no-danger
+                dangerouslySetInnerHTML={{ __html: o.text }}
+                dir="auto"
+                // a deleted comment shows the widget's own sentence in place of its text
+                data-nosnippet={props.data.delete || undefined}
+              />
+            ) : (
+              <span className={styles.text}>
+                <FormattedMessage id="comment.pending-approval" defaultMessage="This comment pending approval" />
+              </span>
+            )
           )}
 
           {(!props.collapsed || !this.props.data.delete) && props.view !== 'pinned' && (
@@ -492,6 +524,7 @@ export class Comment extends Component<CommentProps, State> {
               admin={isAdmin}
               pinned={props.data.pin}
               copied={state.isCopied}
+              pendingApproval={this.props.data.pendingApproval}
               editing={isEditing}
               replying={isReplying}
               editable={
@@ -507,6 +540,7 @@ export class Comment extends Component<CommentProps, State> {
               onDisableEditing={() => this.setState({ editDeadline: undefined })}
               currentUser={isCurrentUser}
               bannedUser={props.isUserBanned}
+              deleted={props.data.delete}
               onCopy={this.copyComment}
               onTogglePin={this.togglePin}
               onToggleEditing={this.toggleEditing}
@@ -514,45 +548,50 @@ export class Comment extends Component<CommentProps, State> {
               onHideUser={this.hideUser}
               onBlockUser={this.blockUser}
               onUnblockUser={this.unblockUser}
+              onToggleApprove={this.toggleApproveComment}
             />
           )}
         </div>
 
-        {CommentForm && isReplying && props.view === 'main' && (
-          <CommentForm
-            id={o.id}
-            intl={this.props.intl}
-            user={props.user}
-            theme={props.theme}
-            mode="reply"
-            mix={styles.input}
-            onSubmit={(text: string, title: string) => this.addComment(text, title, o.id)}
-            onCancel={this.toggleReplying}
-            getPreview={this.props.getPreview!}
-            autofocus={true}
-            uploadImage={uploadImageHandler}
-          />
-        )}
+        {
+          CommentForm && isReplying && props.view === 'main' && (
+            <CommentForm
+              id={o.id}
+              intl={this.props.intl}
+              user={props.user}
+              theme={props.theme}
+              mode="reply"
+              mix={styles.input}
+              onSubmit={(text: string, title: string) => this.addComment(text, title, o.id)}
+              onCancel={this.toggleReplying}
+              getPreview={this.props.getPreview!}
+              autofocus={true}
+              uploadImage={uploadImageHandler}
+            />
+          )
+        }
 
-        {CommentForm && isEditing && props.view === 'main' && (
-          <CommentForm
-            id={o.id}
-            intl={this.props.intl}
-            user={props.user}
-            theme={props.theme}
-            value={o.orig}
-            mode="edit"
-            isReply={!!o.pid}
-            mix={styles.input}
-            onSubmit={(text: string) => this.updateComment(props.data.id, text)}
-            onCancel={this.toggleEditing}
-            getPreview={this.props.getPreview!}
-            errorMessage={state.editDeadline === undefined ? intl.formatMessage(messages.expiredTime) : undefined}
-            autofocus={true}
-            uploadImage={uploadImageHandler}
-          />
-        )}
-      </article>
+        {
+          CommentForm && isEditing && props.view === 'main' && (
+            <CommentForm
+              id={o.id}
+              intl={this.props.intl}
+              user={props.user}
+              theme={props.theme}
+              value={o.orig}
+              mode="edit"
+              isReply={!!o.pid}
+              mix={styles.input}
+              onSubmit={(text: string) => this.updateComment(props.data.id, text)}
+              onCancel={this.toggleEditing}
+              getPreview={this.props.getPreview!}
+              errorMessage={state.editDeadline === undefined ? intl.formatMessage(messages.expiredTime) : undefined}
+              autofocus={true}
+              uploadImage={uploadImageHandler}
+            />
+          )
+        }
+      </article >
     );
   }
 }
@@ -629,5 +668,9 @@ const messages = defineMessages({
   paidPatreon: {
     id: 'comment.paid-patreon',
     defaultMessage: 'Patreon Paid Subscriber',
+  },
+  pendingApproval: {
+    id: 'comment.pending-approval',
+    defaultMessage: 'This comment is pending approval',
   },
 });

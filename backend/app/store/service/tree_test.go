@@ -37,14 +37,14 @@ func TestMakeTree(t *testing.T) {
 		{Locator: loc, ID: "611", ParentID: "61", Deleted: true},
 	}
 
-	res := MakeTree(comments, "time", 0, "")
+	res := MakeTree(comments, "time", 0, "", nonAdminUser, true)
 	resJSON, err := json.Marshal(&res)
 	require.NoError(t, err)
 
 	expJSON := mustLoadJSONFile(t, "testdata/tree.json")
 	assert.Equal(t, expJSON, resJSON)
 
-	res = MakeTree([]store.Comment{}, "time", 0, "")
+	res = MakeTree([]store.Comment{}, "time", 0, "", nonAdminUser, true)
 	assert.Equal(t, &Tree{}, res)
 }
 
@@ -75,7 +75,7 @@ func TestMakeEmptySubtree(t *testing.T) {
 		{Locator: loc, ID: "3", Timestamp: ts(48, 1), Deleted: true}, // deleted top level
 	}
 
-	res := MakeTree(comments, "time", 0, "")
+	res := MakeTree(comments, "time", 0, "", nonAdminUser, true)
 	resJSON, err := json.Marshal(&res)
 	require.NoError(t, err)
 	t.Log(string(resJSON))
@@ -104,50 +104,50 @@ func TestTreeSortNodes(t *testing.T) {
 		{ID: "5", Deleted: true, Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 150, time.UTC)},
 	}
 
-	res := MakeTree(comments, "+active", 0, "")
+	res := MakeTree(comments, "+active", 0, "", nonAdminUser, true)
 	assert.Equal(t, "2", res.Nodes[0].Comment.ID)
 	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].tsModified)
 
-	res = MakeTree(comments, "-active", 0, "")
+	res = MakeTree(comments, "-active", 0, "", nonAdminUser, true)
 	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].tsModified)
 	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
 
-	res = MakeTree(comments, "+time", 0, "")
+	res = MakeTree(comments, "+time", 0, "", nonAdminUser, true)
 	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].tsModified)
 	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
 
-	res = MakeTree(comments, "-time", 0, "")
+	res = MakeTree(comments, "-time", 0, "", nonAdminUser, true)
 	assert.Equal(t, "6", res.Nodes[0].Comment.ID)
 
-	res = MakeTree(comments, "score", 0, "")
+	res = MakeTree(comments, "score", 0, "", nonAdminUser, true)
 	assert.Equal(t, "4", res.Nodes[0].Comment.ID)
 	assert.Equal(t, "3", res.Nodes[1].Comment.ID)
 	assert.Equal(t, "6", res.Nodes[2].Comment.ID)
 	assert.Equal(t, "1", res.Nodes[3].Comment.ID)
 
-	res = MakeTree(comments, "+score", 0, "")
+	res = MakeTree(comments, "+score", 0, "", nonAdminUser, true)
 	assert.Equal(t, "4", res.Nodes[0].Comment.ID)
 
-	res = MakeTree(comments, "-score", 0, "")
+	res = MakeTree(comments, "-score", 0, "", nonAdminUser, true)
 	assert.Equal(t, "2", res.Nodes[0].Comment.ID)
 	assert.Equal(t, "1", res.Nodes[1].Comment.ID)
 	assert.Equal(t, "3", res.Nodes[2].Comment.ID)
 	assert.Equal(t, "6", res.Nodes[3].Comment.ID)
 
-	res = MakeTree(comments, "+controversy", 0, "")
+	res = MakeTree(comments, "+controversy", 0, "", nonAdminUser, true)
 	assert.Equal(t, "3", res.Nodes[0].Comment.ID)
 	assert.Equal(t, "6", res.Nodes[1].Comment.ID)
 	assert.Equal(t, "2", res.Nodes[2].Comment.ID)
 	assert.Equal(t, "4", res.Nodes[3].Comment.ID)
 	assert.Equal(t, "1", res.Nodes[4].Comment.ID)
 
-	res = MakeTree(comments, "-controversy", 0, "")
+	res = MakeTree(comments, "-controversy", 0, "", nonAdminUser, true)
 	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
 	assert.Equal(t, "4", res.Nodes[1].Comment.ID)
 	assert.Equal(t, "2", res.Nodes[2].Comment.ID)
 	assert.Equal(t, "3", res.Nodes[3].Comment.ID)
 
-	res = MakeTree(comments, "undefined", 0, "")
+	res = MakeTree(comments, "undefined", 0, "", nonAdminUser, true)
 	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].tsModified)
 	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
 }
@@ -207,7 +207,7 @@ func TestMakeTreeLimit(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			res := MakeTree(comments, "+time", tc.limit, tc.offsetID)
+			res := MakeTree(comments, "+time", tc.limit, tc.offsetID, nonAdminUser, true)
 			assert.Equal(t, tc.wantNodes, nodeIDs(res.Nodes), "top-level nodes")
 			assert.Equal(t, tc.wantLeft, res.CountLeft(), "count left")
 			assert.Equal(t, tc.wantLast, res.LastComment(), "last comment")
@@ -226,7 +226,7 @@ func TestCountReplies(t *testing.T) {
 		{Locator: loc, ID: "c4a", ParentID: "c4", Timestamp: ts(41)},
 		{Locator: loc, ID: "c4a1", ParentID: "c4a", Timestamp: ts(42)},
 	}
-	res := MakeTree(comments, "+time", 0, "")
+	res := MakeTree(comments, "+time", 0, "", nonAdminUser, true)
 
 	byID := map[string]*Node{}
 	for _, n := range res.Nodes {
@@ -246,6 +246,308 @@ func TestCountReplies(t *testing.T) {
 	assert.Equal(t, 0, countReplies(byID["c1"].Replies[0]), "leaf reply has no replies")
 }
 
+func TestMakeTreePremodaration(t *testing.T) {
+	loc := store.Locator{URL: "url", SiteID: "site"}
+	ts := func(minute, second int) time.Time { return time.Date(2017, 12, 25, 19, minute, second, 0, time.UTC) }
+
+	author := store.User{Admin: false, ID: "notTheViewer"}
+	viewer := store.User{Admin: false, ID: "notTheAuthor"}
+	var tests = []struct {
+		name                string
+		comments            []store.Comment
+		premoderationActive bool
+		expectedNodes       int
+		author              store.User
+		viewer              store.User
+	}{
+		{
+			// root
+			//   - firstLevel A
+			//   ---- secondLevel A
+			//   ---- secondLevel B
+			name:   "root its unapproved - simple case - premoderation active",
+			viewer: viewer,
+			comments: []store.Comment{
+				{Locator: loc, ID: "1", User: author, Timestamp: ts(46, 1), Text: "rootComment", PendingApproval: true},
+				{Locator: loc, ID: "2", User: author, ParentID: "1", Text: "firstLevel A", Timestamp: ts(46, 14), PendingApproval: false},
+				{Locator: loc, ID: "3", User: author, ParentID: "2", Text: "secondLevel A", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "4", User: author, ParentID: "2", Text: "secondLevel B", Timestamp: ts(47, 2), PendingApproval: false},
+			},
+			premoderationActive: true,
+			expectedNodes:       4, // the root is not hidden because it has comments
+		},
+		{
+			// 	[1](pending)
+			//  	|---- [2]  (approved)
+			//    		|---- [3] (approved)
+			//			|	|---- [4] (approved)
+			//   		|	|---- [5] (approved)
+			//   		|---- [6] (pending)
+			name:   "root hidden, one comment beneath hidden as well - premoderation active",
+			viewer: store.User{Admin: false, ID: "notTheAuthor"},
+			comments: []store.Comment{
+				{Locator: loc, ID: "1", User: author, Timestamp: ts(46, 1), Text: "[1]", PendingApproval: true},
+				{Locator: loc, ID: "2", User: author, ParentID: "1", Text: "[2]", Timestamp: ts(46, 14), PendingApproval: false},
+				{Locator: loc, ID: "3", User: author, ParentID: "2", Text: "[3]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "4", User: author, ParentID: "3", Text: "[4]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "5", User: author, ParentID: "3", Text: "[5]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "6", User: author, ParentID: "2", Text: "[6]", Timestamp: ts(47, 2), PendingApproval: true},
+			},
+			premoderationActive: true,
+			expectedNodes:       5, // [6] is hidden
+		},
+		{
+			// 	[1](pending)
+			//  	|---- [2]  (approved)
+			//    		|---- [3] (pending)
+			//			|	|---- [4] (approved)
+			//   		|	|---- [5] (approved)
+			//   		|---- [6] (pending)
+			name:   "root hidden, top branch comment hidden - premoderation active",
+			viewer: store.User{Admin: false, ID: "notTheAuthor"},
+			comments: []store.Comment{
+				{Locator: loc, ID: "1", Timestamp: ts(46, 1), Text: "[1]", PendingApproval: true}, // returned because it contains replies
+				{Locator: loc, ID: "2", User: author, ParentID: "1", Text: "[2]", Timestamp: ts(46, 14), PendingApproval: false},
+				{Locator: loc, ID: "3", User: author, ParentID: "2", Text: "[3]", Timestamp: ts(47, 2), PendingApproval: true}, // returned because it contains replies
+				{Locator: loc, ID: "4", User: author, ParentID: "3", Text: "[4]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "5", User: author, ParentID: "3", Text: "[5]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "6", User: author, ParentID: "2", Text: "[6]", Timestamp: ts(47, 2), PendingApproval: true}, // skipped because it doen't contain replies
+			},
+			premoderationActive: true,
+			expectedNodes:       5, // [6] is hidden
+		},
+		{
+			// 	[1](pending)
+			//  	|---- [2]  (approved)
+			//    		|---- [3] (pending)
+			//			|	|---- [4] (approved)
+			//   		|	|---- [5] (approved)
+			//   		|---- [6] (pending)
+			// 	[7](approved)
+			//  	|---- [8]  (pending)
+			name:   "2 roots one hidden - premoderation active",
+			viewer: store.User{Admin: false, ID: "notTheAuthor"},
+			comments: []store.Comment{
+				{Locator: loc, ID: "1", Timestamp: ts(46, 1), Text: "[1]", PendingApproval: true}, // returned because it contains replies
+				{Locator: loc, ID: "2", User: author, ParentID: "1", Text: "[2]", Timestamp: ts(46, 14), PendingApproval: false},
+				{Locator: loc, ID: "3", User: author, ParentID: "2", Text: "[3]", Timestamp: ts(47, 2), PendingApproval: true}, // returned because it contains replies
+				{Locator: loc, ID: "4", User: author, ParentID: "3", Text: "[4]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "5", User: author, ParentID: "3", Text: "[5]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "6", User: author, ParentID: "2", Text: "[6]", Timestamp: ts(47, 2), PendingApproval: true}, // skipped because it's unapproved leaf
+
+				{Locator: loc, ID: "7", Text: "[7]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "8", User: author, ParentID: "7", Text: "[8]", Timestamp: ts(47, 2), PendingApproval: true}, // skipped because it's unapproved leaf
+			},
+			premoderationActive: true,
+			expectedNodes:       6, // [6] and [8] hidden
+		},
+		{
+			// 	[1](pending)
+			//  	|---- [2]  (approved)
+			//    		|---- [3] (pending)
+			//			|	|---- [4] (approved)
+			//   		|	|---- [5] (approved)
+			//   		|---- [6] (pending)
+			// 	[7](pending)
+			//  	|---- [8]  (pending)
+			name:   "2 roots - one including comments - premoderation active",
+			viewer: store.User{Admin: false, ID: "notTheAuthor"},
+			comments: []store.Comment{
+				{Locator: loc, ID: "1", Timestamp: ts(46, 1), Text: "[1]", PendingApproval: true}, // returned because it contains replies
+				{Locator: loc, ID: "2", User: author, ParentID: "1", Text: "[2]", Timestamp: ts(46, 14), PendingApproval: false},
+				{Locator: loc, ID: "3", User: author, ParentID: "2", Text: "[3]", Timestamp: ts(47, 2), PendingApproval: true}, // returned because it contains replies
+				{Locator: loc, ID: "4", User: author, ParentID: "3", Text: "[4]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "5", User: author, ParentID: "3", Text: "[5]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "6", User: author, ParentID: "2", Text: "[6]", Timestamp: ts(47, 2), PendingApproval: true}, // skipped because it doen't contain replies
+
+				{Locator: loc, ID: "7", Text: "[7]", Timestamp: ts(47, 2), PendingApproval: true},                              // skipped because it doen't contain replies
+				{Locator: loc, ID: "8", User: author, ParentID: "7", Text: "[8]", Timestamp: ts(47, 2), PendingApproval: true}, // skipped because it doen't contain replies
+			},
+			premoderationActive: true,
+			expectedNodes:       5, // [6] [7] and [8] hidden
+		},
+		{
+			// 	[1](pending)
+			//  	|---- [2]  (pending)
+			//    		|---- [3] (pending)
+			//			|	|---- [4] (approved)
+			//   		|	|---- [5] (approved)
+			//   		|---- [6] (pending)
+			// 	[7](pending)
+			//  	|---- [8]  (pending)
+			//  		|---- [9]  (approved)
+			name:   "only leaves are approved - premoderation active ",
+			viewer: store.User{Admin: false, ID: "notTheAuthor"},
+			comments: []store.Comment{
+				{Locator: loc, ID: "1", Timestamp: ts(46, 1), Text: "[1]", PendingApproval: true},                               // returned because it contains replies
+				{Locator: loc, ID: "2", User: author, ParentID: "1", Text: "[2]", Timestamp: ts(46, 14), PendingApproval: true}, // returned because it contains replies
+				{Locator: loc, ID: "3", User: author, ParentID: "2", Text: "[3]", Timestamp: ts(47, 2), PendingApproval: true},  // returned because it contains replies
+				{Locator: loc, ID: "4", User: author, ParentID: "3", Text: "[4]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "5", User: author, ParentID: "3", Text: "[5]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "6", User: author, ParentID: "2", Text: "[6]", Timestamp: ts(47, 2), PendingApproval: true}, // skipped because it doen't contain replies
+
+				{Locator: loc, ID: "7", Text: "[7]", Timestamp: ts(47, 2), PendingApproval: true},                              // returned because 2 levels below it contains a comment
+				{Locator: loc, ID: "8", User: author, ParentID: "7", Text: "[8]", Timestamp: ts(47, 2), PendingApproval: true}, // returned because 2 levels below it contains a comment
+				{Locator: loc, ID: "9", User: author, ParentID: "8", Text: "[9]", Timestamp: ts(47, 2), PendingApproval: false},
+			},
+			premoderationActive: true,
+			expectedNodes:       8, // [6] skipped
+		},
+		{
+			// 	[1](pending)
+			//  	|---- [2]  (approved)
+			//    		|---- [3] (pending)
+			//			|	|---- [4] (approved)
+			//   		|	|---- [5] (approved)
+			//   		|---- [6] (pending)
+			// 	[7](pending)
+			//  	|---- [8]  (pending)
+			name:   "2 roots - one entirely pending - premoderation NOT active",
+			viewer: store.User{Admin: false, ID: "notTheAuthor"},
+			comments: []store.Comment{
+				{Locator: loc, ID: "1", Timestamp: ts(46, 1), Text: "[1]", PendingApproval: true},
+				{Locator: loc, ID: "2", User: author, ParentID: "1", Text: "[2]", Timestamp: ts(46, 14), PendingApproval: false},
+				{Locator: loc, ID: "3", User: author, ParentID: "2", Text: "[3]", Timestamp: ts(47, 2), PendingApproval: true},
+				{Locator: loc, ID: "4", User: author, ParentID: "3", Text: "[4]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "5", User: author, ParentID: "3", Text: "[5]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "6", User: author, ParentID: "2", Text: "[6]", Timestamp: ts(47, 2), PendingApproval: true},
+
+				{Locator: loc, ID: "7", Text: "[7]", Timestamp: ts(47, 2), PendingApproval: true},
+				{Locator: loc, ID: "8", User: author, ParentID: "7", Text: "[8]", Timestamp: ts(47, 2), PendingApproval: true},
+			},
+			premoderationActive: false,
+			expectedNodes:       8,
+		},
+		{
+			// 	[1](pending)
+			//  	|---- [2]  (approved)
+			//    		|---- [3] (pending)
+			//			|	|---- [4] (approved)
+			//   		|	|---- [5] (approved)
+			//   		|---- [6] (pending)
+			// 	[7](pending)
+			//  	|---- [8]  (pending)
+			//  		|---- [9]  (approved)
+			name:   "2 roots - premoderation NOT active",
+			viewer: store.User{Admin: false, ID: "notTheAuthor"},
+			comments: []store.Comment{
+				{Locator: loc, ID: "1", Timestamp: ts(46, 1), Text: "[1]", PendingApproval: true},
+				{Locator: loc, ID: "2", User: author, ParentID: "1", Text: "[2]", Timestamp: ts(46, 14), PendingApproval: false},
+				{Locator: loc, ID: "3", User: author, ParentID: "2", Text: "[3]", Timestamp: ts(47, 2), PendingApproval: true},
+				{Locator: loc, ID: "4", User: author, ParentID: "3", Text: "[4]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "5", User: author, ParentID: "3", Text: "[5]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "6", User: author, ParentID: "2", Text: "[6]", Timestamp: ts(47, 2), PendingApproval: true},
+
+				{Locator: loc, ID: "7", Text: "[7]", Timestamp: ts(47, 2), PendingApproval: true},
+				{Locator: loc, ID: "8", User: author, ParentID: "7", Text: "[8]", Timestamp: ts(47, 2), PendingApproval: true},
+				{Locator: loc, ID: "9", User: author, ParentID: "8", Text: "[9]", Timestamp: ts(47, 2), PendingApproval: false},
+			},
+			premoderationActive: false,
+			expectedNodes:       9, // NONE skipped
+		},
+		{
+			// 	[1](pending)
+			//  	|---- [2]  (approved)
+			//    		|---- [3] (pending)
+			//			|	|---- [4] (approved)
+			//   		|	|---- [5] (approved)
+			//   		|---- [6] (pending - but created from the viewing user)
+			// 	[7](pending)
+			//  	|---- [8]  (pending)
+			//  		|---- [9]  (approved)
+			name:   "2 roots - premoderation active - pending leaf from same author",
+			viewer: store.User{Admin: false, ID: "notTheAuthor"},
+			comments: []store.Comment{
+				{Locator: loc, ID: "1", Timestamp: ts(46, 1), Text: "[1]", PendingApproval: true},
+				{Locator: loc, ID: "2", User: author, ParentID: "1", Text: "[2]", Timestamp: ts(46, 14), PendingApproval: false},
+				{Locator: loc, ID: "3", User: author, ParentID: "2", Text: "[3]", Timestamp: ts(47, 2), PendingApproval: true},
+				{Locator: loc, ID: "4", User: author, ParentID: "3", Text: "[4]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "5", User: author, ParentID: "3", Text: "[5]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "6", User: viewer, ParentID: "2", Text: "[6]", Timestamp: ts(47, 2), PendingApproval: true}, // should be returned because is from the same author
+
+				{Locator: loc, ID: "7", Text: "[7]", Timestamp: ts(47, 2), PendingApproval: true},
+				{Locator: loc, ID: "8", User: author, ParentID: "7", Text: "[8]", Timestamp: ts(47, 2), PendingApproval: true},
+				{Locator: loc, ID: "9", User: author, ParentID: "8", Text: "[9]", Timestamp: ts(47, 2), PendingApproval: false},
+			},
+			premoderationActive: true,
+			expectedNodes:       9, // NONE skipped
+		},
+		{
+			// 	[1](pending - but created from the viewing user)
+			//
+			name:   "only 1 pending comment from the viewer - premoderation active",
+			viewer: store.User{Admin: false, ID: "notTheAuthor"},
+			comments: []store.Comment{
+				{Locator: loc, ID: "1", User: viewer, Timestamp: ts(46, 1), Text: "[1]", PendingApproval: true},
+			},
+			premoderationActive: true,
+			expectedNodes:       1, // NONE skipped
+		},
+		{
+			// 	[1](pending - but created from the viewing user)
+			//
+			name:   "only 1 pending comment NOT from the viewer - premoderation active",
+			viewer: store.User{Admin: false, ID: "notTheAuthor"},
+			comments: []store.Comment{
+				{Locator: loc, ID: "1", User: author, Timestamp: ts(46, 1), Text: "[1]", PendingApproval: true},
+			},
+			premoderationActive: true,
+			expectedNodes:       0, // NONE skipped
+		},
+		{
+			// 	[1](pending)
+			//  	|---- [2]  (approved)
+			//    		|---- [3] (pending)
+			//			|	|---- [4] (approved)
+			//   		|	|---- [5] (approved)
+			//   		|---- [6] (pending - but created from the viewing user)
+			// 	[7](pending)
+			//  	|---- [8]  (pending)
+			//  		|---- [9]  (approved)
+			// 	[10](pending - but created from the viewing user)
+			name:   "2 roots - premoderation active - pending leaf from same author",
+			viewer: store.User{Admin: false, ID: "notTheAuthor"},
+			comments: []store.Comment{
+				{Locator: loc, ID: "1", Timestamp: ts(46, 1), Text: "[1]", PendingApproval: true},
+				{Locator: loc, ID: "2", User: author, ParentID: "1", Text: "[2]", Timestamp: ts(46, 14), PendingApproval: false},
+				{Locator: loc, ID: "3", User: author, ParentID: "2", Text: "[3]", Timestamp: ts(47, 2), PendingApproval: true},
+				{Locator: loc, ID: "4", User: author, ParentID: "3", Text: "[4]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "5", User: author, ParentID: "3", Text: "[5]", Timestamp: ts(47, 2), PendingApproval: false},
+				{Locator: loc, ID: "6", User: viewer, ParentID: "2", Text: "[6]", Timestamp: ts(47, 2), PendingApproval: true}, // should be returned because is from the same author
+
+				{Locator: loc, ID: "7", Text: "[7]", Timestamp: ts(47, 2), PendingApproval: true},
+				{Locator: loc, ID: "8", User: author, ParentID: "7", Text: "[8]", Timestamp: ts(47, 2), PendingApproval: true},
+				{Locator: loc, ID: "9", User: author, ParentID: "8", Text: "[9]", Timestamp: ts(47, 2), PendingApproval: false},
+
+				{Locator: loc, ID: "10", User: viewer, ParentID: "", Text: "[10]", Timestamp: ts(47, 2), PendingApproval: true},
+			},
+			premoderationActive: true,
+			expectedNodes:       10, // NONE skipped
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := MakeTree(tt.comments, "time", 0, "", viewer, tt.premoderationActive)
+			_, err := json.Marshal(&res)
+			require.NoError(t, err)
+			tot := countNodes(res.Nodes, 0)
+			assert.Equal(t, tt.expectedNodes, tot)
+		})
+	}
+}
+
+func countNodes(nodes []*Node, count int) int {
+	for _, node := range nodes {
+		if node == nil {
+			continue
+		}
+		count++
+		count = countNodes(node.Replies, count)
+	}
+	return count
+}
+
 func BenchmarkTree(b *testing.B) {
 	comments := []store.Comment{}
 	data, err := os.ReadFile("testdata/tree_bench.json")
@@ -254,7 +556,7 @@ func BenchmarkTree(b *testing.B) {
 	assert.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
-		res := MakeTree(comments, "time", 0, "")
+		res := MakeTree(comments, "time", 0, "", nonAdminUser, true)
 		assert.NotNil(b, res)
 	}
 }
