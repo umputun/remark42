@@ -91,10 +91,10 @@ func (t *Telegram) buildMessage(req Request) string {
 		msg += fmt.Sprintf(` -> <a href=%q>%s</a>`, html.EscapeString(commentURLPrefix+req.parent.ID), ntf.EscapeTelegramText(req.parent.User.Name))
 	}
 
-	msg += fmt.Sprintf("\n\n%s", pruneHTML(ntf.TelegramSupportedHTML(req.Comment.Text), commentTextLengthLimit))
+	msg += fmt.Sprintf("\n\n%s", pruneHTML(telegramCommentHTML(req.Comment.Text), commentTextLengthLimit))
 
 	if req.Comment.ParentID != "" {
-		msg += fmt.Sprintf("\n\n\"<i>%s</i>\"", pruneHTML(ntf.TelegramSupportedHTML(req.parent.Text), commentTextLengthLimit))
+		msg += fmt.Sprintf("\n\n\"<i>%s</i>\"", pruneHTML(telegramCommentHTML(req.parent.Text), commentTextLengthLimit))
 	}
 
 	if req.Comment.PostTitle != "" {
@@ -102,6 +102,13 @@ func (t *Telegram) buildMessage(req Request) string {
 	}
 
 	return msg
+}
+
+// telegramCommentHTML reduces comment HTML to the tags Telegram supports, without links and images. The
+// message comes from the site's bot, often to a reader's private chat, so a link a commenter labeled
+// with any text would look like one the site sent; the text of a link stays. Email drops them the same way.
+func telegramCommentHTML(commentHTML string) string {
+	return ntf.TelegramSupportedHTML(emailCommentPolicy.Sanitize(commentHTML))
 }
 
 func (t *Telegram) String() string {

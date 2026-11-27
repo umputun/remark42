@@ -71,6 +71,7 @@ type msgTmplData struct {
 // links (<a>) and images (<img>) are dropped so a comment can't smuggle phishing links
 // or remote tracking pixels into an email sent from the legitimate remark42 address,
 // while basic inline and block text formatting is preserved.
+// Telegram notifications pass comment HTML through it too, see telegramCommentHTML.
 var emailCommentPolicy = func() *bluemonday.Policy {
 	p := bluemonday.NewPolicy()
 	p.AllowElements(

@@ -46,7 +46,7 @@ If all goes fine, you should be able to see the following message on your Slack 
 
 You need to set `NOTIFY_ADMINS=webhook` to enable WebHook notifications on all new comments and set at least `NOTIFY_WEBHOOK_URL` for them to start working. Without the URL, or with a template that does not parse, the webhook is not created and the server logs `notifications are not fully set up` at start; the other notification types keep working.
 
-Additionally, you might want to set `NOTIFY_WEBHOOK_TEMPLATE` (which is Go Template, `{"text": {{.Text | escapeJSONString}}}` by default) and `NOTIFY_WEBHOOK_HEADERS`, which is HTTP header(s) in format `Header1:Value1,Header2:Value2,...`.
+Additionally, you might want to set `NOTIFY_WEBHOOK_TEMPLATE` (which is Go Template, `{"text": {{.Text | escapeJSONString}}}` by default) and `NOTIFY_WEBHOOK_HEADERS`, which is HTTP header(s) in format `Header1:Value1,Header2:Value2,...`. `.Text` is the comment's rendered HTML with its links and images, so a receiver that displays it as HTML should filter it.
 
 Remark42 sends the rendered template as the body of a `POST` request to `NOTIFY_WEBHOOK_URL`. The request has no `Content-Type` header unless `NOTIFY_WEBHOOK_HEADERS` sets one, for example `Content-Type:application/json`. `NOTIFY_WEBHOOK_TIMEOUT` (`5s` by default) limits the whole request. Redirects are followed, and a 301, 302 or 303 turns the `POST` into a `GET` without the body. A final status outside 2xx counts as a failure: Remark42 logs it and does not retry.
 
