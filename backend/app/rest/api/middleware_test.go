@@ -259,8 +259,7 @@ func TestRest_cacheControl(t *testing.T) {
 // (/web/*.html) still get the global CSP (with 'unsafe-inline' for bootstrap),
 // so the test asserts the two policies diverge across origins.
 func TestRest_apiCSP(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 	client := http.Client{}
 
 	// JSON API endpoint — must carry the strict policy
@@ -294,7 +293,7 @@ func TestRest_apiCSP(t *testing.T) {
 
 // check CSP, img-src should be 'self' with proxy enabled and * without it
 func TestRest_securityHeaders(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _ := startupT(t)
 
 	// with proxy disabled
 	client := http.Client{}
@@ -304,17 +303,16 @@ func TestRest_securityHeaders(t *testing.T) {
 	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "img-src *;")
 	assert.Equal(t, "nosniff", resp.Header.Get("X-Content-Type-Options"))
 	assert.Equal(t, "strict-origin-when-cross-origin", resp.Header.Get("Referrer-Policy"))
-	// httptest.Server.Close waits on connections still in use, and a deferred close does not run
-	// until the test ends, so the body has to be released before the server is torn down here
+	// httptest.Server.Close waits on connections still in use, and the cleanup of startupT does not
+	// run until the test ends, so the body has to be released before the server is closed here
 	require.NoError(t, resp.Body.Close())
 	client.CloseIdleConnections()
-	teardown()
+	ts.Close() // stop the first server here, its cleanup closing it again does nothing
 
 	// check CSP with proxy enabled
-	ts, _, teardown = startupT(t, func(srv *Rest) {
+	ts, _ = startupT(t, func(srv *Rest) {
 		srv.ExternalImageProxy = true
 	})
-	defer teardown()
 	resp, err = client.Get(ts.URL + "/web/index.html")
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -658,21 +656,11 @@ func Test_withoutQueryParam(t *testing.T) {
 // a token in the query must not authenticate a request, and must not get in the way of one that
 // carries its token where it belongs
 func TestRest_QueryTokenIgnored(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
-	client := http.Client{Timeout: 5 * time.Second}
-	defer client.CloseIdleConnections()
 	status := func(t *testing.T, path, headerToken string) int {
-		req, err := http.NewRequest(http.MethodGet, ts.URL+path, http.NoBody)
-		require.NoError(t, err)
-		if headerToken != "" {
-			req.Header.Set("X-JWT", headerToken)
-		}
-		resp, err := client.Do(req)
-		require.NoError(t, err)
-		require.NoError(t, resp.Body.Close())
-		return resp.StatusCode
+		_, code := call(t, http.MethodGet, ts.URL+path, "", headerToken)
+		return code
 	}
 
 	assert.Equal(t, http.StatusOK, status(t, "/api/v1/user?site=remark42", devToken), "the token is good in the header")
@@ -703,8 +691,7 @@ func TestRest_AuthRefusesEmbeddedRequests(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			// a server each: the auth routes take two requests a second from an address
-			ts, _, teardown := startupT(t)
-			defer teardown()
+			ts, _ := startupT(t)
 
 			req, err := http.NewRequest(http.MethodGet, ts.URL+c.path, http.NoBody)
 			require.NoError(t, err)
@@ -727,8 +714,7 @@ func TestRest_AuthRefusesEmbeddedRequests(t *testing.T) {
 // requests refused as embedded do not count against the two a second the auth routes take from
 // an address, so they cannot use up the allowance of the reader's own sign-out
 func TestRest_AuthRefusalsAreNotRateLimited(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	// the status, and the header the limiter puts on every request that reaches it
 	get := func(dest string) (status int, limit string) {
@@ -983,8 +969,7 @@ func TestRest_ThirdPartyFrameCookies(t *testing.T) {
 	frame := map[string]string{partitionedCookieHeader: "1"}
 
 	t.Run("sign-in from a third-party frame", func(t *testing.T) {
-		ts, _, teardown := startupT(t, headerMode)
-		defer teardown()
+		ts, _ := startupT(t, headerMode)
 
 		resp := get(t, ts.URL+login, frame)
 		require.Equal(t, http.StatusOK, resp.status)
@@ -992,8 +977,7 @@ func TestRest_ThirdPartyFrameCookies(t *testing.T) {
 	})
 
 	t.Run("renewal on an api route from a third-party frame", func(t *testing.T) {
-		ts, srv, teardown := startupT(t, headerMode)
-		defer teardown()
+		ts, srv := startupT(t, headerMode)
 
 		// expired but validly signed, which is what the auth middleware renews for a cookie
 		tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
@@ -1010,8 +994,7 @@ func TestRest_ThirdPartyFrameCookies(t *testing.T) {
 	})
 
 	t.Run("sign-out from a third-party frame", func(t *testing.T) {
-		ts, _, teardown := startupT(t, headerMode)
-		defer teardown()
+		ts, _ := startupT(t, headerMode)
 
 		resp := get(t, ts.URL+"/auth/logout", frame)
 		require.Equal(t, http.StatusOK, resp.status)
@@ -1022,8 +1005,7 @@ func TestRest_ThirdPartyFrameCookies(t *testing.T) {
 	})
 
 	t.Run("sign-in without the header", func(t *testing.T) {
-		ts, _, teardown := startupT(t, headerMode)
-		defer teardown()
+		ts, _ := startupT(t, headerMode)
 
 		resp := get(t, ts.URL+login, nil)
 		require.Equal(t, http.StatusOK, resp.status)
@@ -1031,8 +1013,7 @@ func TestRest_ThirdPartyFrameCookies(t *testing.T) {
 	})
 
 	t.Run("sign-out without the header", func(t *testing.T) {
-		ts, _, teardown := startupT(t, headerMode)
-		defer teardown()
+		ts, _ := startupT(t, headerMode)
 
 		// remark42's own page signing out a reader whose widget, framed by another host of the
 		// same site, was given the partitioned pair: that pair is sent here as well
@@ -1042,8 +1023,7 @@ func TestRest_ThirdPartyFrameCookies(t *testing.T) {
 	})
 
 	t.Run("sign-out with header mode off", func(t *testing.T) {
-		ts, _, teardown := startupT(t)
-		defer teardown()
+		ts, _ := startupT(t)
 
 		// a reader given the partitioned pair while header mode was on still holds it. its JWT is
 		// HttpOnly, so unless this response expires it, it outlives the sign-out and is sent ahead
@@ -1061,8 +1041,7 @@ func TestRest_ThirdPartyFrameCookies(t *testing.T) {
 	})
 
 	t.Run("sign-in with header mode off", func(t *testing.T) {
-		ts, _, teardown := startupT(t)
-		defer teardown()
+		ts, _ := startupT(t)
 
 		resp := get(t, ts.URL+login, frame)
 		require.Equal(t, http.StatusOK, resp.status)
@@ -1070,8 +1049,7 @@ func TestRest_ThirdPartyFrameCookies(t *testing.T) {
 	})
 
 	t.Run("served over http", func(t *testing.T) {
-		ts, _, teardown := startupT(t, headerMode, func(srv *Rest) { srv.RemarkURL = "http://demo.remark42.com" })
-		defer teardown()
+		ts, _ := startupT(t, headerMode, func(srv *Rest) { srv.RemarkURL = "http://demo.remark42.com" })
 
 		// a partitioned cookie has to be Secure, and a browser refuses a Secure cookie over http
 		resp := get(t, ts.URL+login, frame)
