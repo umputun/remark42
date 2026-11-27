@@ -196,6 +196,42 @@ func TestTransport_UnicodeHost(t *testing.T) {
 	assert.Equal(t, []string{"xn--bcher-kva.example", "xn--bcher-kva.example"}, looked, "names given to the resolver")
 }
 
+// TestTransport_UnresolvedHostError checks that a name the resolver doesn't know, or resolves to no address,
+// fails with a *net.DNSError in the client's error chain, directly and through a proxy: the image proxy tells
+// it apart by that
+func TestTransport_UnresolvedHostError(t *testing.T) {
+	orig := lookupIPAddr
+	lookupIPAddr = func(_ context.Context, host string) ([]net.IPAddr, error) {
+		if host == "empty.internal" {
+			return nil, nil
+		}
+		return nil, &net.DNSError{Err: "no such host", Name: host, IsNotFound: true}
+	}
+	t.Cleanup(func() { lookupIPAddr = orig })
+
+	proxy := newFakeProxy(t)
+	for _, tt := range []struct{ name, proxyURL, host string }{
+		{"direct", "", "unknown.internal"},
+		{"through proxy", proxy.URL, "unknown.internal"},
+		{"no addresses, direct", "", "empty.internal"},
+		{"no addresses, through proxy", proxy.URL, "empty.internal"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			setProxyEnv(t, tt.proxyURL, tt.proxyURL)
+			client := &http.Client{Transport: Transport(), Timeout: 5 * time.Second}
+			defer client.CloseIdleConnections()
+			resp, err := client.Get("http://" + tt.host + "/")
+			if resp != nil {
+				_ = resp.Body.Close()
+			}
+			var dnsErr *net.DNSError
+			require.ErrorAs(t, err, &dnsErr)
+			assert.Equal(t, tt.host, dnsErr.Name)
+		})
+	}
+	assert.Empty(t, proxy.seen())
+}
+
 type fakeProxy struct {
 	*httptest.Server
 	mu   sync.Mutex
@@ -237,33 +273,51 @@ func setProxyEnv(t *testing.T, httpProxy, httpsProxy string) {
 }
 
 // TestIsPrivateIP_RangeBoundaries pins the refused set: the first and last address of every refused
-// range are refused, the addresses just outside them are not, and neither are ranges deliberately allowed
+// range are refused, and the addresses just outside them are not
 func TestIsPrivateIP_RangeBoundaries(t *testing.T) {
 	refused := []string{
-		"0.0.0.0", "::", "::ffff:0.0.0.0",
+		"0.0.0.0", "0.0.0.1", "0.255.255.255", "::", "::ffff:0.0.0.0",
 		"10.0.0.0", "10.255.255.255", "::ffff:10.0.0.1",
 		"172.16.0.0", "172.31.255.255", "::ffff:172.16.0.1",
 		"192.168.0.0", "192.168.255.255", "::ffff:192.168.1.1",
 		"100.64.0.0", "100.127.255.255", "::ffff:100.64.0.1",
 		"127.0.0.0", "127.255.255.255", "::ffff:127.0.0.1",
 		"169.254.0.0", "169.254.255.255", "::ffff:169.254.1.1",
+		"168.63.129.16", "::ffff:168.63.129.16",
+		"192.0.0.0", "192.0.0.255", "::ffff:192.0.0.192",
+		"198.18.0.0", "198.19.255.255", "::ffff:198.19.0.10",
+		"240.0.0.0", "255.255.255.255", "::ffff:240.0.0.10",
 		"::1",
 		"fc00::", "fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
 		"fe80::", "febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+		// ipv6 forms carrying a private ipv4 address: NAT64, IPv4-translated, IPv4-compatible, 6to4
+		"64:ff9b::a00:1", "64:ff9b::127.0.0.1", "64:ff9b::169.254.169.254", "64:ff9b::100.64.0.1", "64:ff9b::198.18.0.1",
+		"::ffff:0:10.0.0.1", "::ffff:0:127.0.0.1",
+		"::2", "::10.0.0.1", "::127.0.0.1",
+		"2002:a00:1::", "2002:a9fe:a9fe::1", "2002:c612:1::",
+		"2002:a00:101::", // 10.0.1.1 in bytes 2 to 5, the public 1.1.0.0 in bytes 4 to 7
+		// local-use NAT64, refused whole
+		"64:ff9b:1::", "64:ff9b:1::808:808", "64:ff9b:1:ffff:ffff:ffff:ffff:ffff",
 	}
 	allowed := []string{
-		"0.0.0.1", "::2", "::ffff:8.8.8.8",
+		"1.0.0.0", "::ffff:8.8.8.8",
 		"9.255.255.255", "11.0.0.0",
 		"172.15.255.255", "172.32.0.0",
 		"192.167.255.255", "192.169.0.0",
 		"100.63.255.255", "100.128.0.0",
 		"126.255.255.255", "128.0.0.0",
 		"169.253.255.255", "169.255.0.0",
+		"168.63.129.15", "168.63.129.17",
+		"191.255.255.255", "192.0.1.0",
+		"198.17.255.255", "198.20.0.0",
+		"239.255.255.255", "224.0.0.1", // multicast
 		"fbff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", "fe00::",
 		"fe7f:ffff:ffff:ffff:ffff:ffff:ffff:ffff", "fec0::",
-		"::127.0.0.1", "::10.0.0.1", // ipv4-compatible, not ipv4-mapped
-		"224.0.0.1", "255.255.255.255", "198.18.0.1", "240.0.0.1", // multicast, broadcast, benchmark, reserved
-		"ff02::1", "ff01::1", "2001:db8::1", "64:ff9b::a00:1",
+		"ff02::1", "ff01::1", "2001:db8::1",
+		// ipv6 forms carrying a public ipv4 address
+		"64:ff9b::8.8.8.8", "::ffff:0:8.8.8.8", "::8.8.8.8", "2002:808:808::",
+		"2002:808:a00::", // 8.8.10.0 in bytes 2 to 5, the private 10.0.0.0 in bytes 4 to 7
+		"64:ff9b:0:0:0:1::", "64:ff9b:0:ffff::", "64:ff9b:2::", "2001::1", "2003::1",
 	}
 	for _, s := range refused {
 		ip := net.ParseIP(s)

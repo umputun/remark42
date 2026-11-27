@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -213,7 +214,15 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 	}
 	defer client.CloseIdleConnections()
 	var resp *http.Response
-	err := repeater.NewFixed(5, time.Second).Do(ctx, func() error {
+	rep := repeater.NewFixed(5, time.Second)
+	// a refused address stays refused, and a name the resolver doesn't know stays unknown (the resolver retries
+	// on its own); retrying either only delays the failure, and a delay that differs between the two would tell
+	// a visitor which internal host names exist
+	rep.SetErrorClassifier(func(err error) bool {
+		var dnsErr *net.DNSError
+		return !errors.Is(err, safehttp.ErrPrivateAddress) && !errors.As(err, &dnsErr)
+	})
+	err := rep.Do(ctx, func() error {
 		var e error
 		// SSRF safety: client.Transport is safehttp.Transport() when p.Transport is nil
 		// (see Image.Transport contract above); when caller supplies a transport they
@@ -224,7 +233,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 		}
 		resp, e = client.Do(req.WithContext(ctx)) //nolint:bodyclose,gosec // body closed in defer; transport contract above
 		return e
-	}, safehttp.ErrPrivateAddress) // a refused address stays refused, retrying only delays the failure
+	})
 	if err != nil {
 		return nil, fmt.Errorf("can't download image %s: %w", imgURL, err)
 	}
