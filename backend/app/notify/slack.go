@@ -4,10 +4,15 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 
 	log "github.com/go-pkgz/lgr"
 	ntf "github.com/go-pkgz/notify"
 )
+
+// slackEscaper escapes the characters Slack reads as markup in message text, as Slack asks for text written by
+// users: unescaped, <url|label> becomes a link that shows only its label and <!channel> or <@user> a mention
+var slackEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;")
 
 // Slack implements notify.Destination for Slack
 type Slack struct {
@@ -36,20 +41,24 @@ func (s *Slack) Send(ctx context.Context, req Request) error {
 		user += " → " + req.parent.User.Name
 	}
 
+	return s.Slack.Send(ctx, s.destination(req), "New comment from "+user)
+}
+
+// destination builds the slack: address carrying the attachment of the message. The attachment text is the
+// comment as its author typed it, escaped for Slack. The post title is left as it is: a comment is read back
+// sanitized before it is sent, so its title holds no < or >, and escaping it again would show its entities
+func (s *Slack) destination(req Request) string {
 	title := "↦ original comment"
 	if req.Comment.PostTitle != "" {
 		title = "↦ " + req.Comment.PostTitle
 	}
-
-	destination := fmt.Sprintf(
+	return fmt.Sprintf(
 		"slack:%s?title=%s&attachmentText=%s&titleLink=%s",
 		s.channelName,
 		url.QueryEscape(title),
-		url.QueryEscape(req.Comment.Orig),
+		url.QueryEscape(slackEscaper.Replace(req.Comment.Orig)),
 		url.QueryEscape(req.Comment.Locator.URL+uiNav+req.Comment.ID),
 	)
-
-	return s.Slack.Send(ctx, destination, "New comment from "+user)
 }
 
 func (s *Slack) String() string {
