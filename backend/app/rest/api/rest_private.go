@@ -128,6 +128,18 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment.User = user
 	comment.User.IP = extractIP(r.RemoteAddr)
 
+	// the store files a comment under the sanitized url of its post, so the read-only check, the parent
+	// lookup, the read-back and the cache flush below all use that url. The url as it was sent is checked
+	// for read-only as well: posts stored before urls were sanitized, and read-only flags set for such a
+	// url, are kept under it.
+	sentLocator := comment.Locator
+	comment.Locator.URL = comment.SanitizeAsURL(comment.Locator.URL)
+	if comment.Locator.URL == "" {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("invalid post url %q", sentLocator.URL),
+			"invalid comment", rest.ErrCommentValidation)
+		return
+	}
+
 	comment.Orig = comment.Text // original comment text, prior to md render
 	if err := s.dataService.ValidateComment(&comment); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
@@ -150,7 +162,7 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if s.isReadOnly(comment.Locator) {
+	if s.isReadOnly(comment.Locator) || (sentLocator.URL != comment.Locator.URL && s.isReadOnly(sentLocator)) {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("rejected"), "old post, read-only", rest.ErrReadOnly)
 		return
 	}

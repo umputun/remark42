@@ -632,8 +632,8 @@ func (s *DataStore) editComment(locator store.Locator, commentID string, req Edi
 	comment.Text = req.Text
 	comment.Orig = req.Orig
 	comment.Edit = &store.Edit{Timestamp: time.Now(), Summary: req.Summary}
-	comment.Locator = locator
 	comment.Sanitize()
+	comment.Locator = locator // the post the comment is stored under, whether sanitizing its url changes it or not
 
 	// match the sanitized text, as Create does, because this is the text to store and show
 	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
@@ -845,8 +845,18 @@ func (s *DataStore) SetReadOnly(locator store.Locator, status bool) error {
 		roStatus = engine.FlagTrue
 	}
 	req := engine.FlagRequest{Locator: locator, Flag: engine.ReadOnly, Update: roStatus}
-	_, err := s.Engine.Flag(req)
-	return err
+	if _, err := s.Engine.Flag(req); err != nil {
+		return err
+	}
+	// a new comment is stored under the sanitized url of its post, and every spelling of the url that
+	// sanitizes the same way reaches that post, so the flag is kept for the sanitized url as well
+	if clean := (&store.Comment{}).SanitizeAsURL(locator.URL); clean != "" && clean != locator.URL {
+		req.Locator.URL = clean
+		if _, err := s.Engine.Flag(req); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // IsVerified checks if user verified
