@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"slices"
 	"time"
 	"unicode/utf8"
 
@@ -106,8 +107,8 @@ func publicIPs(ctx context.Context, host string) ([]net.IPAddr, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can't resolve host %s: %w", host, err)
 	}
-	if len(ips) == 0 {
-		return nil, fmt.Errorf("no IP addresses resolved for host %s", host)
+	if len(ips) == 0 { // reported as the resolver reports a name it doesn't know, so callers treat the two alike
+		return nil, fmt.Errorf("can't resolve host %s: %w", host, &net.DNSError{Err: "no IP addresses", Name: host, IsNotFound: true})
 	}
 	for _, ip := range ips {
 		if IsPrivateIP(ip.IP) {
@@ -139,15 +140,49 @@ func asciiHost(host string) string {
 	return host
 }
 
-// cgnat is the carrier-grade NAT range (RFC 6598), shared address space the stdlib does not classify
-var cgnat = netip.MustParsePrefix("100.64.0.0/10")
+// nonPublic lists ranges that are reachable only inside a network, which the stdlib does not classify
+var nonPublic = []netip.Prefix{
+	netip.MustParsePrefix("0.0.0.0/8"),        // "this network" (RFC 791)
+	netip.MustParsePrefix("100.64.0.0/10"),    // carrier-grade NAT, shared address space (RFC 6598)
+	netip.MustParsePrefix("168.63.129.16/32"), // Azure platform endpoint, answers inside Azure networks only
+	netip.MustParsePrefix("192.0.0.0/24"),     // IETF protocol assignments (RFC 6890)
+	netip.MustParsePrefix("198.18.0.0/15"),    // benchmarking (RFC 2544), used for cloud VPCs and pods
+	netip.MustParsePrefix("240.0.0.0/4"),      // reserved (RFC 1112) and broadcast, used for cloud VPCs
+	netip.MustParsePrefix("64:ff9b:1::/48"),   // local-use NAT64 (RFC 8215), where the IPv4 part sits depends on the network
+}
 
-// IsPrivateIP reports whether ip is unspecified, loopback, private (RFC 1918, RFC 4193),
-// link-local unicast or CGNAT, in IPv4, IPv6 or IPv4-mapped IPv6 form.
+// embedded4 lists IPv6 ranges whose addresses carry the IPv4 address a gateway connects to, with its byte offset.
+// IPv4-mapped addresses are unmapped before the check.
+var embedded4 = []struct {
+	prefix netip.Prefix
+	offset int
+}{
+	{netip.MustParsePrefix("64:ff9b::/96"), 12},    // NAT64 well-known prefix (RFC 6052)
+	{netip.MustParsePrefix("::ffff:0:0:0/96"), 12}, // IPv4-translated (RFC 2765)
+	{netip.MustParsePrefix("::/96"), 12},           // IPv4-compatible (RFC 4291)
+	{netip.MustParsePrefix("2002::/16"), 2},        // 6to4 (RFC 3056)
+}
+
+// IsPrivateIP reports whether ip is unspecified, loopback, private (RFC 1918, RFC 4193), link-local unicast
+// or in one of the nonPublic ranges, in IPv4, IPv6 or IPv4-mapped IPv6 form. An IPv6 address that carries
+// an IPv4 address (embedded4) is private when that IPv4 address is.
 func IsPrivateIP(ip net.IP) bool {
 	if ip.IsUnspecified() || ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() {
 		return true
 	}
 	addr, ok := netip.AddrFromSlice(ip)
-	return ok && cgnat.Contains(addr.Unmap())
+	if !ok {
+		return false
+	}
+	addr = addr.Unmap()
+	if slices.ContainsFunc(nonPublic, func(p netip.Prefix) bool { return p.Contains(addr) }) {
+		return true
+	}
+	for _, e := range embedded4 {
+		if e.prefix.Contains(addr) {
+			b := addr.As16()
+			return IsPrivateIP(net.IP(b[e.offset : e.offset+4]))
+		}
+	}
+	return false
 }

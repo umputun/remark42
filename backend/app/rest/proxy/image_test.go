@@ -3,14 +3,17 @@ package proxy
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -767,21 +770,43 @@ func imgHTTPTestsServer(t *testing.T) *httptest.Server {
 	return ts
 }
 
-// refusingTransport fails every request the way safehttp.Transport refuses a private address
-type refusingTransport struct{ calls atomic.Int32 }
-
-func (rt *refusingTransport) RoundTrip(*http.Request) (*http.Response, error) {
-	rt.calls.Add(1)
-	return nil, fmt.Errorf("dial: %w", safehttp.ErrPrivateAddress)
+// failingTransport fails every request with err, the way safehttp.Transport fails a refused or unknown host
+type failingTransport struct {
+	err   error
+	calls atomic.Int32
 }
 
-func TestImage_PrivateAddressNotRetried(t *testing.T) {
-	rt := &refusingTransport{}
-	img := Image{Timeout: 10 * time.Second, Transport: rt}
+func (rt *failingTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	rt.calls.Add(1)
+	return nil, rt.err
+}
 
-	_, err := img.downloadImage(context.Background(), "http://10.0.0.1/image.png")
-	require.ErrorIs(t, err, safehttp.ErrPrivateAddress)
-	assert.Equal(t, int32(1), rt.calls.Load(), "a refused address is tried once")
+// TestImage_DownloadRetries checks that a refused address and a name that doesn't resolve fail after one
+// attempt, so both answer equally fast, while other network errors are retried
+func TestImage_DownloadRetries(t *testing.T) {
+	tbl := []struct {
+		name  string
+		err   error
+		calls int32
+	}{
+		{"private address", fmt.Errorf("dial: %w", safehttp.ErrPrivateAddress), 1},
+		{"unknown name", fmt.Errorf("can't resolve host x.internal: %w",
+			&net.DNSError{Err: "no such host", Name: "x.internal", IsNotFound: true}), 1},
+		{"resolver failure", fmt.Errorf("can't resolve host x.internal: %w",
+			&net.DNSError{Err: "server misbehaving", Name: "x.internal", IsTemporary: true}), 1},
+		{"connection refused", errors.New("dial tcp 203.0.113.1:80: connect: connection refused"), 5},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				rt := &failingTransport{err: tt.err}
+				img := Image{Timeout: 10 * time.Second, Transport: rt}
+				_, err := img.downloadImage(context.Background(), "http://x.internal/image.png")
+				require.Error(t, err)
+				assert.Equal(t, tt.calls, rt.calls.Load())
+			})
+		})
+	}
 }
 
 // startProxy serves img's handler from a test server closed when the test ends
