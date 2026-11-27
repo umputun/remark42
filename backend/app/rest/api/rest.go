@@ -79,6 +79,8 @@ type Rest struct {
 	adminRest        admin
 	rssRest          rss
 	openRouteLimiter float64
+	// writeStallTimeout is how long a chunk of a response may wait for the client to read it
+	writeStallTimeout time.Duration
 }
 
 // LoadingCache defines interface for caching
@@ -206,9 +208,21 @@ func (s *Rest) makeHTTPServer(address string, port int, router http.Handler) *ht
 		Addr:              fmt.Sprintf("%s:%d", address, port),
 		Handler:           router,
 		ReadHeaderTimeout: 5 * time.Second,
-		// WriteTimeout:      120 * time.Second, // TODO: such a long timeout needed for blocking export (backup) request
+		// no WriteTimeout, as a long export would hit it; stalledWriteLimit cuts a response the client stops reading
 		IdleTimeout: 30 * time.Second,
+		// over HTTP/2 the deadline stalledWriteLimit sets is the stream's, and resetting a stream takes a frame
+		// written to the connection; a client that stops reading the connection blocks that write, so the
+		// connection itself is closed once a write to it makes no progress for that long
+		HTTP2: &http.HTTP2Config{WriteByteTimeout: s.stallTimeout()},
 	}
+}
+
+// stallTimeout is how long a write may wait for the client to read, writeStallTimeout unless a test set another
+func (s *Rest) stallTimeout() time.Duration {
+	if s.writeStallTimeout == 0 {
+		return writeStallTimeout
+	}
+	return s.writeStallTimeout
 }
 
 // authProviderRegistered reports whether the authenticator has a sign-in provider of that name
@@ -223,7 +237,7 @@ func (s *Rest) routes() http.Handler {
 		s.openRouteLimiter = openRouteLimiter
 	}
 	router := routegroup.New(http.NewServeMux())
-	router.Use(R.Throttle(1000), realIPMiddleware(s.TrustedProxies), recoverer(log.Default()))
+	router.Use(stalledWriteLimit(s.stallTimeout()), R.Throttle(1000), realIPMiddleware(s.TrustedProxies), recoverer(log.Default()))
 	router.Use(ignoreQueryToken) // ahead of everything that authenticates a request
 	router.Use(securityHeadersMiddleware(s.ExternalImageProxy, s.AllowedAncestors))
 	if !s.DisableSignature {

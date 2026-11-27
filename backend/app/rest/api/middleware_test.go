@@ -1,14 +1,18 @@
 package api
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -1161,4 +1165,196 @@ func TestRest_ThirdPartyFrameCookies(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.status)
 		assertOneForm(t, resp)
 	})
+}
+
+func TestStalledWriteLimit_CutsStalledClient(t *testing.T) {
+	written := make(chan error, 1)
+	ts := httptest.NewServer(stalledWriteLimit(100 * time.Millisecond)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		chunk := make([]byte, 1024*1024)
+		for {
+			if _, err := w.Write(chunk); err != nil {
+				written <- err
+				return
+			}
+		}
+	})))
+	defer ts.Close()
+
+	conn, err := net.Dial("tcp", ts.Listener.Addr().String())
+	require.NoError(t, err)
+	defer conn.Close() // ahead of ts.Close, so a handler still blocked on the write gets out
+	_, err = conn.Write([]byte("GET / HTTP/1.1\r\nHost: test\r\n\r\n"))
+	require.NoError(t, err)
+
+	select {
+	case err := <-written:
+		assert.ErrorIs(t, err, os.ErrDeadlineExceeded)
+	case <-time.After(waitTimeout):
+		t.Fatal("the response to a client that reads nothing was never cut")
+	}
+}
+
+func TestStalledWriteLimit_KeepsMovingResponse(t *testing.T) {
+	t.Run("http/1.1", func(t *testing.T) { testKeepsMovingResponse(t, false) })
+	t.Run("http/2", func(t *testing.T) { testKeepsMovingResponse(t, true) })
+}
+
+func testKeepsMovingResponse(t *testing.T, h2 bool) {
+	const timeout = 300 * time.Millisecond
+	big := bytes.Repeat([]byte("x"), 32*1024*1024)
+	written := make(chan error, 1)
+	ts := httptest.NewUnstartedServer(stalledWriteLimit(timeout)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if h2 != (r.ProtoMajor == 2) {
+			written <- fmt.Errorf("served over %s", r.Proto)
+			return
+		}
+		for range 2 {
+			if _, err := w.Write([]byte("chunk")); err != nil {
+				written <- err
+				return
+			}
+			_ = http.NewResponseController(w).Flush()
+			time.Sleep(2 * timeout) // the response idles past the timeout between chunks, as a long export does
+		}
+		_, err := w.Write(big) // one write that takes the slow reader below several timeouts
+		written <- err
+	})))
+	// the server Run starts, with its HTTP/2 write timeout, which must not cut a moving response either
+	ts.Config = (&Rest{writeStallTimeout: timeout}).makeHTTPServer("127.0.0.1", 0, ts.Config.Handler)
+	if h2 {
+		ts.EnableHTTP2 = true
+		ts.StartTLS()
+	} else {
+		ts.Start()
+	}
+	defer ts.Close()
+
+	resp, err := ts.Client().Get(ts.URL)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	total, buf := 0, make([]byte, 256*1024)
+	for {
+		n, err := resp.Body.Read(buf)
+		total += n
+		if err != nil {
+			require.ErrorIs(t, err, io.EOF, "the response ends cleanly")
+			break
+		}
+		time.Sleep(time.Duration(n) * time.Millisecond / (16 * 1024)) // 16 MB/s, so the 32 MB write takes seven timeouts
+	}
+	require.NoError(t, <-written)
+	assert.Equal(t, 2*len("chunk")+len(big), total)
+}
+
+// over HTTP/2 the stream deadline alone can't free a handler whose client stops reading the connection, as the
+// reset frame waits behind the blocked connection write; the server built by makeHTTPServer closes the connection
+func TestStalledWriteLimit_CutsStalledHTTP2Client(t *testing.T) {
+	const timeout = 200 * time.Millisecond
+	written := make(chan error, 1)
+	handler := stalledWriteLimit(timeout)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ProtoMajor != 2 {
+			written <- fmt.Errorf("served over %s", r.Proto)
+			return
+		}
+		chunk := make([]byte, 1024*1024)
+		for {
+			if _, err := w.Write(chunk); err != nil {
+				written <- err
+				return
+			}
+		}
+	}))
+	ts := httptest.NewUnstartedServer(handler)
+	ts.Config = (&Rest{writeStallTimeout: timeout}).makeHTTPServer("127.0.0.1", 0, handler)
+	ts.Listener = smallBufferListener{ts.Listener}
+	ts.EnableHTTP2 = true
+	ts.StartTLS()
+	defer ts.Close()
+
+	stop, clientDone := make(chan struct{}), make(chan struct{})
+	tr := ts.Client().Transport.(*http.Transport).Clone()
+	tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		c, err := (&net.Dialer{}).DialContext(ctx, network, addr)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.(*net.TCPConn).SetReadBuffer(smallSocketBuffer); err != nil {
+			return nil, err
+		}
+		return &stopReadingConn{Conn: c, left: 64 * 1024, stop: stop}, nil
+	}
+	defer func() { // ahead of ts.Close: lets the client out and waits for it
+		close(stop)
+		<-clientDone
+		tr.CloseIdleConnections()
+	}()
+	go func() {
+		defer close(clientDone)
+		resp, err := (&http.Client{Transport: tr}).Get(ts.URL)
+		if err == nil {
+			<-stop // holds the stream open, reading nothing
+			_ = resp.Body.Close()
+		}
+	}()
+
+	select {
+	case err := <-written:
+		// the connection write failed: the stream's own timeout, which frees the handler only when the blocked
+		// connection write happens to finish, gives an error of the stream instead
+		var opErr *net.OpError
+		require.ErrorAs(t, err, &opErr, "the connection was closed for making no progress: %v", err)
+		assert.ErrorIs(t, err, os.ErrDeadlineExceeded)
+	case <-time.After(waitTimeout):
+		t.Fatal("the response to an HTTP/2 client that stopped reading was never cut")
+	}
+}
+
+// smallSocketBuffer is set on both ends of the HTTP/2 stall test's connection. A buffer size set explicitly is not
+// grown by the kernel, so the socket fills long before the client's stream window, whatever the host's defaults
+const smallSocketBuffer = 64 * 1024
+
+// smallBufferListener sets smallSocketBuffer as the send buffer of every connection it accepts
+type smallBufferListener struct{ net.Listener }
+
+func (l smallBufferListener) Accept() (net.Conn, error) {
+	c, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	if err := c.(*net.TCPConn).SetWriteBuffer(smallSocketBuffer); err != nil {
+		_ = c.Close()
+		return nil, err
+	}
+	return c, nil
+}
+
+// stopReadingConn reads the first left bytes from the connection, then blocks until stop is closed
+type stopReadingConn struct {
+	net.Conn
+	mu   sync.Mutex
+	left int
+	stop chan struct{}
+}
+
+func (c *stopReadingConn) Read(b []byte) (int, error) {
+	c.mu.Lock()
+	left := c.left
+	c.mu.Unlock()
+	if left <= 0 {
+		<-c.stop
+		return 0, net.ErrClosed
+	}
+	n, err := c.Conn.Read(b[:min(len(b), left)])
+	c.mu.Lock()
+	c.left -= n
+	c.mu.Unlock()
+	return n, err
+}
+
+func TestRest_makeHTTPServerWriteByteTimeout(t *testing.T) {
+	srv := (&Rest{}).makeHTTPServer("127.0.0.1", 8080, http.NotFoundHandler())
+	require.NotNil(t, srv.HTTP2)
+	assert.Equal(t, writeStallTimeout, srv.HTTP2.WriteByteTimeout)
+	srv = (&Rest{writeStallTimeout: time.Second}).makeHTTPServer("127.0.0.1", 8080, http.NotFoundHandler())
+	assert.Equal(t, time.Second, srv.HTTP2.WriteByteTimeout)
 }

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
@@ -557,6 +558,36 @@ func TestRest_AvatarMounts(t *testing.T) {
 			assert.Contains(t, body, "can't load avatar", "request must reach the avatar handler, not a routing 404")
 		})
 	}
+}
+
+func TestRest_StalledClientCut(t *testing.T) {
+	const timeout = 100 * time.Millisecond
+	ts, srv := startupT(t, func(srv *Rest) { srv.writeStallTimeout = timeout })
+	// larger than the socket buffers on both ends, so the server blocks on a client that reads nothing
+	size := 32 * 1024 * 1024
+	require.NoError(t, os.WriteFile(filepath.Join(srv.WebRoot, "big.bin"), make([]byte, size), 0o600))
+
+	conn, err := net.Dial("tcp", ts.Listener.Addr().String())
+	require.NoError(t, err)
+	defer conn.Close()
+	_, err = conn.Write([]byte("GET /web/big.bin HTTP/1.1\r\nHost: test\r\nConnection: close\r\n\r\n"))
+	require.NoError(t, err)
+
+	// once the response starts, the server fills the socket buffers within milliseconds and blocks; stay silent ten
+	// timeouts long from there, then take what it sent before it gave up. There is no condition to wait on: nothing
+	// shows the cut on this end before reading, and reading is what the server is waiting for
+	require.NoError(t, conn.SetReadDeadline(time.Now().Add(waitTimeout)))
+	br := bufio.NewReader(conn)
+	_, err = br.Peek(1)
+	require.NoError(t, err, "the response starts")
+	time.Sleep(10 * timeout)
+	resp, err := http.ReadResponse(br, nil)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, int64(size), resp.ContentLength, "the file is sent")
+	n, _ := io.Copy(io.Discard, resp.Body)
+	assert.Less(t, n, int64(size), "the server cut the response instead of waiting for the client")
 }
 
 func TestRest_Shutdown(t *testing.T) {

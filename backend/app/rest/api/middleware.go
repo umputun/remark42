@@ -674,3 +674,77 @@ func (p *partitioningWriter) addCopies() {
 		p.Header()["Set-Cookie"] = out
 	}
 }
+
+// writeStallTimeout is how long one chunk of a response may take to leave: a client that reads nothing for that
+// long loses the connection, while a response that keeps moving at writeStallChunk per writeStallTimeout or more,
+// about 540 bytes a second, is written for as long as it takes, as an export is
+const writeStallTimeout = 30 * time.Second
+
+// writeStallChunk is the most a single write sends under one deadline, so a large write is timed by its progress
+const writeStallChunk = 16 * 1024
+
+// stalledWriteLimit cuts a response the client stops reading. Every request holds a slot of R.Throttle until its
+// response is written, and the server has no write timeout, as an export can take minutes, so clients that never
+// read their responses could otherwise hold all the slots. The write deadline is set before each chunk and cleared
+// after it, as on HTTP/2 a deadline that passes resets the stream even with no write in progress, so a handler may
+// take as long as it needs between writes. It is set once more when the handler returns, for the buffered rest the
+// server writes after it
+func stalledWriteLimit(timeout time.Duration) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rc := http.NewResponseController(w)
+			// a deadline left by the previous request on this connection must not cut this one
+			_ = rc.SetWriteDeadline(time.Time{})
+			defer func() { _ = rc.SetWriteDeadline(time.Now().Add(timeout)) }()
+			next.ServeHTTP(&stallWriter{ResponseWriter: w, rc: rc, timeout: timeout}, r)
+		})
+	}
+}
+
+// stallWriter renews the write deadline before each chunk of a response
+type stallWriter struct {
+	http.ResponseWriter
+	rc      *http.ResponseController
+	timeout time.Duration
+	err     error // the first failed write; the connection is gone after it
+}
+
+func (s *stallWriter) renew() { _ = s.rc.SetWriteDeadline(time.Now().Add(s.timeout)) }
+
+func (s *stallWriter) clear() { _ = s.rc.SetWriteDeadline(time.Time{}) }
+
+func (s *stallWriter) WriteHeader(code int) {
+	s.renew()
+	s.ResponseWriter.WriteHeader(code)
+	s.clear()
+}
+
+func (s *stallWriter) Write(b []byte) (int, error) {
+	if s.err != nil {
+		return 0, s.err
+	}
+	written := 0
+	for len(b) > 0 {
+		chunk := b[:min(len(b), writeStallChunk)]
+		s.renew()
+		n, err := s.ResponseWriter.Write(chunk)
+		written += n
+		if err != nil {
+			s.err = err
+			return written, err
+		}
+		b = b[len(chunk):]
+	}
+	s.clear()
+	return written, nil
+}
+
+// Flush sends what is buffered, under a fresh deadline
+func (s *stallWriter) Flush() {
+	s.renew()
+	_ = s.rc.Flush()
+	s.clear()
+}
+
+// Unwrap lets http.ResponseController reach the writer below
+func (s *stallWriter) Unwrap() http.ResponseWriter { return s.ResponseWriter }
