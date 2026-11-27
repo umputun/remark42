@@ -58,19 +58,28 @@ func TestRouteTimeout(t *testing.T) {
 // TestRateLimiter covers the middleware guarding every route group: a burst past the per-second
 // allowance is refused with 429, and a client under the allowance is not. The limiter keys on
 // RemoteAddr, so the two cases use different ones rather than waiting for a bucket to refill.
+// No response names the client's address or forwarding chain, as shared caches keep image responses.
 func TestRateLimiter(t *testing.T) {
 	router := routegroup.New(http.NewServeMux())
-	router.With(rateLimiter(1)).HandleFunc("GET /limited", func(http.ResponseWriter, *http.Request) {})
-	ts := httptest.NewServer(router)
-	defer ts.Close()
+	router.With(rateLimiter(1)).HandleFunc("GET /limited", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK) // commits the headers, as the picture and image handlers do
+	})
 
 	call := func(remoteAddr string) int {
 		req := httptest.NewRequest("GET", "http://example.com/limited", http.NoBody)
 		req.RemoteAddr = remoteAddr
+		req.Header.Set("X-Forwarded-For", "198.51.100.9, 10.0.0.1")
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 		resp := w.Result()
 		assert.NoError(t, resp.Body.Close())
+		assert.NotEmpty(t, resp.Header.Get("X-Rate-Limit-Limit"), "the limit is still announced")
+		for name, values := range resp.Header {
+			for _, v := range values {
+				assert.NotContains(t, v, "1.2.3.4", "header %s names the client's address, status %d", name, resp.StatusCode)
+				assert.NotContains(t, v, "198.51.100.9", "header %s names the forwarding chain, status %d", name, resp.StatusCode)
+			}
+		}
 		return resp.StatusCode
 	}
 

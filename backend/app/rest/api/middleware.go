@@ -529,13 +529,29 @@ func validEmailAuth() func(http.Handler) http.Handler {
 // tollbooth v8 requires explicit IP lookup method to be set.
 // keys on RemoteAddr, which realIPMiddleware sets to the client IP (from the forwarding
 // headers for trusted proxies, otherwise the real socket IP).
+//
+// tollbooth echoes the client's address and X-Forwarded-For in X-Rate-Limit-Request-* headers on every
+// response. The picture, avatar and image proxy responses are cacheable by shared caches, which would then
+// hand one visitor's address to the next, so the two headers are removed: on a refused request before
+// tollbooth writes the 429, on a passed one before the next handler runs.
 func rateLimiter(maxReq float64) func(http.Handler) http.Handler {
 	lmt := tollbooth.NewLimiter(maxReq, nil)
 	lmt.SetIPLookup(limiter.IPLookup{
 		Name:           "RemoteAddr",
 		IndexFromRight: 0,
 	})
-	return tollbooth.HTTPMiddleware(lmt)
+	dropClientAddr := func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Del("X-Rate-Limit-Request-Remote-Addr")
+		w.Header().Del("X-Rate-Limit-Request-Forwarded-For")
+	}
+	lmt.SetOnLimitReached(dropClientAddr)
+	limit := tollbooth.HTTPMiddleware(lmt)
+	return func(next http.Handler) http.Handler {
+		return limit(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			dropClientAddr(w, r)
+			next.ServeHTTP(w, r)
+		}))
+	}
 }
 
 // recoverer is the panic recovery middleware. Its first line carries the request URL, which holds the address

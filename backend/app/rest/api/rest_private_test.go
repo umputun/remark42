@@ -1,12 +1,14 @@
 package api
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -1997,6 +1999,61 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+// TestRest_SavePictureRemovesTempFiles uploads forms too big to be kept in memory, so their parts are written
+// to temp files, and checks that none is left, whether the picture is rejected, accepted, or the form is
+// stored and then reported as an error
+func TestRest_SavePictureRemovesTempFiles(t *testing.T) {
+	ts, _ := startupT(t)
+
+	big := make([]byte, 6*1024*1024) // over the 5 MiB ParseMultipartForm keeps in memory
+	upload := func(t *testing.T, query string, parts map[string][]byte) int {
+		bodyBuf := &bytes.Buffer{}
+		bodyWriter := multipart.NewWriter(bodyBuf)
+		for name, data := range parts {
+			fileWriter, err := bodyWriter.CreateFormFile(name, name+".png")
+			require.NoError(t, err)
+			_, err = fileWriter.Write(data)
+			require.NoError(t, err)
+		}
+		require.NoError(t, bodyWriter.Close())
+		req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/picture?site=remark42"+query, bodyBuf)
+		require.NoError(t, err)
+		req.Header.Add("Content-Type", bodyWriter.FormDataContentType())
+		resp, err := sendReq(req, devToken)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+	gopher, err := io.ReadAll(gopherPNG())
+	require.NoError(t, err)
+
+	tbl := []struct {
+		name   string
+		query  string
+		parts  map[string][]byte
+		status int
+	}{
+		{"picture too large", "", map[string][]byte{"file": big}, http.StatusBadRequest},
+		{"picture with an extra large part", "", map[string][]byte{"file": gopher, "extra": big}, http.StatusOK},
+		{"no picture part", "", map[string][]byte{"extra": big}, http.StatusInternalServerError},
+		{"form stored, then a query error", "&x=%zz", map[string][]byte{"file": big}, http.StatusInternalServerError},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			t.Setenv("TMPDIR", tmp) // os.CreateTemp, which writes the parts, reads it on each call
+			assert.Equal(t, tt.status, upload(t, tt.query, tt.parts))
+			files, err := os.ReadDir(tmp)
+			require.NoError(t, err)
+			names := make([]string, 0, len(files))
+			for _, f := range files {
+				names = append(names, f.Name())
+			}
+			assert.Empty(t, names, "temp files left by the upload")
+		})
+	}
 }
 
 func TestRest_CreateWithPictures(t *testing.T) {
