@@ -1,6 +1,6 @@
 import { h } from 'preact';
 import { render, screen, act } from '@testing-library/preact';
-import { createStore } from 'redux';
+import { createStore } from './create-store';
 
 import { Provider, useSelector } from './context';
 

@@ -1,5 +1,5 @@
 /*
- * connected comment is not exported in index.ts to avoid leaking redux import into last-comments
+ * connected comment is not exported in index.ts to avoid leaking the store into last-comments
  * and should be imported explicitly
  */
 

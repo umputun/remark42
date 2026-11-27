@@ -1,5 +1,5 @@
 import type { Node, Comment, CommentMode, Sorting } from 'common/types';
-import { combineReducers } from 'redux';
+import { combineReducers } from '../create-store';
 
 import type {
   COMMENTS_SET_ACTION,

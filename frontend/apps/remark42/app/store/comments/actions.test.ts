@@ -1,5 +1,4 @@
-import { applyMiddleware, combineReducers, createStore } from 'redux';
-import thunk from 'redux-thunk';
+import { combineReducers, createStore } from 'store/create-store';
 import { waitFor } from '@testing-library/preact';
 
 import { mockStore } from '__stubs__/store';
@@ -126,7 +125,7 @@ describe('Store comments actions', () => {
     const tree = (...comments: Node[]): Tree => ({ comments, info }) as Tree;
 
     function setup() {
-      const store = createStore(combineReducers(rootProvider), applyMiddleware(thunk));
+      const store = createStore(combineReducers(rootProvider));
       const dispatch: StoreDispatch = store.dispatch;
       const getPostComments = jest.spyOn(api, 'getPostComments').mockReset();
 
@@ -290,7 +289,7 @@ describe('Store comments actions', () => {
     ) => ({ comments, info: { url: 'https://example.com/post', count: 0, ...page }, pinned }) as Tree;
 
     function setup() {
-      const store = createStore(combineReducers(rootProvider), applyMiddleware(thunk));
+      const store = createStore(combineReducers(rootProvider));
       const dispatch: StoreDispatch = store.dispatch;
       const getPostComments = jest.spyOn(api, 'getPostComments').mockReset();
 

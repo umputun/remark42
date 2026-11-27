@@ -1,18 +1,25 @@
-import type { AnyAction } from 'redux';
-import { createStore, applyMiddleware, compose, combineReducers } from 'redux';
 import { useDispatch, useSelector, type TypedUseSelectorHook } from './context';
-import type { ThunkAction, ThunkDispatch } from 'redux-thunk';
-import thunk from 'redux-thunk';
+import { createStore, combineReducers } from './create-store';
 import { rootProvider } from './reducers';
 import type { ACTIONS } from './actions';
 
 const reducers = combineReducers(rootProvider);
-const middleware = applyMiddleware(thunk);
-export const store = createStore(reducers, compose(middleware));
+export const store = createStore(reducers);
 
 export type StoreState = ReturnType<typeof store.getState>;
-export type StoreDispatch = ThunkDispatch<StoreState, undefined, ACTIONS>;
-export type StoreAction<ReturnType = void> = ThunkAction<ReturnType, StoreState, unknown, AnyAction>;
+
+/** an action creator that needs the store: dispatch calls it and hands back what it returns */
+export type StoreAction<ReturnType = void> = (
+  dispatch: StoreDispatch,
+  getState: () => StoreState,
+  extraArgument: undefined
+) => ReturnType;
+
+/** dispatch an action, or run a StoreAction and get its result */
+export interface StoreDispatch {
+  <R>(action: StoreAction<R>): R;
+  <A extends ACTIONS>(action: A): A;
+}
 
 export const useAppDispatch: () => StoreDispatch = useDispatch;
 export const useAppSelector: TypedUseSelectorHook<StoreState> = useSelector;

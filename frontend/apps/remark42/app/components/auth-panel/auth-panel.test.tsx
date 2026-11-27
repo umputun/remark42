@@ -1,6 +1,5 @@
 import { fireEvent, render } from '@testing-library/preact';
-import createMockStore from 'redux-mock-store';
-import type { Middleware } from 'redux';
+import { mockStore } from '__stubs__/store';
 import { Provider } from 'store/context';
 
 import { IntlProvider } from 'common/intl';
@@ -29,8 +28,6 @@ const initialStore = {
   },
   provider: { name: 'google' },
 } as const;
-
-const mockStore = createMockStore([] as Middleware[]);
 
 describe('<AuthPanel />', () => {
   const createWrapper = (props: Props = DefaultProps, store: ReturnType<typeof mockStore> = mockStore(initialStore)) =>

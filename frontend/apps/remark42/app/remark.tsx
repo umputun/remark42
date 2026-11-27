@@ -1,5 +1,5 @@
 import { h, render } from 'preact';
-import { bindActionCreators } from 'redux';
+import { bindActionCreators } from 'store/create-store';
 import { Provider } from 'store/context';
 
 import { IntlProvider } from 'common/intl';

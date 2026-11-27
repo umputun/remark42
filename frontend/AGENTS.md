@@ -48,7 +48,7 @@ The widget is built by the go program in `frontend/build`, which calls esbuild t
 server, which keeps its build in memory), and so do the Dockerfile and
 `scripts/prepare-release-assets.sh`. There is no bundler configuration in JavaScript: the entries,
 the browser floor and the CSS handling are all in `build.go`, each with the reason beside it. The
-build needs go and the six runtime packages in `node_modules`, which it bundles into `remark.mjs`;
+build needs go and the four runtime packages in `node_modules`, which it bundles into `remark.mjs`;
 nothing else pnpm installs takes part in it. `build_test.go` builds a small fixture app, so the builder's own tests
 need nothing installed.
 
@@ -102,11 +102,22 @@ list with the DOM API. What holds it there:
 - Its tests are in the e2e suite, `e2e/widgets_test.go`: the list is a few elements written into a
   host page, which a browser test covers whole.
 
+## The store is the widget's own
+
+`app/store/create-store.js` holds the store: `createStore`, with action creators that return a
+function run by dispatch as redux-thunk ran them, `combineReducers` and `bindActionCreators`. It
+replaced redux and redux-thunk and keeps the two things the rest of the widget relies on: `dispatch`
+hands back what such a function returns, so a caller can await it, and `combineReducers` returns the
+same state object when no reducer changed its part, which is what lets `useSelector` in
+`store/context.tsx` skip a render. `create-store.unit.test.ts` pins both, with no packages installed.
+Tests build their stores with it as well, or with `mockStore` from `__stubs__/store.ts`, which keeps
+a fixed state and records what is dispatched.
+
 ## Type-only imports have to say so
 
 esbuild compiles one file at a time with no type information, as babel does for the tests, so it
 cannot tell that an import is types-only. Left unmarked, the module and everything it imports stay in the bundle, and a single
-type import of a store-connected component is enough to pull the whole redux graph into an entry
+type import of a store-connected component is enough to pull the whole store graph into an entry
 that never uses it.
 
 `verbatimModuleSyntax` in `tsconfig.json` and `@typescript-eslint/consistent-type-imports` are what
@@ -143,7 +154,7 @@ scoped override, `eslint-config-preact>@babel/core`, holds that subtree on 7.
 
 These were deliberately not bumped because each is a config-migration or bundle-changing major, not a drop-in update — don't bump them opportunistically inside an unrelated dependency PR:
 
-- `eslint` 10 (`eslint-config-preact` peers on ^9), `typescript` 7, and `redux` 5 with `redux-thunk` 3
+- `eslint` 10 (`eslint-config-preact` peers on ^9) and `typescript` 7
 
 ## `/web` has a second source
 
