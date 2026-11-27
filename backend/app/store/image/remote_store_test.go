@@ -2,8 +2,10 @@ package image
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -25,6 +27,22 @@ func TestRemote_SaveWithID(t *testing.T) {
 
 	err := c.Save("54321", gopherPNGBytes())
 	assert.NoError(t, err)
+}
+
+func TestRemote_LoadHidesStoreAddress(t *testing.T) {
+	c := RPC{Client: jrpc.Client{API: "http://image-store.internal:9191/rpc", Client: refusingClient()}}
+	_, err := c.Load("54321")
+	assert.EqualError(t, err, "remote call failed for image.load")
+	err = c.Save("54321", gopherPNGBytes())
+	assert.EqualError(t, err, "remote call failed for image.save_with_id")
+}
+
+// refusingClient returns a client whose every connection fails as a refused one would, with the address it dialed
+func refusingClient() http.Client {
+	return http.Client{Transport: &http.Transport{DialContext: func(_ context.Context, network, _ string) (net.Conn, error) {
+		return nil, &net.OpError{Op: "dial", Net: network, Addr: &net.TCPAddr{IP: net.IPv4(10, 1, 2, 3), Port: 9191},
+			Err: errors.New("connect: connection refused")}
+	}}}
 }
 
 func TestRemote_Load(t *testing.T) {
