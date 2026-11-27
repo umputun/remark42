@@ -199,10 +199,18 @@ const manageScript = () => {
 	const { document } = window
 	if (document.getElementById("remark42")) {
 		insertScript("comments-script", document.body)
+		// The widget's module runs once per page load and creates the first instance itself. When the
+		// component mounts again without a page load, it creates the instance here.
+		window.REMARK42?.createInstance?.(window.remark_config)
 	}
 
-	// Return a cleanup function to remove the script when the component unmounts.
-	return () => removeScript("comments-script", document.body)
+	// Return a cleanup function to remove the script and the widget when the component unmounts.
+	return () => {
+		removeScript("comments-script", document.body)
+		// Take the widget's listeners off the page together with the widget;
+		// destroy exists only while an instance does.
+		window.REMARK42?.destroy?.()
+	}
 }
 
 export function Comments() {
@@ -212,11 +220,9 @@ export function Comments() {
 	// Use effect to manage the Remark42 script.
 	useEffect(manageScript, [])
 
-	// Use effect to update the theme when it changes.
+	// Use effect to update the theme when it changes. changeTheme, like destroy, exists only while an instance does.
 	useEffect(() => {
-		if (window.REMARK42) {
-			window.REMARK42.changeTheme(theme)
-		}
+		window.REMARK42?.changeTheme?.(theme)
 	}, [theme])
 
 	// Function to toggle the theme.
