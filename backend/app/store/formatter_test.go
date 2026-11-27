@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Depado/bfchroma/v2"
+	"github.com/PuerkitoBio/goquery"
 	"github.com/alecthomas/chroma/v2/formatters/html"
 	bf "github.com/russross/blackfriday/v2"
 	"github.com/stretchr/testify/assert"
@@ -27,12 +28,12 @@ func TestFormatter_FormatText(t *testing.T) {
 		{"**xyz** _aaa_ - \"sfs\"", "<p><strong>xyz</strong> <em>aaa</em> – «sfs»</p>\n!converted", "format"},
 		{
 			"http://127.0.0.1/some-long-link/12345/678901234567890",
-			"<p><a href=\"http://127.0.0.1/some-long-link/12345/678901234567890\">http://127.0.0." +
+			"<p><a href=\"http://127.0.0.1/some-long-link/12345/678901234567890\" rel=\"nofollow\">http://127.0.0." +
 				"1/some-long-link/12345/6789012...</a></p>\n!converted", "links",
 		},
 		{
 			"something https://amp.dw.com/ru/илон-маск-купил-twitter/a-61590911",
-			"<p>something <a href=\"https://amp.dw.com/ru/илон-маск-купил-twitter/a-61590911\">https://amp.dw.com/ru/илон-маск-купил-twitter...</a></p>\n!converted", "links",
+			"<p>something <a href=\"https://amp.dw.com/ru/%D0%B8%D0%BB%D0%BE%D0%BD-%D0%BC%D0%B0%D1%81%D0%BA-%D0%BA%D1%83%D0%BF%D0%B8%D0%BB-twitter/a-61590911\" rel=\"nofollow\">https://amp.dw.com/ru/илон-маск-купил-twitter...</a></p>\n!converted", "links",
 		},
 		{
 			"something <img src=\"some.png\"/>  _aaa_",
@@ -67,14 +68,14 @@ func TestFormatter_FormatTextPanic(t *testing.T) {
 	tbl := []struct {
 		name, in, out string
 	}{
-		{"yang", "```yang\n/* /*\n```", "<pre><code class=\"language-yang\">/* /*\n</code></pre>\n"},
-		{"spade", "```spade\nstruct 'a\n```", "<pre><code class=\"language-spade\">struct &#39;a\n</code></pre>\n"},
-		{"psl", "```psl\n#WARN\n```", "<pre><code class=\"language-psl\">#WARN\n</code></pre>\n"},
-		{"raku pod", "```raku\n=begin pod\n```", "<pre><code class=\"language-raku\">=begin pod\n</code></pre>\n"},
-		{"raku comment", "```raku\n#`[\n```", "<pre><code class=\"language-raku\">#`[\n</code></pre>\n"},
+		{"yang", "```yang\n/* /*\n```", "<pre><code>/* /*\n</code></pre>\n"},
+		{"spade", "```spade\nstruct 'a\n```", "<pre><code>struct &#39;a\n</code></pre>\n"},
+		{"psl", "```psl\n#WARN\n```", "<pre><code>#WARN\n</code></pre>\n"},
+		{"raku pod", "```raku\n=begin pod\n```", "<pre><code>=begin pod\n</code></pre>\n"},
+		{"raku comment", "```raku\n#`[\n```", "<pre><code>#`[\n</code></pre>\n"},
 		{
 			"text around code", "before **b**\n\n```yang\n/* /*\n```\n\n```go\nx := 1\n```\n\nafter",
-			"<p>before <strong>b</strong></p>\n\n<pre><code class=\"language-yang\">/* /*\n</code></pre>\n" +
+			"<p>before <strong>b</strong></p>\n\n<pre><code>/* /*\n</code></pre>\n" +
 				`<pre class="chroma"><code><span class="line"><span class="cl"><span class="nx">x</span><span class="w"> </span>` +
 				`<span class="o">:=</span><span class="w"> </span><span class="mi">1</span><span class="w">` + "\n" +
 				"</span></span></span></code></pre>\n<p>after</p>\n",
@@ -119,6 +120,35 @@ func TestFormatter_FormatTextConverterFunc(t *testing.T) {
 	fn := CommentConverterFunc(func(text string) string { return "zz!" + text })
 	f := NewCommentFormatter(fn)
 	assert.Equal(t, "zz!<p>12345</p>\n", f.FormatText("12345", false))
+}
+
+// TestFormatter_ConvertersSeeStoredImages checks that a converter finding images with an HTML parser sees every
+// image the stored text holds. Each comment hides an image where the parser reads text and the sanitizer, which
+// has the last word on what is stored, reads a tag; the converter marks every image it finds.
+func TestFormatter_ConvertersSeeStoredImages(t *testing.T) {
+	mark := CommentConverterFunc(func(text string) string {
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(text))
+		require.NoError(t, err)
+		doc.Find("img").Each(func(_ int, s *goquery.Selection) { s.SetAttr("src", "https://remark42.example/seen.png") })
+		res, err := doc.Find("body").Html()
+		require.NoError(t, err)
+		return res
+	})
+	f := NewCommentFormatter(mark)
+	for name, hidden := range map[string]string{
+		"svg title":     `<svg><title><!-- </title><img src="http://attacker.example/hidden.png" --></title></svg>`,
+		"svg style":     `<svg><style><!-- </style><img src="http://attacker.example/hidden.png" --></style></svg>`,
+		"svg textarea":  `<svg><textarea><!-- </textarea><img src="http://attacker.example/hidden.png" --></textarea></svg>`,
+		"math title":    `<math><title><!-- </title><img src="http://attacker.example/hidden.png" --></title></math>`,
+		"nested deeply": strings.Repeat("<b>", 520) + `<img src="http://attacker.example/hidden.png">`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := Comment{Text: f.FormatText(`plain <img src="http://attacker.example/plain.png"> `+hidden, false)}
+			c.Sanitize()
+			assert.NotContains(t, c.Text, "attacker.example", "an image the converter did not see is stored")
+			assert.Equal(t, strings.Count(c.Text, "<img"), strings.Count(c.Text, `loading="lazy"`), "every stored image is lazy")
+		})
+	}
 }
 
 func TestFormatter_FormatComment(t *testing.T) {

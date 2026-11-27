@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"net"
 	"net/http"
@@ -42,47 +43,51 @@ type Image struct {
 	Transport http.RoundTripper
 }
 
-// Convert img src links to proxied links depends on enabled options
+// Convert img src links to proxied links depends on enabled options.
+// The src is set on the parsed element: in the html text it is escaped (& is &amp;) and can occur outside src,
+// so searching the text for it would miss some images and rewrite text that isn't one.
 func (p Image) Convert(commentHTML string) string {
 	toHTTPS := p.HTTP2HTTPS && !strings.HasPrefix(p.RemarkURL, "http://")
 	if !p.CacheExternal && !toHTTPS {
 		return commentHTML
 	}
-	imgs, err := p.extract(commentHTML, func(img string) bool {
-		return (p.CacheExternal && !strings.HasPrefix(img, p.RemarkURL)) || (toHTTPS && strings.HasPrefix(img, "http://"))
-	})
-	if err != nil {
-		return commentHTML
-	}
-	return p.replace(commentHTML, imgs)
-}
-
-// extract gets all images matching predicate and return list of src
-func (p Image) extract(commentHTML string, imgSrcPred func(string) bool) ([]string, error) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
 	if err != nil {
-		return nil, fmt.Errorf("can't create document: %w", err)
+		// the parser refuses html nested too deep, and the images in it can't be found, so none is left in
+		log.Printf("[WARN] can't parse comment to proxy its images, returned it escaped: %v", err)
+		return html.EscapeString(commentHTML)
 	}
-	result := []string{}
+	changed := false
 	doc.Find("img").Each(func(_ int, s *goquery.Selection) {
-		if im, ok := s.Attr("src"); ok {
-			if imgSrcPred(im) {
-				result = append(result, im)
-			}
+		src, ok := s.Attr("src")
+		if !ok || !p.proxied(src, toHTTPS) {
+			return
 		}
+		s.SetAttr("src", p.RemarkURL+p.RoutePath+"?src="+base64.URLEncoding.EncodeToString([]byte(src)))
+		changed = true
 	})
-	return result, nil
+	if !changed {
+		return commentHTML
+	}
+	resHTML, err := doc.Find("body").Html()
+	if err != nil {
+		log.Printf("[WARN] can't render comment with proxied images, returned it escaped: %v", err)
+		return html.EscapeString(commentHTML)
+	}
+	return resHTML
 }
 
-// replace img links in commentHTML with route to proxy, base64 encoded original link
-func (p Image) replace(commentHTML string, imgs []string) string {
-	for _, img := range imgs {
-		encodedImgURL := base64.URLEncoding.EncodeToString([]byte(img))
-		resImgURL := p.RemarkURL + p.RoutePath + "?src=" + encodedImgURL
-		commentHTML = strings.ReplaceAll(commentHTML, img, resImgURL)
+// proxied reports whether an image src goes through the proxy: any image not served by remark42 itself when
+// external images are cached, and a plain http image when they are served over https
+func (p Image) proxied(src string, toHTTPS bool) bool {
+	if src == "" {
+		return false
 	}
-
-	return commentHTML
+	if toHTTPS && len(src) >= len("http://") && strings.EqualFold(src[:len("http://")], "http://") {
+		return true
+	}
+	// the slash keeps https://remark42.example.com.attacker.example and https://remark42.example.com@attacker.example out
+	return p.CacheExternal && !strings.HasPrefix(src, p.RemarkURL+"/")
 }
 
 // etagVersionPrefix is the security-version tag bumped whenever cached responses for the

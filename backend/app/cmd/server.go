@@ -714,19 +714,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 
 	notifyService := s.makeNotifyService(dataService, notifyDestinations, telegramService)
 
-	imgProxy := &proxy.Image{
-		HTTP2HTTPS:    s.ImageProxy.HTTP2HTTPS,
-		CacheExternal: s.ImageProxy.CacheExternal,
-		RoutePath:     "/api/v1/img",
-		RemarkURL:     s.RemarkURL,
-		ImageService:  imageService,
-	}
-	emojiFmt := store.CommentConverterFunc(func(text string) string { return text })
-	if s.EnableEmoji {
-		emojiFmt = func(text string) string { return emoji.Sprint(text) }
-	}
-	// sizes go on after the proxy, which turns an external image into one the image store may hold
-	commentFormatter := store.NewCommentFormatter(imgProxy, store.CommentConverterFunc(imageService.SetSizes), emojiFmt)
+	imgProxy, commentFormatter := s.makeCommentFormatter(imageService)
 
 	sslConfig, err := s.makeSSLConfig()
 	if err != nil {
@@ -1009,10 +997,40 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 	return newAvatarStore(s.Avatar)
 }
 
+// makeCommentFormatter makes the image proxy and the formatter of comment text, which proxies images, sizes
+// the ones the image store holds and, when enabled, turns emoji codes into emoji
+func (s *ServerCommand) makeCommentFormatter(imageService *image.Service) (*proxy.Image, *store.CommentFormatter) {
+	imgProxy := &proxy.Image{
+		HTTP2HTTPS:    s.ImageProxy.HTTP2HTTPS,
+		CacheExternal: s.ImageProxy.CacheExternal,
+		RoutePath:     "/api/v1/img",
+		RemarkURL:     s.sanitizedRemarkURL(),
+		ImageService:  imageService,
+	}
+	emojiFmt := store.CommentConverterFunc(func(text string) string { return text })
+	if s.EnableEmoji {
+		emojiFmt = func(text string) string { return emoji.Sprint(text) }
+	}
+	// sizes go on after the proxy, which turns an external image into one the image store may hold
+	return imgProxy, store.NewCommentFormatter(imgProxy, store.CommentConverterFunc(imageService.SetSizes), emojiFmt)
+}
+
+// sanitizedRemarkURL returns RemarkURL as the comment sanitizer writes it in a link or an image source, with a
+// host name that is not ASCII percent-encoded. The image proxy and the image service find remark42's own
+// images in comment text by this prefix, and the text they see is sanitized.
+func (s *ServerCommand) sanitizedRemarkURL() string {
+	u, err := url.Parse(s.RemarkURL)
+	if err != nil {
+		return s.RemarkURL
+	}
+	return u.String()
+}
+
 func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
+	remarkURL := s.sanitizedRemarkURL()
 	imageServiceParams := image.ServiceParams{
-		ImageAPI:     s.RemarkURL + "/api/v1/picture/",
-		ProxyAPI:     s.RemarkURL + "/api/v1/img",
+		ImageAPI:     remarkURL + "/api/v1/picture/",
+		ProxyAPI:     remarkURL + "/api/v1/img",
 		EditDuration: s.EditDuration,
 		MaxSize:      s.Image.MaxSize,
 		MaxHeight:    s.Image.ResizeHeight,
