@@ -140,7 +140,8 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// try to load from cache for case it was saved when CacheExternal was enabled
+	// a stored copy is there when CacheExternal is on and a posted comment shows the image, see
+	// image.Service.SubmitExternal. A request alone never stores an image, the route is open to anyone
 	img, _ := p.ImageService.Load(imgID)
 	if img == nil {
 		img, err = p.downloadImage(r.Context(), imgURL)
@@ -152,9 +153,6 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 			}
 			sendImageProxyError(w, r, http.StatusNotFound, fmt.Errorf("failed to fetch"), "can't get image", rest.ErrAssetNotFound)
 			return
-		}
-		if p.CacheExternal {
-			p.cacheImage(bytes.NewReader(img), imgID)
 		}
 	}
 
@@ -189,12 +187,21 @@ func sendImageProxyError(w http.ResponseWriter, r *http.Request, status int, err
 	rest.SendErrorJSONFromHelper(w, r, status, err, details, errCode)
 }
 
-// cache image from provided Reader using given ID
-func (p Image) cacheImage(r io.Reader, imgID string) {
-	err := p.ImageService.SaveWithID(imgID, r)
-	if err != nil {
-		log.Printf("[WARN] unable to save image to the storage: %+v", err)
+// Download fetches an external image for storing, with the limits and checks the proxy applies to it
+func (p Image) Download(ctx context.Context, imgURL string) ([]byte, error) {
+	return p.downloadImage(ctx, imgURL)
+}
+
+// transport returns Transport, or when it is nil safehttp.Transport() without compression: an image is read up
+// to the size limit as it was sent, and asking for gzip would let a site send a few kilobytes that unpack into
+// a full-size image
+func (p Image) transport() http.RoundTripper {
+	if p.Transport != nil {
+		return p.Transport
 	}
+	t := safehttp.Transport()
+	t.DisableCompression = true
+	return t
 }
 
 // download an image.
@@ -209,13 +216,9 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	transport := p.Transport
-	if transport == nil {
-		transport = safehttp.Transport()
-	}
 	client := http.Client{
 		Timeout:   30 * time.Second,
-		Transport: transport,
+		Transport: p.transport(),
 	}
 	defer client.CloseIdleConnections()
 	var resp *http.Response

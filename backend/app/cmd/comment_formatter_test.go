@@ -36,3 +36,28 @@ func TestServerCommand_makeCommentFormatterNonASCIIHost(t *testing.T) {
 	assert.Equal(t, []string{id}, imageService.ExtractNonProxiedPictures(text), "the own picture is found")
 	assert.Len(t, imageService.ExtractPictures(text), 2, "the proxied image is found as well")
 }
+
+// TestServerCommand_makeCommentFormatterFetchExternal checks that the image store fetches the external images of
+// posted comments only when they are cached: with the proxy used only to serve http images over https, the stored
+// text proxies them too, and nothing may be stored for that
+func TestServerCommand_makeCommentFormatterFetchExternal(t *testing.T) {
+	for _, tt := range []struct {
+		name               string
+		cache, http2https bool
+	}{{"cache external", true, false}, {"http to https only", false, true}, {"both", true, true}} {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := ServerCommand{RemarkURL: "https://remark42.example.com"}
+			cmd.Image.Type = "fs"
+			cmd.Image.FS.Path, cmd.Image.FS.Staging, cmd.Image.FS.Partitions = t.TempDir(), t.TempDir(), 100
+			cmd.ImageProxy.CacheExternal, cmd.ImageProxy.HTTP2HTTPS = tt.cache, tt.http2https
+			imageService, err := cmd.makePicturesStore()
+			require.NoError(t, err)
+
+			imgProxy, formatter := cmd.makeCommentFormatter(imageService)
+			text := formatter.FormatText("![](http://images.example/a.png)", false)
+			assert.Len(t, imageService.ExternalPictures(text), 1, "the stored text proxies the image: %s", text)
+			assert.Equal(t, tt.cache, imageService.FetchExternal != nil, "fetches the images of posted comments")
+			assert.Equal(t, tt.cache, imgProxy.CacheExternal)
+		})
+	}
+}

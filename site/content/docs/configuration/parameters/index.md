@@ -167,7 +167,7 @@ services:
 | admin-edit                     | ADMIN_EDIT                     | `false`                 | unlimited edit for admins                                |
 | read-age                       | READONLY_AGE                   | `0`                     | read-only age of comments, days                          |
 | image-proxy.http2https         | IMAGE_PROXY_HTTP2HTTPS         | `false`                 | enable HTTP->HTTPS proxy for images; has no effect when `REMARK_URL` is http |
-| image-proxy.cache-external     | IMAGE_PROXY_CACHE_EXTERNAL     | `false`                 | enable caching external images to current image storage  |
+| image-proxy.cache-external     | IMAGE_PROXY_CACHE_EXTERNAL     | `false`                 | proxy external images, store the ones posted comments show |
 | emoji                          | EMOJI                          | `false`                 | enable emoji support                                     |
 | simple-view                    | SIMPLE_VIEW                    | `false`                 | simplified comment form, without the formatting toolbar and preview |
 | proxy-cors                     | PROXY_CORS                     | `false`                 | disable internal CORS and delegate it to proxy; the proxy has to cover `/web/` as well as `/api/`, since a host page loads the widget scripts and message catalogues from there |

@@ -119,7 +119,9 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 	}
 
 	commentID, err = s.Engine.Create(comment)
-	s.submitImages(comment)
+	if err == nil {
+		s.submitImages(comment)
+	}
 
 	if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvCreate); e != nil {
 		log.Printf("[WARN] failed to send create event, %s", e)
@@ -298,13 +300,16 @@ func (s *DataStore) ResubmitStagingImages(sites []string) error {
 	return errors.Join(errs...)
 }
 
-// submitImages initiated delayed commit of all images from the comment uploaded to remark42
+// submitImages initiated delayed commit of all images from the comment uploaded to remark42, and the fetch of
+// the external images it shows through the image proxy, which the commit keeps as well
 func (s *DataStore) submitImages(comment store.Comment) {
 	if comment.Imported {
 		s.commitImages(comment)
 		return
 	}
-	s.ImageService.Submit(s.imageIDsFn(comment))
+	idsFn := s.imageIDsFn(comment)
+	s.ImageService.Submit(idsFn)
+	s.ImageService.SubmitExternal(comment.User.ID, comment.Timestamp, s.ImageService.ExternalPictures(comment.Text), idsFn)
 }
 
 // commitImages commits all images from the comment uploaded to remark42 right away
@@ -572,6 +577,17 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		newText = ""
 	}
 	s.deleteRemovedPictures(locator, commentID, comment.User.ID, res.oldText, newText)
+	if !req.Delete {
+		// the comment's delayed commit, submitted when it was posted, reads the edited text; the external
+		// images the edit added have to be fetched before it. An imported comment was committed at once and has
+		// no delayed commit, so its images are committed as soon as they are fetched
+		posted := comment.Timestamp
+		if comment.Imported {
+			posted = time.Time{}
+		}
+		s.ImageService.SubmitExternal(comment.User.ID, posted, s.ImageService.ExternalPictures(comment.Text),
+			s.imageIDsFn(comment))
+	}
 	return comment, nil
 }
 
