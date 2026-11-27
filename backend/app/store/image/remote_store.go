@@ -9,11 +9,19 @@ import (
 	"time"
 
 	"github.com/go-pkgz/jrpc"
+
+	"github.com/umputun/remark42/backend/app/store"
 )
 
 // RPC implements remote engine and delegates all Calls to remote http server
 type RPC struct {
 	jrpc.Client
+}
+
+// Call makes the remote call, see store.HideRemoteAddress about its errors
+func (r *RPC) Call(method string, args ...any) (*jrpc.Response, error) {
+	resp, err := r.Client.Call(method, args...)
+	return resp, store.HideRemoteAddress(method, err)
 }
 
 // Save saves image with given id to staging.

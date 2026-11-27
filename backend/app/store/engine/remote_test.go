@@ -1,12 +1,14 @@
 package engine
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/go-pkgz/jrpc"
 	"github.com/stretchr/testify/assert"
@@ -64,12 +66,15 @@ func TestRemote_GetWithErrorDecode(t *testing.T) {
 }
 
 func TestRemote_GetWithErrorRemote(t *testing.T) {
-	c := RPC{Client: jrpc.Client{API: "http://127.0.0.2", Client: http.Client{Timeout: 10 * time.Millisecond}}}
+	refusing := http.Client{Transport: &http.Transport{DialContext: func(_ context.Context, network, _ string) (net.Conn, error) {
+		return nil, &net.OpError{Op: "dial", Net: network, Addr: &net.TCPAddr{IP: net.IPv4(10, 1, 2, 3), Port: 9191},
+			Err: errors.New("connect: connection refused")}
+	}}}
+	c := RPC{Client: jrpc.Client{API: "http://comment-store.internal:9191/rpc", Client: refusing}}
 
 	req := GetRequest{Locator: store.Locator{URL: "http://example.com/url"}, CommentID: "site"}
 	_, err := c.Get(req)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "remote call failed for store.get:")
+	assert.EqualError(t, err, "remote call failed for store.get", "the address of the store is not in the error")
 }
 
 func TestRemote_FailedStatus(t *testing.T) {

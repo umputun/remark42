@@ -14,6 +14,12 @@ type RPC struct {
 	jrpc.Client
 }
 
+// Call makes the remote call, see store.HideRemoteAddress about its errors
+func (r *RPC) Call(method string, args ...any) (*jrpc.Response, error) {
+	resp, err := r.Client.Call(method, args...)
+	return resp, store.HideRemoteAddress(method, err)
+}
+
 // Create comment and return ID
 func (r *RPC) Create(comment store.Comment) (commentID string, err error) {
 	return call[string](r, "store.create", comment)

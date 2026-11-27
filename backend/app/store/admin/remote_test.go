@@ -7,8 +7,11 @@
 package admin
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,6 +34,20 @@ func TestRemote_Key(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "12345", res)
 	t.Logf("%v %T", res, res)
+}
+
+func TestRemote_KeyHidesStoreAddress(t *testing.T) {
+	c := RPC{Client: jrpc.Client{API: "http://admin-store.internal:9191/rpc", Client: refusingClient()}}
+	_, err := c.Key("any")
+	assert.EqualError(t, err, "remote call failed for admin.key")
+}
+
+// refusingClient returns a client whose every connection fails as a refused one would, with the address it dialed
+func refusingClient() http.Client {
+	return http.Client{Transport: &http.Transport{DialContext: func(_ context.Context, network, _ string) (net.Conn, error) {
+		return nil, &net.OpError{Op: "dial", Net: network, Addr: &net.TCPAddr{IP: net.IPv4(10, 1, 2, 3), Port: 9191},
+			Err: errors.New("connect: connection refused")}
+	}}}
 }
 
 func TestRemote_Admins(t *testing.T) {
