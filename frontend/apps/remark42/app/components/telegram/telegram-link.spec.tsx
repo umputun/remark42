@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { screen, render as renderRaw } from '@testing-library/preact';
+import { fireEvent, screen, render as renderRaw } from '@testing-library/preact';
 
 import { render } from 'tests/utils';
 import { IntlProvider } from 'common/intl';
@@ -93,6 +93,20 @@ describe('<TelegramLink/>', () => {
     });
     render(<TelegramLink {...defaultProps} />);
     expect(screen.queryByAltText(/Telegram QR-code/)).not.toBeInTheDocument();
+  });
+
+  it('does not submit the form it is placed in when Check is pressed', () => {
+    const onFormSubmit = jest.fn((e: Event) => e.preventDefault());
+    render(
+      <form onSubmit={onFormSubmit}>
+        <TelegramLink {...defaultProps} />
+      </form>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+    expect(handleSubmitSpy).toHaveBeenCalled();
+    expect(onFormSubmit).not.toHaveBeenCalled();
   });
 
   it('should show error if any', () => {

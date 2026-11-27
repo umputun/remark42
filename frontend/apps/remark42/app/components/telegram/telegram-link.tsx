@@ -54,7 +54,6 @@ export const TelegramLink: FunctionComponent<TelegramLinkProps> = ({ bot, token,
         kind="primary"
         size="large"
         className={clsx('auth-submit', styles.button)}
-        type="submit"
         onClick={onSubmit}
       >
         {intl.formatMessage(messages.telegramCheck)}
