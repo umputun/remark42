@@ -6,6 +6,7 @@ import { FormattedMessage, useIntl } from 'common/intl';
 import type { User, Theme, PostInfo } from 'common/types';
 import { IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from 'common/constants';
 import { postMessageToParent } from 'utils/post-message';
+import { issueReaderToken } from 'utils/reader';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { getHandleClickProps } from 'common/accessibility';
 import type { StoreState } from 'store';
@@ -60,15 +61,13 @@ class AuthPanelComponent extends Component<Props, State> {
   };
 
   renderAuthorized = (user: User) => {
-    // the page embedding the widget receives the message below, so it carries the fields the
-    // profile shows and nothing else of the user record
-    const { id, name, picture } = user;
-
     return (
       <div className={styles.user}>
         <button
           className={styles.userButton}
-          onClick={() => postMessageToParent({ profile: { id, name, picture, current: '1' } })}
+          // the page embedding the widget receives this message, so it names nobody: the profile
+          // frame asks this frame who the reader is
+          onClick={() => postMessageToParent({ profile: { token: issueReaderToken() } })}
           title={this.props.intl.formatMessage(messages.openProfile)}
         >
           <div className={styles.userAvatar}>

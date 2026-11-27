@@ -1,4 +1,4 @@
-import type { Theme, Profile } from 'common/types';
+import type { Theme, ProfileRequest } from 'common/types';
 
 type ParentMessage = {
   /** the iframe document bootstrapped: drives placeholder removal and iframe reveal */
@@ -6,7 +6,7 @@ type ParentMessage = {
   scrollTo?: number;
   height?: number;
   signout?: true;
-  profile?: Profile | null;
+  profile?: ProfileRequest | null;
 };
 
 type ChildMessage = {

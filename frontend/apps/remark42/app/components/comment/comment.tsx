@@ -10,7 +10,7 @@ import { webAssetUrl } from 'common/web-asset';
 import { StaticStore } from 'common/static-store';
 import { debounce } from 'utils/debounce';
 import { copy } from 'common/copy';
-import type { Theme, BlockTTL, Comment as CommentType, PostInfo, User, Profile } from 'common/types';
+import type { Theme, BlockTTL, Comment as CommentType, PostInfo, User } from 'common/types';
 import { CommentMode } from 'common/types';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 
@@ -19,6 +19,7 @@ import { Avatar } from 'components/avatar';
 import { VerificationIcon } from 'components/icons/verification';
 import type { getPreview, uploadImage } from 'common/api';
 import { postMessageToParent } from 'utils/post-message';
+import { issueReaderToken } from 'utils/reader';
 import { getBlockingDurations } from './getBlockingDurations';
 import type { boundActions } from './connected-comment';
 import { CommentVotes } from './comment-votes';
@@ -183,15 +184,11 @@ export class Comment extends Component<CommentProps, State> {
 
   toggleUserInfoVisibility = () => {
     // the page embedding the widget receives this message, so it carries the fields the profile
-    // shows and nothing else of the record, which for an admin holds the commenter's IP hash
+    // shows and nothing else of the record, which for an admin holds the commenter's IP hash. Nor
+    // does it say whether the author is the reader: the profile frame asks this frame that itself
     const { id, name, picture } = this.props.data.user;
-    const profile: Profile = { id, name, picture };
 
-    if (this.props.user?.id === profile.id) {
-      profile.current = '1';
-    }
-
-    postMessageToParent({ profile });
+    postMessageToParent({ profile: { id, name, picture, token: issueReaderToken() } });
   };
 
   togglePin = () => {

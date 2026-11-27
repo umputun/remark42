@@ -4,7 +4,7 @@ describe('openProfile', () => {
   afterEach(() => closeProfile());
 
   it('opens the profile as a dialog with a title of its own', () => {
-    openProfile({ id: 'user', name: 'user name', picture: '' });
+    openProfile({ id: 'user', name: 'user name', picture: '', token: 't' });
 
     const dialog = document.querySelector('[role="dialog"]');
     expect(dialog).not.toBeNull();
