@@ -4,8 +4,10 @@ package e2e
 
 import (
 	"net/http"
+	neturl "net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/mxschmitt/playwright-go"
@@ -81,6 +83,50 @@ func TestTelegramSub_RoundTrip(t *testing.T) {
 	secondToken := telegramSubscriptionToken(t, frame)
 	require.NotEqual(t, firstToken, secondToken, "resubscribe reused the one-time token already consumed")
 	confirmTelegramSubscription(t, page, frame, secondToken, readerID)
+}
+
+// TestTelegramSub_CheckLeavesTheDraftUnsent covers the Check button, which sits inside the comment
+// form and was a submit button, so pressing it also posted whatever was in the comment field. The
+// bot has not been sent the token, so the check fails, which is when the stray post went unnoticed
+func TestTelegramSub_CheckLeavesTheDraftUnsent(t *testing.T) {
+	page := newPage(t)
+	frame := openURL(t, page, threadURLOn(t, telegramURL))
+
+	tgSignIn(t, page, frame, tgReaderID(t), "Draft Reader")
+
+	draft := "a draft not meant to be sent " + runID
+	require.NoError(t, frame.Locator(commentFieldSel).Fill(draft))
+	posts := countCommentPosts(page)
+
+	// the reload brings the draft back from the browser's storage
+	frame = clearTelegramSubscription(t, page)
+	openTelegramSubscription(t, frame)
+
+	resp, err := page.ExpectResponse("**/api/v1/telegram/subscribe**", func() error {
+		return frame.Locator(`button:text-is("Check")`).Click()
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
+	require.NoError(t, err, "clicking Check asked the server nothing")
+	require.Equal(t, http.StatusNotFound, resp.Status(), "a check before the bot got the token was not refused")
+	waitVisible(t, frame.Locator(".auth-error"))
+
+	assert.Zero(t, posts.Load(), "the comment field's draft was posted")
+	got, err := frame.Locator(commentFieldSel).InputValue()
+	require.NoError(t, err)
+	assert.Equal(t, draft, got, "the comment field lost its draft")
+}
+
+// commentFieldSel is the text field of the top comment form
+const commentFieldSel = `[data-testid="textarea_1"]`
+
+// countCommentPosts counts the requests that post a comment from the page from now on
+func countCommentPosts(page playwright.Page) *atomic.Int32 {
+	var posts atomic.Int32
+	page.OnRequest(func(r playwright.Request) {
+		if u, err := neturl.Parse(r.URL()); err == nil && r.Method() == http.MethodPost && u.Path == "/api/v1/comment" {
+			posts.Add(1)
+		}
+	})
+	return &posts
 }
 
 // TestTelegramSub_StartFailureIsShown covers the initial request, where no TelegramLink exists to
