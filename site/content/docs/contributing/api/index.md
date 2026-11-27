@@ -298,7 +298,7 @@ _returned ID should be appended to load image URL on the caller side_
 ## Telegram Subscription
 
 - `GET /api/v1/telegram/subscribe?site=site-id` - start a subscription to notifications over Telegram, _auth required_. Returns `{"token": "token", "bot": "bot-name"}`; the user sends `/start token` to the bot. A user who already has a subscription gets 409, and a server without Telegram notifications answers 500
-- `GET /api/v1/telegram/subscribe?site=site-id&tkn=token` - complete the subscription, _auth required_, as the user who started it and within 10 minutes of the first call. Returns `{"updated": true, "address": "telegram-id"}`. 404 means the bot has no message yet, the token is unknown, expired or already used, or another user sent the request
+- `GET /api/v1/telegram/subscribe?site=site-id&tkn=token` - complete the subscription, _auth required_, as the user who started it and within 10 minutes of the first call. Returns `{"updated": true}`. 404 means the bot has no message yet, the token is unknown, expired or already used, or another user sent the request
 - `DELETE /api/v1/telegram?site=site-id` - removes user's Telegram subscription, _auth required_
 - `GET /api/v1/qr/telegram?url=https://t.me/...` - PNG with the QR code of a `https://t.me/` link, used for Telegram sign-in and subscription
 

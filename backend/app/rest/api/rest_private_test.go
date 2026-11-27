@@ -1791,13 +1791,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	body, code = call(t, http.MethodGet,
 		ts.URL+fmt.Sprintf("/api/v1/telegram/subscribe?site=remark42&tkn=%s", subscribeRequest.Token), "", devToken)
 	require.Equal(t, http.StatusOK, code, body)
-	var subscribeResult struct {
-		Address string `json:"address"`
-		Updated bool   `json:"updated"`
-	}
-	err = json.Unmarshal([]byte(body), &subscribeResult)
-	assert.NoError(t, err)
-	assert.True(t, subscribeResult.Updated)
+	assert.Equal(t, `{"updated":true}`+"\n", body, "the answer does not name the chat the bot was started from")
 
 	// get user information to verify the subscription
 	user := callJSON[store.User](t, http.MethodGet, ts.URL+"/api/v1/user?site=remark42", "", devToken)

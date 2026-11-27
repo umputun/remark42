@@ -30,7 +30,7 @@ describe('<SubscribeByTelegram />', () => {
       .mockClear()
       .mockImplementation(async () => {
         await sleep(10);
-        return { address: '223211010', updated: true };
+        return { updated: true };
       });
     jest
       .spyOn(api, 'telegramUnsubcribe')
@@ -132,7 +132,7 @@ describe('<SubscribeByTelegram />', () => {
         .mockReset()
         .mockResolvedValueOnce({ bot: 'foo_bot', token: 'old_token' })
         .mockResolvedValueOnce({ bot: 'foo_bot', token: 'new_token' });
-      jest.spyOn(api, 'telegramCurrentSubscribtion').mockResolvedValue({ address: '223211010', updated: true });
+      jest.spyOn(api, 'telegramCurrentSubscribtion').mockResolvedValue({ updated: true });
     });
 
     afterEach(() => {
