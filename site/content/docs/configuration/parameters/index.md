@@ -154,7 +154,7 @@ services:
 | max-comment                    | MAX_COMMENT_SIZE               | `2048`                  | comment's size limit                                     |
 | min-comment                    | MIN_COMMENT_SIZE               | `0`                     | comment's minimal size limit, `0` - unlimited            |
 | max-votes                      | MAX_VOTES                      | `-1`                    | votes limit per comment, `-1` - unlimited, `0` - voting disabled |
-| votes-ip                       | VOTES_IP                       | `false`                 | restrict votes from the same IP                          |
+| votes-ip                       | VOTES_IP                       | `false`                 | restrict votes from the same IP; an IPv6 address counts as its /64 network |
 | anon-vote                      | ANON_VOTE                      | `false`                 | allow voting for anonymous users, require VOTES_IP to be enabled as well |
 | votes-ip-time                  | VOTES_IP_TIME                  | `5m`                    | same IP vote restriction time, `0s` - unlimited. With `votes-ip` on, a new vote on a comment is refused while that IP has a vote record inside this time, whatever the direction; a user can still take their own vote back. New IP hash records include the voter's user ID. Records older than this are removed on the comment's next accepted vote, also with `votes-ip` off |
 | low-score                      | LOW_SCORE                      | `-5`                    | low score threshold                                      |

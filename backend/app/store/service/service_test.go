@@ -1451,6 +1451,57 @@ func TestService_VoteSameIP(t *testing.T) {
 	assert.Equal(t, -1, c.Score, "still have -1 score")
 }
 
+// an IPv6 visitor holds a whole /64 network, so its addresses count as one for the same-ip check
+func TestService_VoteSameIPv6Network(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
+	b.RestrictSameIPVotes.Enabled = true
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	vote := func(user, ip string) (store.Comment, error) {
+		return b.Vote(VoteReq{Locator: locator, CommentID: "id-2", UserID: user, UserIP: ip, Val: true})
+	}
+
+	_, err := vote("user2", "2001:db8:1:2::1")
+	require.NoError(t, err)
+	for i, ip := range []string{"2001:db8:1:2::2", "2001:db8:1:2:ffff:ffff:ffff:ffff", "2001:DB8:1:2:0:0:0:5"} {
+		_, err = vote(fmt.Sprintf("user%d", i+3), ip)
+		assert.EqualError(t, err, "the same ip already voted for id-2", ip)
+	}
+	c, err := vote("user6", "2001:db8:1:3::1")
+	require.NoError(t, err, "the next /64 is another network")
+	assert.Equal(t, 2, c.Score)
+
+	// a zone is not part of the network
+	_, err = vote("user7", "fe80::2")
+	require.NoError(t, err)
+	_, err = vote("user8", "fe80::1%eth0")
+	assert.EqualError(t, err, "the same ip already voted for id-2")
+
+	// an IPv4 address mapped into IPv6 is that IPv4 address, and IPv4 addresses count one by one
+	_, err = vote("user9", "192.0.2.1")
+	require.NoError(t, err)
+	_, err = vote("user10", "::ffff:192.0.2.1")
+	assert.EqualError(t, err, "the same ip already voted for id-2")
+	c, err = vote("user11", "192.0.2.2")
+	require.NoError(t, err)
+	assert.Equal(t, 5, c.Score, "user2, user6, user7, user9 and user11")
+}
+
+func TestService_voterNetwork(t *testing.T) {
+	for _, tc := range []struct{ ip, want string }{
+		{"192.0.2.1", "192.0.2.1"},
+		{"::ffff:192.0.2.1", "192.0.2.1"},
+		{"2001:db8:1:2:3:4:5:6", "2001:db8:1:2::/64"},
+		{"2001:db8:1:2::", "2001:db8:1:2::/64"},
+		{"fe80::1%eth0", "fe80::/64"},
+		{"123", "123"},
+		{"", ""},
+	} {
+		assert.Equal(t, tc.want, voterNetwork(tc.ip), tc.ip)
+	}
+}
+
 // several users on one address must not add up: each used to vote against the standing vote and then change
 // their vote, which freed the address for the next one
 func TestService_VoteSameIPManyUsers(t *testing.T) {
