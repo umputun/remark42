@@ -11,7 +11,11 @@ import (
 	ntf "github.com/go-pkgz/notify"
 )
 
-const commentTextLengthLimit = 100
+const (
+	commentTextLengthLimit   = 100  // bytes of visible text kept from the comment and from the comment it replies to
+	commentMarkupLengthLimit = 4096 // bytes of tags kept with each of them, so a tag-heavy comment can't push the message over Telegram's size limit
+	postTitleLengthLimit     = 255  // characters kept from the post title
+)
 
 // TelegramParams contain settings for telegram notifications
 type TelegramParams struct {
@@ -91,14 +95,14 @@ func (t *Telegram) buildMessage(req Request) string {
 		msg += fmt.Sprintf(` -> <a href=%q>%s</a>`, html.EscapeString(commentURLPrefix+req.parent.ID), ntf.EscapeTelegramText(req.parent.User.Name))
 	}
 
-	msg += fmt.Sprintf("\n\n%s", pruneHTML(telegramCommentHTML(req.Comment.Text), commentTextLengthLimit))
+	msg += fmt.Sprintf("\n\n%s", pruneHTML(telegramCommentHTML(req.Comment.Text), commentTextLengthLimit, commentMarkupLengthLimit))
 
 	if req.Comment.ParentID != "" {
-		msg += fmt.Sprintf("\n\n\"<i>%s</i>\"", pruneHTML(telegramCommentHTML(req.parent.Text), commentTextLengthLimit))
+		msg += fmt.Sprintf("\n\n\"<i>%s</i>\"", pruneHTML(telegramCommentHTML(req.parent.Text), commentTextLengthLimit, commentMarkupLengthLimit))
 	}
 
 	if req.Comment.PostTitle != "" {
-		msg += fmt.Sprintf("\n\n↦  <a href=%q>%s</a>", html.EscapeString(req.Comment.Locator.URL), ntf.EscapeTelegramText(req.Comment.PostTitle))
+		msg += fmt.Sprintf("\n\n↦  <a href=%q>%s</a>", html.EscapeString(req.Comment.Locator.URL), ntf.EscapeTelegramText(shortenTitle(req.Comment.PostTitle)))
 	}
 
 	return msg
@@ -120,4 +124,14 @@ func (t *Telegram) String() string {
 		result += " with user notifications enabled"
 	}
 	return result
+}
+
+// shortenTitle cuts a post title longer than postTitleLengthLimit characters, ending it in "...". The title
+// comes with the comment and nothing else limits its length, while Telegram refuses a message over 4096 characters
+func shortenTitle(title string) string {
+	runes := []rune(title)
+	if len(runes) <= postTitleLengthLimit {
+		return title
+	}
+	return string(runes[:postTitleLengthLimit-3]) + "..."
 }
