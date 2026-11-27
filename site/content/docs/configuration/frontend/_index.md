@@ -82,7 +82,7 @@ You can place any placeholder content inside the `remark42` div — it will be a
 
 If you want to set this up on a Single Page App, see the [appropriate doc page](https://remark42.com/docs/configuration/frontend/spa/).
 
-#### Themes
+### Themes
 
 Remark42 has two themes: light and dark. You can pick one using a configuration object, but there is also a possibility to switch between themes in runtime. For this purpose, Remark42 adds an object named `REMARK42` to `window`, which contains a function `changeTheme`. Just call this function and pass a name of the theme that you want to turn on:
 
@@ -94,7 +94,7 @@ Set `theme` to `'auto'` to follow the visitor's system preference instead: the w
 
 `changeTheme` can be called as soon as `window.REMARK42` exists, even before the comments have finished loading: the widget opens in the last theme it was given. Set `theme` in the configuration object to the theme your page is in when it loads, so the widget does not have to switch after it appears.
 
-#### Matching your site's font
+### Matching your site's font
 
 To match the widget's font to your site's, set `remark_config.custom_properties['--font-family']`
 to the font your site uses. You don't need to modify or rebuild Remark42 itself to do this:
@@ -120,13 +120,13 @@ does work today isn't guaranteed to keep working, or keep meaning the same thing
 version. Treat anything beyond `--font-family` as unsupported and best-effort, not a documented API.
 
 
-#### Locales
+### Locales
 
 Right now Remark42 is translated to English (en), Russian (ru), German (de), Finnish (fi), Spanish (es), Chinese (zh), Turkish (tr), Bulgarian (bg), Ukrainian (ua), Polish (pl), Vietnamese (vi), Belarusian (be), French (fr), Japanese (ja), Korean (ko), Brazilian Portuguese (bp), Italian (it), Arabic (ar), Traditional Chinese (zh-tw), Thai (th), Czech (cs), Persian (fa), Macedonian (mk), Romanian (ro), Swedish (sv), Hebrew (he), Dutch (nl), Icelandic (is) and Hungarian (hu). You can pick one with `locale` in the [configuration object](#configuration).
 
 Do you want to translate Remark42 to other locales? Please see [this documentation](https://remark42.com/docs/contributing/translations/) for details.
 
-#### What the widget keeps in the reader's browser
+### What the widget keeps in the reader's browser
 
 The widget uses the browser's `localStorage` to save the sort order, collapsed threads, hidden users, the email address used for a successful email sign-in, and the text of comments that were typed and not sent.
 
