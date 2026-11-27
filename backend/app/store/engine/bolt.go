@@ -203,7 +203,7 @@ func (b *BoltDB) Flag(req FlagRequest) (val bool, err error) {
 // and all site's details listing under the same function (and not to extend interface by two separate functions).
 func (b *BoltDB) UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
 	switch req.Detail {
-	case UserEmail, UserTelegram:
+	case UserEmail, UserTelegram, UserGithubAccount:
 		if req.UserID == "" {
 			return nil, fmt.Errorf("userid cannot be empty in request for single detail")
 		}
@@ -638,6 +638,8 @@ func (b *BoltDB) getUserDetail(req UserDetailRequest) (result []UserDetailEntry,
 			result = []UserDetailEntry{{UserID: req.UserID, Email: entry.Email}}
 		case UserTelegram:
 			result = []UserDetailEntry{{UserID: req.UserID, Telegram: entry.Telegram}}
+		case UserGithubAccount:
+			result = []UserDetailEntry{{UserID: req.UserID, GithubAccount: entry.GithubAccount}}
 		}
 		return nil
 	})
@@ -660,6 +662,8 @@ func (b *BoltDB) setUserDetail(req UserDetailRequest) ([]UserDetailEntry, error)
 			entry.Email = req.Update
 		case UserTelegram:
 			entry.Telegram = req.Update
+		case UserGithubAccount:
+			entry.GithubAccount = req.Update
 		}
 		if err = b.save(tx.Bucket([]byte(userDetailsBucketName)), req.UserID, entry); err != nil {
 			return fmt.Errorf("failed to update detail %s for %s in %s: %w", req.Detail, req.UserID, req.Locator.SiteID, err)
@@ -700,8 +704,12 @@ func (b *BoltDB) deleteUserDetail(bdb *bolt.DB, userID string, userDetail UserDe
 			entry.Email = ""
 		case UserTelegram:
 			entry.Telegram = ""
+		case UserGithubAccount:
+			entry.GithubAccount = ""
 		case AllUserDetails:
-			entry = UserDetailEntry{UserID: userID}
+			// the github account stays: it keeps the next holder of a login from the user's block and admin
+			// right, which outlive the deletion of the user's data
+			entry = UserDetailEntry{UserID: userID, GithubAccount: entry.GithubAccount}
 		}
 
 		bucket := tx.Bucket([]byte(userDetailsBucketName))

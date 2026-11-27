@@ -40,6 +40,8 @@ After completing the previous steps, you can configure the Apple auth provider. 
 3. Under **"Authorization callback URL"** enter the correct URL constructed as domain + `/auth/github/callback`, i.e., `https://remark42.mysite.com/auth/github/callback`
 4. Take note of the **Client ID** (as `AUTH_GITHUB_CID`) and **Client Secret** (`AUTH_GITHUB_CSEC`)
 
+Remark42 keeps the login-based ID of a GitHub user and records, per site, which GitHub account it belongs to, at the first sign-in of that ID. GitHub gives a login to someone else once its holder renames or deletes the account; another account that signs in later under the same login gets an ID of its own, without the earlier holder's comments, subscriptions, block or admin rights. A user who renames their GitHub login can get a new ID, as before. The record stays when a user's data is deleted and goes into backups; an import from another comment system, which replaces the site's data, clears it. An ID nobody has signed in with since the record was introduced has no account recorded yet, and goes to whoever signs in first with its login. A remote store (`STORE_TYPE=rpc`) has to support the `github_account` user detail. When the store fails or GitHub sends no account number, the user signs in under the login-based ID without this check, and the server log has a warning.
+
 ### Google
 
 1. Create a new project: https://console.cloud.google.com/projectcreate

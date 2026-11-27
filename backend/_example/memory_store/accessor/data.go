@@ -257,7 +257,7 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []any, err error) {
 // and all site's details listing under the same function (and not to extend engine interface by two separate functions).
 func (m *MemData) UserDetail(req engine.UserDetailRequest) ([]engine.UserDetailEntry, error) {
 	switch req.Detail {
-	case engine.UserEmail, engine.UserTelegram:
+	case engine.UserEmail, engine.UserTelegram, engine.UserGithubAccount:
 		if req.UserID == "" {
 			return nil, fmt.Errorf("userid cannot be empty in request for single detail")
 		}
@@ -422,6 +422,8 @@ func (m *MemData) getUserDetail(req engine.UserDetailRequest) []engine.UserDetai
 			return []engine.UserDetailEntry{{UserID: req.UserID, Email: entry.Email}}
 		case engine.UserTelegram:
 			return []engine.UserDetailEntry{{UserID: req.UserID, Telegram: entry.Telegram}}
+		case engine.UserGithubAccount:
+			return []engine.UserDetailEntry{{UserID: req.UserID, GithubAccount: entry.GithubAccount}}
 		}
 	}
 
@@ -440,6 +442,8 @@ func (m *MemData) setUserDetail(req engine.UserDetailRequest) []engine.UserDetai
 		entry.Email = req.Update
 	case engine.UserTelegram:
 		entry.Telegram = req.Update
+	case engine.UserGithubAccount:
+		entry.GithubAccount = req.Update
 	}
 
 	m.details[key] = entry
@@ -473,8 +477,11 @@ func (m *MemData) deleteUserDetail(locator store.Locator, userID string, userDet
 		entry.Email = ""
 	case engine.UserTelegram:
 		entry.Telegram = ""
+	case engine.UserGithubAccount:
+		entry.GithubAccount = ""
 	case engine.AllUserDetails:
-		entry = engine.UserDetailEntry{UserID: userID}
+		// the github account stays, as in the bolt engine
+		entry = engine.UserDetailEntry{UserID: userID, GithubAccount: entry.GithubAccount}
 	}
 
 	if entry == (engine.UserDetailEntry{UserID: userID}) {

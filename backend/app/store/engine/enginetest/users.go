@@ -73,6 +73,25 @@ func (s suite) setUserDetailReturnsEntry(t *testing.T) {
 		"a set returns the complete entry")
 }
 
+// deleteAllDetailsKeepsGithubAccount: the github account of a login-based id outlives a deletion of the user's
+// details, as the block and admin right of the id do, and goes only when deleted by itself
+func (s suite) deleteAllDetailsKeepsGithubAccount(t *testing.T) {
+	e := s.prep(t)
+	for detail, value := range map[engine.UserDetail]string{engine.UserEmail: "u1@example.com", engine.UserGithubAccount: "github_account"} {
+		_, err := e.UserDetail(engine.UserDetailRequest{Detail: detail, Locator: site, UserID: "u1", Update: value})
+		require.NoError(t, err)
+	}
+	require.NoError(t, e.Delete(engine.DeleteRequest{Locator: site, UserID: "u1", UserDetail: engine.AllUserDetails}))
+	res, err := e.UserDetail(engine.UserDetailRequest{Detail: engine.AllUserDetails, Locator: site})
+	require.NoError(t, err)
+	assert.Equal(t, []engine.UserDetailEntry{{UserID: "u1", GithubAccount: "github_account"}}, res, "only the github account is left")
+
+	require.NoError(t, e.Delete(engine.DeleteRequest{Locator: site, UserID: "u1", UserDetail: engine.UserGithubAccount}))
+	res, err = e.UserDetail(engine.UserDetailRequest{Detail: engine.AllUserDetails, Locator: site})
+	require.NoError(t, err)
+	assert.Empty(t, res, "deleted by itself")
+}
+
 func (s suite) listDetailsKeepsEntriesSeparate(t *testing.T) {
 	e := s.prep(t)
 	_, err := e.UserDetail(engine.UserDetailRequest{Locator: site, UserID: "u1", Detail: engine.UserEmail, Update: "u1@example.com"})

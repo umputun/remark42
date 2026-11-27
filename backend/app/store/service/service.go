@@ -219,6 +219,18 @@ func (s *DataStore) GetUserTelegram(siteID, userID string) (string, error) {
 	return entry.Telegram, err
 }
 
+// GetUserGithubAccount gets the user ID of the GitHub account the login-based GitHub user ID belongs to
+func (s *DataStore) GetUserGithubAccount(siteID, userID string) (string, error) {
+	entry, err := s.userDetail(siteID, userID, engine.UserGithubAccount, "")
+	return entry.GithubAccount, err
+}
+
+// SetUserGithubAccount sets the user ID of the GitHub account the login-based GitHub user ID belongs to
+func (s *DataStore) SetUserGithubAccount(siteID, userID, value string) (string, error) {
+	entry, err := s.userDetail(siteID, userID, engine.UserGithubAccount, value)
+	return entry.GithubAccount, err
+}
+
 // SetUserTelegram sets user telegram
 func (s *DataStore) SetUserTelegram(siteID, userID, value string) (string, error) {
 	entry, err := s.userDetail(siteID, userID, engine.UserTelegram, value)
@@ -1210,6 +1222,12 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 		}
 		if um.Details.Telegram != "" {
 			req := engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, UserID: um.ID, Detail: engine.UserTelegram, Update: um.Details.Telegram}
+			_, err := s.Engine.UserDetail(req)
+			errs = append(errs, err)
+		}
+		if um.Details.GithubAccount != "" {
+			req := engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, UserID: um.ID, Detail: engine.UserGithubAccount,
+				Update: um.Details.GithubAccount}
 			_, err := s.Engine.UserDetail(req)
 			errs = append(errs, err)
 		}

@@ -493,13 +493,22 @@ func TestNative_ExportImportKeepsEachUsersDetails(t *testing.T) {
 	require.NoError(t, err)
 	_, err = b.SetUserEmail("radio-t", "user2", "user2@example.com")
 	require.NoError(t, err)
+	_, err = b.SetUserGithubAccount("radio-t", "github_login", "github_account")
+	require.NoError(t, err)
 
 	r := Native{DataStore: b}
 	buf := &bytes.Buffer{}
 	_, err = r.Export(buf, "radio-t")
 	require.NoError(t, err)
+	assert.Contains(t, buf.String(), `"github_account":"github_account"`, "the github account goes into the export")
+	// the restore has to bring the record back, not find it left in the store
+	require.NoError(t, b.DeleteUserDetail("radio-t", "github_login", engine.UserGithubAccount))
 	_, err = r.Import(buf, "radio-t")
 	require.NoError(t, err)
+
+	account, err := b.GetUserGithubAccount("radio-t", "github_login")
+	require.NoError(t, err)
+	assert.Equal(t, "github_account", account, "github account restored")
 
 	tg, err := b.GetUserTelegram("radio-t", "user1")
 	require.NoError(t, err)

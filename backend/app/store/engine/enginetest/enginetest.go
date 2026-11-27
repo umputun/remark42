@@ -72,6 +72,7 @@ func Run(t *testing.T, newEngine func(t *testing.T) engine.Interface) {
 		{"UserDetail", s.userDetail},
 		{"UserDetailAllEmpty", s.userDetailAllEmpty},
 		{"SetUserDetailReturnsEntry", s.setUserDetailReturnsEntry},
+		{"DeleteAllDetailsKeepsGithubAccount", s.deleteAllDetailsKeepsGithubAccount},
 		{"ListDetailsKeepsEntriesSeparate", s.listDetailsKeepsEntriesSeparate},
 		{"UserDetailsListOnlyStored", s.userDetailsListOnlyStored},
 		{"DeleteUserDetail", s.deleteUserDetail},

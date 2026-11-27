@@ -102,6 +102,9 @@ const (
 	UserEmail = UserDetail("email")
 	// UserTelegram is a user telegram
 	UserTelegram = UserDetail("telegram")
+	// UserGithubAccount is the user ID made from the numeric GitHub account ID of the account that the
+	// login-based GitHub user ID belongs to
+	UserGithubAccount = UserDetail("github_account")
 	// AllUserDetails used for listing and deletion requests
 	AllUserDetails = UserDetail("all")
 )
@@ -123,6 +126,8 @@ type UserDetailEntry struct {
 	UserID   string `json:"user_id"`            // duplicate user's id to use this structure not only embedded but separately
 	Email    string `json:"email,omitempty"`    // UserEmail
 	Telegram string `json:"telegram,omitempty"` // UserTelegram
+	// GithubAccount is UserGithubAccount
+	GithubAccount string `json:"github_account,omitempty"`
 }
 
 // UserDetailRequest is the input for both get/set for details, like email
