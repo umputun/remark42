@@ -23,7 +23,7 @@
   }
 
   &:disabled {
-    background-color: rgb(var(--line-brighter-color));
+    background-color: rgb(var(--highlight-color));
     border-color: rgb(var(--line-color));
   }
 

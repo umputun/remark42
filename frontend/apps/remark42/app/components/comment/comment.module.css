@@ -212,7 +212,7 @@
   &.themeLight,
   &.themeDark {
     & .username {
-      color: rgb(var(--lighter-text-color));
+      color: rgb(var(--verified-color));
     }
   }
 }
