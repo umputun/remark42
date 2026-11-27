@@ -13,7 +13,7 @@
   transform: translate(-0.5em, 5px);
   min-width: 120px;
   max-width: 260px;
-  border: 2px solid rgb(var(--primary-brighter-color));
+  border: 2px solid rgb(var(--primary-color));
   border-radius: 3px;
   padding: 0 0 5px;
 }

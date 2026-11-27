@@ -18,7 +18,7 @@
 
   &:focus {
     box-shadow: 0 0 0 2px rgb(var(--primary-color), 0.4);
-    border-color: rgb(var(--primary-brighter-color));
+    border-color: rgb(var(--primary-color));
     outline: none;
   }
 
@@ -63,7 +63,7 @@
     color: rgb(var(--primary-text-color), 0.8);
 
     &:focus {
-      border-color: rgb(var(--primary-brighter-color));
+      border-color: rgb(var(--primary-color));
       box-shadow: 0 0 0 2px rgb(var(--primary-color), 0.4);
     }
 

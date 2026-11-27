@@ -4,7 +4,7 @@
    custom_properties is an inline style on that element and still wins */
 :root.light {
   --primary-color: 0, 117, 117;
-  --primary-brighter-color: 0, 128, 128;
+  --primary-brighter-color: 0, 92, 92;
   --link-color: 0, 117, 117;
   --link-hover-color: 0, 92, 92;
   --lighter-text-color: 106, 106, 106;

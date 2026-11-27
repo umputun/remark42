@@ -10,7 +10,7 @@
   white-space: nowrap;
 
   &:focus {
-    box-shadow: 0 0 0 2px rgb(var(--primary-brighter-color), 0.4);
+    box-shadow: 0 0 0 2px rgb(var(--primary-color), 0.4);
     outline: none;
   }
 
