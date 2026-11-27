@@ -424,7 +424,7 @@ const CopyrightLink = (title: string) => (
   </a>
 );
 
-/** Root component connected to redux */
+/** Root component connected to the store */
 export function ConnectedRoot() {
   const intl = useIntl();
   const props = useSelector(mapStateToProps);

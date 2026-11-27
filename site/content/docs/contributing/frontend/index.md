@@ -6,9 +6,9 @@ aliases:
 
 ## Prerequisites
 
-Frontend for Remark42 is built with [Preact](https://preactjs.com) and [Redux](https://redux.js.org).
+Frontend for Remark42 is built with [Preact](https://preactjs.com). Its state is kept in a small store of its own, `app/store/create-store.js`.
 
-> 💡 We highly recommend checking out Preact [documentation](https://preactjs.com/guide/v10/getting-started). React libraries are not usable here: the store bindings and the i18n helpers are small local modules under `app/`.
+> 💡 We highly recommend checking out Preact [documentation](https://preactjs.com/guide/v10/getting-started). React libraries are not usable here: the store, its bindings and the i18n helpers are small local modules under `app/`.
 
 In order to inject Remark42 widgets into websites we use `iframe` and `postMessage` for communication between a site and the widget. Simple widgets like [counter widget](https://remark42.com/docs/configuration/frontend/#counter-widget) can be injected as a script because it doesn't have its own interface.
 
@@ -68,7 +68,7 @@ cd frontend/apps/remark42
 pnpm dev
 ```
 
-To access the frontend served this way, go to <http://127.0.0.1:9000/web/>. The development build includes `preact/debug`, so the [Preact DevTools](https://preactjs.github.io/preact-devtools/) browser extension can inspect the widget. Redux DevTools are not connected; the store is available as `window.ReduxStore` inside the widget's iframe.
+To access the frontend served this way, go to <http://127.0.0.1:9000/web/>. The development build includes `preact/debug`, so the [Preact DevTools](https://preactjs.github.io/preact-devtools/) browser extension can inspect the widget. The store is the widget's own, so Redux DevTools do not connect to it; it is available as `window.ReduxStore` inside the widget's iframe.
 
 ### Manual testing after changes
 

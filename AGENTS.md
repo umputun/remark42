@@ -110,7 +110,7 @@ For local artifact runs, install GoReleaser, Go 1.27, Node 24+ and PNPM 10, then
 
 ## Repository Structure
 - Backend: Go server using BoltDB for storage
-- Frontend: Preact/Redux-based UI with iframe embedding
+- Frontend: Preact-based UI with its own store (`app/store/create-store.js`) and iframe embedding
 - `/web` is served from two sources, in lookup order: the frontend build output
   (`frontend/apps/remark42/public`, embedded at `backend/app/cmd/web` or read from `--web-root`),
   then `backend/app/webassets/assets`, embedded in the binary. Every HTML page is a plain file in

@@ -1,6 +1,16 @@
 import { createContext, h, type ComponentChildren } from 'preact';
 import { useContext, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import type { Store, Dispatch, Action } from 'redux';
+
+export type Action = { type: string };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Dispatch<A extends Action = Action> = <T extends A>(action: T) => any;
+
+/** what the binding reads of a store: the widget's own, from create-store.js, has exactly this */
+type Store<S = unknown, A extends Action = Action> = {
+  getState(): S;
+  dispatch: Dispatch<A>;
+  subscribe(listener: () => void): () => void;
+};
 
 /**
  * Minimal store binding over preact context, replacing react-redux.
