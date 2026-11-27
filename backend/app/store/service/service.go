@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/netip"
 	"slices"
 	"sort"
 	"strings"
@@ -413,7 +414,7 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 	if err != nil {
 		return store.Comment{}, fmt.Errorf("can't get secret for site %s: %w", comment.Locator.SiteID, err)
 	}
-	userIPHash := store.HashValue(req.UserIP, secret)
+	userIPHash := store.HashValue(voterNetwork(req.UserIP), secret)
 	if s.isSameIPVote(req, userIPHash, comment) {
 		return comment, fmt.Errorf("the same ip already voted for %s", req.CommentID)
 	}
@@ -480,6 +481,25 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 	comment.Controversy = s.controversy(s.upsAndDowns(comment))
 	comment.Locator = req.Locator
 	return comment, s.Engine.Update(comment)
+}
+
+// voterNetwork is what a vote's address counts as for the same-ip check: an IPv4 address as it is, an IPv6 address
+// as its /64 network. A /64 is the smallest network an IPv6 subscriber gets: every interface of it picks its own
+// addresses, and temporary addresses change by themselves, so one visitor holds many addresses of it, and the rate
+// limits count a /64 as one client too. A wider prefix would join subscribers: mobile networks give each device its
+// own /64, and neighboring /64s can belong to different customers of one provider. A subscriber holding a /56 or a
+// /48 can still vote once per /64 of it. An IPv4 address mapped into IPv6 counts as that IPv4 address, and a value
+// that is not an IP address is used as it is
+func voterNetwork(ip string) string {
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return ip
+	}
+	addr = addr.Unmap().WithZone("")
+	if addr.Is4() {
+		return addr.String()
+	}
+	return netip.PrefixFrom(addr, 64).Masked().String()
 }
 
 // forgetVoteAddress drops the address record of the vote userID takes back, a vote of direction val. The address
