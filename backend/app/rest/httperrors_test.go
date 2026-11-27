@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-pkgz/auth/v2/token"
@@ -91,6 +92,27 @@ func TestErrorDetailsMsg(t *testing.T) {
 	}
 	callerFn()
 }
+
+func TestErrorDetailsMsgSingleLine(t *testing.T) {
+	req, err := http.NewRequest("GET", "https://example.com/api/v1/id/xx%0AFORGED%0A?x=%0D%0AFORGED%E2%80%A8", http.NoBody)
+	require.NoError(t, err)
+	req = token.SetUserInfo(req, token.User{Name: "name\nFORGED", ID: "id"})
+	msg := errDetailsMsg(req, 400, fmt.Errorf("no value for a\nFORGED"), "details", 5, 0)
+	assert.NotContains(t, msg, "\n")
+	assert.NotContains(t, msg, "\r")
+	assert.NotContains(t, msg, "\u2028")
+	assert.Equal(t, 4, strings.Count(msg, "FORGED"), "the text is kept, on one line")
+}
+
+func TestMaskedLogSingleLine(t *testing.T) {
+	buf := &bufLog{}
+	MaskedLog{L: buf}.Logf("[WARN] failed %s", "/auth/anonymous/login?x=\nFORGED")
+	assert.Equal(t, "[WARN] failed /auth/anonymous/login?x= FORGED", buf.String())
+}
+
+type bufLog struct{ bytes.Buffer }
+
+func (b *bufLog) Logf(format string, args ...any) { _, _ = fmt.Fprintf(&b.Buffer, format, args...) }
 
 func TestErrorDetailsMsgWithUser(t *testing.T) {
 	callerFn := func() {
