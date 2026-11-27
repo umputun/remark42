@@ -1,5 +1,5 @@
-import type { IntlShape } from 'common/intl';
-import { defineMessages } from 'common/intl';
+import type { IntlShape } from 'common/intl-message';
+import { defineMessages } from 'common/intl-message';
 import type { BlockTTL } from 'common/types';
 
 export interface BlockingDuration {

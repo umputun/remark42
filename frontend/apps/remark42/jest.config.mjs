@@ -33,10 +33,11 @@ const config = {
     '<rootDir>/app/__stubs__/static-config.ts',
   ],
   collectCoverageFrom: [
-    // the plain JavaScript files are left out: create-store.js is covered by the node unit run;
-    // last-comments.js and list-comments.js are only exercised by the e2e suite, which measures no
-    // coverage of the widget
-    'app/**/*.{ts,tsx}',
+    'app/**/*.{js,ts,tsx}',
+    // the last-comments entry is exercised only by the e2e suite, which measures no coverage of the
+    // widget, so jest would count it as source that nothing covers
+    '!app/last-comments.js',
+    '!app/components/list-comments/list-comments.js',
     // jest excludes a file it ran as a test from coverage, but these it never runs, so without
     // this they are counted as source that nothing covers and drag the whole figure down. their
     // own coverage is reported by the node run in the unit CI job

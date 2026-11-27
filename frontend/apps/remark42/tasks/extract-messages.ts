@@ -54,7 +54,7 @@ export function readable(text: string): string {
   return text.replace(/\r\n?/g, '\n');
 }
 
-const SKIP = [/\.d\.ts$/, /\.(test|spec)\.tsx?$/, /(^|\/)tests\//, /(^|\/)__mocks__\//, /(^|\/)__stubs__\//];
+const SKIP = [/\.d\.ts$/, /\.(test|spec)\.[jt]sx?$/, /(^|\/)tests\//, /(^|\/)__mocks__\//, /(^|\/)__stubs__\//];
 
 const SIMPLE_ESCAPES: Record<string, string> = { b: '\b', f: '\f', n: '\n', r: '\r', t: '\t', v: '\v', 0: '\0' };
 
@@ -143,7 +143,7 @@ export function droppedKeys(messages: Record<string, unknown>, english: Record<s
 export function sourcesIn(root: string): Source[] {
   return readdirSync(root, { recursive: true, encoding: 'utf8' })
     .map((file) => join(root, file))
-    .filter((file) => /\.tsx?$/.test(file) && !SKIP.some((re) => re.test(relative(root, file))))
+    .filter((file) => /\.(js|tsx?)$/.test(file) && !SKIP.some((re) => re.test(relative(root, file))))
     .sort()
     .map((file) => ({ path: relative(root, file), text: readFileSync(file, 'utf8') }));
 }
