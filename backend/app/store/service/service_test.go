@@ -1801,6 +1801,29 @@ func TestService_EditComment(t *testing.T) {
 	assert.NoError(t, err, "allow second edit")
 }
 
+func TestService_EditCommentKeepsStoredPostURL(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	defer b.Close()
+
+	// comments imported or stored by older versions can sit under a url that sanitizing changes
+	stored := store.Locator{URL: "https://radio-t.com/a|b", SiteID: "radio-t"}
+	id, err := eng.Create(store.Comment{ID: "c1", Locator: stored, Text: "old text", Timestamp: time.Now(),
+		User: store.User{ID: "u1", Name: "u1"}})
+	require.NoError(t, err)
+
+	comment, err := b.EditComment(stored, id, EditRequest{Orig: "new text", Text: "new text"})
+	require.NoError(t, err)
+	assert.Equal(t, stored, comment.Locator)
+
+	c, err := eng.Get(getReq(stored, id))
+	require.NoError(t, err)
+	assert.Equal(t, "new text", c.Text, "the comment is edited in place")
+	_, err = eng.Get(getReq(store.Locator{URL: "https://radio-t.com/a%7Cb", SiteID: "radio-t"}, id))
+	assert.Error(t, err, "no copy under the sanitized url")
+}
+
 func TestService_EditCommentSanitizesSummary(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()

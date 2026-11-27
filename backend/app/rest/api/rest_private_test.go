@@ -214,6 +214,79 @@ func TestRest_CreateWithRestrictedWord(t *testing.T) {
 	assert.EqualValues(t, rest.ErrCommentRestrictWords, c["code"], "the restricted-words code, the same for a new and an edited comment")
 }
 
+func TestRest_CreateRespelledPostURL(t *testing.T) {
+	ts, srv := startupT(t, func(srv *Rest) { srv.UpdateLimiter = 100 })
+	mockDestination := &fakeDestination{}
+	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
+	defer srv.privRest.notifyService.Close()
+
+	oldPost := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/old"}
+	_, err := srv.DataService.Create(store.Comment{Text: "old", Timestamp: time.Now().AddDate(0, 0, -15),
+		Locator: oldPost, User: store.User{ID: "u1", Name: "u1"}})
+	require.NoError(t, err)
+	closedPost := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/closed"}
+	_, err = srv.DataService.Create(store.Comment{Text: "closed", Locator: closedPost, User: store.User{ID: "u1", Name: "u1"}})
+	require.NoError(t, err)
+	require.NoError(t, srv.DataService.SetReadOnly(closedPost, true))
+	// a moderator closes a post by the url the widget sends, which sanitizing changes
+	require.NoError(t, srv.DataService.SetReadOnly(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/a|b"}, true))
+	// a flag set by an older version is kept only under the url as it was sent
+	_, err = srv.DataService.Engine.Flag(engine.FlagRequest{Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/e|f"},
+		Flag: engine.ReadOnly, Update: engine.FlagTrue})
+	require.NoError(t, err)
+	// comments stored before urls were sanitized sit under the url as it was sent
+	_, err = srv.DataService.Engine.Create(store.Comment{ID: "legacy", Text: "old", Timestamp: time.Now().AddDate(0, 0, -15),
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/c|d"}, User: store.User{ID: "u1", Name: "u1"}})
+	require.NoError(t, err)
+
+	send := func(t *testing.T, url string) (status int, c store.Comment) {
+		t.Helper()
+		body, err := json.Marshal(map[string]any{"text": "test 123", "locator": map[string]string{"site": "remark42", "url": url}})
+		require.NoError(t, err)
+		b, status := call(t, http.MethodPost, ts.URL+"/api/v1/comment?site=remark42", string(body), adminPasswd)
+		if status == http.StatusCreated {
+			require.NoError(t, json.Unmarshal([]byte(b), &c))
+		}
+		return status, c
+	}
+
+	for _, tc := range []struct {
+		url, post string
+		stored    int
+	}{
+		{"HTTPS://radio-t.com/old", oldPost.URL, 1},
+		{" https://radio-t.com/old ", oldPost.URL, 1},
+		{"https://radio-t.com/old#", oldPost.URL, 1},
+		{"HTTPS://radio-t.com/closed", closedPost.URL, 1},
+		{"https://radio-t.com/a|b", "https://radio-t.com/a%7Cb", 0},
+		{"HTTPS://radio-t.com/a|b", "https://radio-t.com/a%7Cb", 0},
+		{"https://radio-t.com/a%7Cb", "https://radio-t.com/a%7Cb", 0},
+		{"https://radio-t.com/e|f", "https://radio-t.com/e%7Cf", 0},
+		{"https://radio-t.com/c|d", "https://radio-t.com/c%7Cd", 0},
+	} {
+		t.Run("read-only "+tc.url, func(t *testing.T) {
+			status, _ := send(t, tc.url)
+			assert.Equal(t, http.StatusForbidden, status)
+			// a post with no comments has no bucket, and Find returns an error for it
+			comments, _ := srv.DataService.Find(store.Locator{SiteID: "remark42", URL: tc.post}, "time", store.User{})
+			assert.Len(t, comments, tc.stored, "nothing is added to the closed post")
+		})
+	}
+
+	t.Run("open post", func(t *testing.T) {
+		status, c := send(t, "HTTPS://radio-t.com/open#")
+		require.Equal(t, http.StatusCreated, status)
+		assert.Equal(t, "https://radio-t.com/open", c.Locator.URL)
+		waitForCount(t, 1, func() int { return len(mockDestination.Get()) })
+		assert.Equal(t, c.ID, mockDestination.Get()[0].Comment.ID)
+	})
+
+	t.Run("url sanitizing drops", func(t *testing.T) {
+		status, _ := send(t, "javascript:alert(1)")
+		assert.Equal(t, http.StatusBadRequest, status)
+	})
+}
+
 func TestRest_CreateRelativeURL(t *testing.T) {
 	ts, _ := startupT(t)
 
