@@ -1191,6 +1191,15 @@ func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *private) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 
+	// net/http removes the temp files of a parsed form only for the request it created, and the middlewares
+	// pass a copy (WithContext) on, so the form is removed here. The removal is deferred before parsing,
+	// as ParseMultipartForm can write the form to disk and still return an error.
+	defer func() {
+		if r.MultipartForm != nil {
+			_ = r.MultipartForm.RemoveAll()
+		}
+	}()
+
 	r.Body = http.MaxBytesReader(w, r.Body, 32*1024*1024) // hard cap on upload to prevent memory exhaustion
 	// gosec G120: r.Body is already bounded by MaxBytesReader on the line above (32 MB),
 	// so ParseMultipartForm cannot read more than that regardless of the in-memory threshold.
