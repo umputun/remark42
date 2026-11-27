@@ -53,7 +53,7 @@ const removeScript = (id, parentElement) => {
 }
 
 // This function will be provided to useEffect and will insert the script
-// when the component is mounted and remove it when it unmounts
+// when the component is mounted, and remove it and the widget when it unmounts
 const manageScript = () => {
 	if (!window) {
 		return
@@ -62,7 +62,12 @@ const manageScript = () => {
 	if (document.getElementById("remark42")) {
 		insertScript("comments-script", document.body)
 	}
-	return () => removeScript("comments-script", document.body)
+	return () => {
+		removeScript("comments-script", document.body)
+		// take the widget's listeners off the page together with the widget;
+		// destroy exists only while an instance does
+		window.REMARK42?.destroy?.()
+	}
 }
 
 /* Another function for another useEffect - this is the most crucial part for
@@ -158,7 +163,7 @@ const removeScript = (id: string, parentElement: HTMLElement) => {
 }
 
 // This function will be provided to useEffect and will insert the script
-// when the component is mounted and remove it when it unmounts
+// when the component is mounted, and remove it and the widget when it unmounts
 const manageScript = () => {
 	if (!window) {
 		return () => {}
@@ -167,7 +172,12 @@ const manageScript = () => {
 	if (document.getElementById("remark42")) {
 		insertScript("comments-script", document.body)
 	}
-	return () => removeScript("comments-script", document.body)
+	return () => {
+		removeScript("comments-script", document.body)
+		// take the widget's listeners off the page together with the widget;
+		// destroy exists only while an instance does
+		window.REMARK42?.destroy?.()
+	}
 }
 
 /* Another function for another useEffect - this is the most crucial part for
