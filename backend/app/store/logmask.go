@@ -1,6 +1,9 @@
 package store
 
-import "regexp"
+import (
+	"regexp"
+	"strings"
+)
 
 // logMask replaces the values MaskForLog hides
 const logMask = "********"
@@ -23,8 +26,16 @@ var reLogEmail = regexp.MustCompile(`(?:"[^"\\:,={}\[\]<>\s\p{Z}]+\\?"|[^\s\p{Z}
 // `{"` of its header, and its payload may carry an email address, readable by anyone who decodes it.
 var reLogJWT = regexp.MustCompile(`eyJ[\w-]+\.[\w-]+(?:\.[\w-]*)?`)
 
-// MaskForLog hides email addresses and JWTs in a log line built from user input
+// logLineBreaks maps every character that can start a new line to a space, the same set the request logger of
+// go-pkgz/rest collapses. Request data can carry line breaks, also URL-encoded ones that unescaping the logged
+// URL turns back into raw ones, and each would start a log record written by whoever sent the request.
+var logLineBreaks = strings.NewReplacer("\n", " ", "\r", " ", "\v", " ", "\f", " ", "\u0085", " ", "\u2028", " ", "\u2029", " ")
+
+// MaskForLog makes a log line built from user input safe to write: it hides email addresses and JWTs and keeps
+// the line a single line
 func MaskForLog(s string) string {
 	s = reLogJWT.ReplaceAllLiteralString(s, logMask)
-	return reLogEmail.ReplaceAllLiteralString(s, logMask)
+	s = reLogEmail.ReplaceAllLiteralString(s, logMask)
+	// after masking, as the masks match some of these characters inside an address
+	return logLineBreaks.Replace(s)
 }

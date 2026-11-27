@@ -584,6 +584,7 @@ func Test_validEmailAuthLogHidesEmail(t *testing.T) {
 		{"address", "site=remark42&address=a%40example.com,secret.person%40example.com&user=someone",
 			`suspicious address rejected: mail: expected single address, got ",********"`},
 		{"site", "site=secret.person%40example.com&address=a%40example.com&user=someone", "suspicious site rejected: ********"},
+		{"line break", "site=remark42&address=a%40example.com&user=abcd%0A[INFO]FORGED", "suspicious user rejected: abcd [INFO]FORGED"},
 	}
 	for _, tt := range tbl {
 		t.Run(tt.name, func(t *testing.T) {
