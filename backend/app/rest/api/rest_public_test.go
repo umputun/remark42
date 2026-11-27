@@ -965,6 +965,29 @@ func TestRest_Counts(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, code)
 }
 
+func TestRest_CountsCachedPerList(t *testing.T) {
+	lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
+	require.NoError(t, err)
+	ts, _ := startupT(t, func(srv *Rest) { srv.Cache = cache.NewScache[[]byte](lru) })
+
+	addComment(t, store.Comment{Text: "test", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}, ts)
+
+	counts := func(t *testing.T, query, body string) []store.PostInfo {
+		t.Helper()
+		return callJSON[[]store.PostInfo](t, http.MethodPost, ts.URL+"/api/v1/counts?site=remark42"+query, body, adminPasswd)
+	}
+
+	// the same characters split into posts differently, the first request fills the cache
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah1,https://radio-t.com/blah2"}},
+		counts(t, "", `["https://radio-t.com/blah1,https://radio-t.com/blah2"]`))
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 1}, {URL: "https://radio-t.com/blah2"}},
+		counts(t, "", `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`))
+
+	// the same characters split between the request url and the list
+	assert.Equal(t, []store.PostInfo{{URL: "&x=yhttps://radio-t.com/blah1"}}, counts(t, "", `["&x=yhttps://radio-t.com/blah1"]`))
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 1}}, counts(t, "&x=y", `["https://radio-t.com/blah1"]`))
+}
+
 func TestRest_List(t *testing.T) {
 	ts, _ := startupT(t)
 
@@ -1315,7 +1338,8 @@ func (k *keyRecorder) take() []string {
 }
 
 // TestRest_CacheKeys pins the cache key of every cached read for anonymous, regular and admin users.
-// The keys are what an external cache (redis) holds across restarts, so they must not change
+// Cached values live in each process; with the redis_pub_sub cache, nodes tell each other which keys to
+// drop by these keys, so nodes running versions with different keys don't drop each other's entries
 func TestRest_CacheKeys(t *testing.T) {
 	rec := &keyRecorder{}
 	ts, _ := startupT(t, func(srv *Rest) {
@@ -1353,7 +1377,7 @@ func TestRest_CacheKeys(t *testing.T) {
 			"remark42@@/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
 			"remark42@@/api/v1/last/5?site=remark42@@remark42$$last$$last-votes",
 			"remark42@@/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
-			"remark42@@d-MjUIbzh-5nPHtWiotdc-diFIA=@@remark42",
+			"remark42@@tHnWa62CsDs9OhoI4Xg28wCdmNM=@@remark42",
 			"remark42@@/api/v1/list?site=remark42&limit=10@@remark42",
 			"remark42@@/api/v1/rss/post?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
 			"remark42@@/api/v1/rss/site?site=remark42@@remark42$$last",
@@ -1364,7 +1388,7 @@ func TestRest_CacheKeys(t *testing.T) {
 			"remark42@@/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
 			"remark42@@provider1_dev!!/api/v1/last/5?site=remark42@@remark42$$last$$last-votes",
 			"remark42@@provider1_dev!!/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
-			"remark42@@d-MjUIbzh-5nPHtWiotdc-diFIA=@@remark42",
+			"remark42@@tHnWa62CsDs9OhoI4Xg28wCdmNM=@@remark42",
 			"remark42@@/api/v1/list?site=remark42&limit=10@@remark42",
 			"remark42@@/api/v1/rss/post?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
 			"remark42@@/api/v1/rss/site?site=remark42@@remark42$$last",
@@ -1375,7 +1399,7 @@ func TestRest_CacheKeys(t *testing.T) {
 			"remark42@@admin!!/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
 			"remark42@@admin!!github_ef0f706a7!!/api/v1/last/5?site=remark42@@remark42$$last$$last-votes",
 			"remark42@@admin!!github_ef0f706a7!!/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
-			"remark42@@SKPdvPaTAAgSivcWZg7YK102dk8=@@remark42",
+			"remark42@@-vqJZDV8LFwNY_Y6d_1Ba0Px7sU=@@remark42",
 			"remark42@@admin!!/api/v1/list?site=remark42&limit=10@@remark42",
 			"remark42@@admin!!/api/v1/rss/post?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
 			"remark42@@admin!!/api/v1/rss/site?site=remark42@@remark42$$last",
@@ -1386,7 +1410,7 @@ func TestRest_CacheKeys(t *testing.T) {
 			"remark42@@admin!!/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
 			"remark42@@admin!!admin!!/api/v1/last/5?site=remark42@@remark42$$last$$last-votes",
 			"remark42@@admin!!admin!!/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
-			"remark42@@SKPdvPaTAAgSivcWZg7YK102dk8=@@remark42",
+			"remark42@@-vqJZDV8LFwNY_Y6d_1Ba0Px7sU=@@remark42",
 			"remark42@@admin!!/api/v1/list?site=remark42&limit=10@@remark42",
 			"remark42@@admin!!/api/v1/rss/post?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
 			"remark42@@admin!!/api/v1/rss/site?site=remark42@@remark42$$last",
