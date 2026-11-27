@@ -16,7 +16,9 @@ Load the widget script once, in your `index.html`, after a global `remark_config
 
 The examples below are written as Vue class components (`vue-property-decorator`); the same calls work in any framework.
 
-Create the instance when the `div` for Remark42 has appeared, usually in `mounted` or `componentDidMount` of the SPA lifecycle. Always destroy the previous instance first: a second `createInstance` reuses the widget it finds in the page, so the previous page's comments stay until `destroy()` is called. Set `url` to the current route on every call: `createInstance` writes the resolved `url` into the object it is given, the global `remark_config` included when the script creates the first instance, so a copied or reused configuration keeps the first page's address.
+Create the instance when the element with `id="remark42"` has appeared, usually in `mounted` or `componentDidMount` of the SPA lifecycle: `createInstance` always puts the widget into that element and throws if the page has none. Always destroy the previous instance first: a second `createInstance` reuses the widget it finds in the page, so the previous page's comments stay until `destroy()` is called. Set `url` to the current route on every call: `createInstance` writes the resolved `url` into the object it is given, the global `remark_config` included when the script creates the first instance, so a copied or reused configuration keeps the first page's address.
+
+`createInstance` returns an object with `destroy()`, which removes the widget, and `changeTheme(theme)`, which works as `window.REMARK42.changeTheme` does. It throws when the page has no `remark42` element, or when the global `remark_config` or its `site_id` is missing.
 
 ```ts
   initRemark42() {
@@ -26,7 +28,6 @@ Create the instance when the `div` for Remark42 has appeared, usually in `mounte
       }
 
       this.remark42Instance = window.REMARK42.createInstance({
-        node: this.$refs.remark42 as HTMLElement,
         ...window.remark_config, // see https://remark42.com/docs/configuration/frontend/
         url: window.location.origin + window.location.pathname,
       })

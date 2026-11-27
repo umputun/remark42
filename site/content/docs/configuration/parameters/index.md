@@ -2,7 +2,7 @@
 title: Command-Line Interface parameters
 ---
 
-### Required parameters
+## Required parameters
 
 Only two parameters are required to start the server:
 
@@ -30,7 +30,7 @@ services:
       - ./var:/srv/var # persistent volume to store all Remark42 data
 ```
 
-### Complete parameters list
+## Complete parameters list
 
 | Command line                   | Environment                    | Default                 | Description                                              |
 |--------------------------------|--------------------------------|-------------------------|----------------------------------------------------------|
@@ -187,11 +187,11 @@ services:
 - _multi_ parameters separated by `,` in the environment or repeated with command-line keys, like `--site=s1 --site=s2 ...`
 - _required_ parameters have to be presented in the environment or provided in the command-line
 
-### Custom OAuth2 integration
+## Custom OAuth2 integration
 
 Custom OAuth2 integration currently supports only one custom provider at a time, and `AUTH_CUSTOM_NAME` must match `^[a-z0-9][a-z0-9_-]*$`.
 
-### Security Considerations for auth.send-jwt-header
+## Security Considerations for auth.send-jwt-header
 
 When `auth.send-jwt-header=true` is enabled:
 
@@ -207,7 +207,7 @@ This configuration should only be used when:
 2. You understand and accept the increased XSS risk
 3. You have implemented strong XSS protections on your site
 
-### Trusted proxies and client IP
+## Trusted proxies and client IP
 
 Remark42 uses the client IP for five things: per-IP rate limiting, vote de-duplication when `--votes-ip` is enabled, the IP hash stored with every comment and every vote, the ID of anonymous users, and the IP hash in the request log. When Remark42 runs behind a reverse proxy (nginx, Reproxy, Traefik, Cloudflare, an ALB, a k8s ingress, …) the TCP connection it sees comes from the **proxy**, not the visitor, so the proxy forwards the real client IP in a header and Remark42 reads it (priority: `X-Real-IP`, then `CF-Connecting-IP`, then `X-Forwarded-For`) to recover the real IP.
 
@@ -253,7 +253,7 @@ Caveats:
 - `0.0.0.0/0` trusts everyone and re-opens the bypass; too narrow a range over-throttles real visitors. The request log holds only a hash of the client address, so look up the proxy's network on the proxy side, for example with `docker network inspect <network>` for Docker Compose.
 - **Private client addresses.** A forwarded address from a private, shared (`100.64.0.0/10`), link-local or loopback range is skipped, and the next forwarded address is tried; the proxy's own address is used only when none is left. On an intranet, or behind a VPN that gives visitors such addresses, every visitor is attributed to the proxy and shares one rate limit. If the proxy passes on a `CF-Connecting-IP` or `X-Forwarded-For` the visitor sent, as nginx with `$proxy_add_x_forwarded_for` and Reproxy do, such a visitor can choose its address instead.
 
-### Deprecated parameters
+## Deprecated parameters
 
 The following list of command-line options is deprecated and might be removed in the next major release after the version they were deprecated. After the Remark42 version update, please check the startup log once for deprecation warning messages to avoid trouble with unrecognized command-line options in the future.
 
@@ -278,7 +278,7 @@ The following list of command-line options is deprecated and might be removed in
 
 </details>
 
-### Admin users
+## Admin users
 
 Admins/moderators should be defined in `docker-compose.yml` as a list of user IDs or passed in the command line.
 
@@ -289,7 +289,7 @@ environment:
 
 To get a user ID, sign in and click your name or the name of any other user you want to promote to admin. The profile panel that opens shows the full user ID under the name.
 
-### Docker image
+## Docker image
 
 Two parameters allow customizing the Docker container on the system level:
 
