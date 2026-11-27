@@ -256,8 +256,9 @@ func (s *public) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// key could be long for multiple posts, make it sha1
-	k := urlKey(r, false) + strings.Join(posts, ",")
+	// key could be long for multiple posts, make it sha1. Every post is quoted and the list is kept apart
+	// from the request url, which holds no line break, so different lists never share a key
+	k := fmt.Sprintf("%s\n%q", urlKey(r, false), posts)
 	h := sha1.Sum([]byte(k)) // nolint
 	sha := base64.URLEncoding.EncodeToString(h[:])
 
