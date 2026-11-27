@@ -4,25 +4,25 @@ title: Privacy Policy
 
 Umputun operates the website [remark42.com](https://remark42.com), which provides the SERVICE. This page is used to inform website visitors regarding our policies with the collection, use, and disclosure of Personal Information if anyone decided to use our Service. We process your name, user ID, picture and comments to run the comment service you signed in to; a hash of your IP address and the server logs to keep it secure and stop abuse; your notification address only if you subscribe. The Personal Information that we collect is used for providing the Service. We will not use or share your information with anyone except as described in this Privacy Policy.
 
-### Information Collection and Use
+## Information Collection and Use
 
 For a better experience while using our Service, we may require you to provide us with certain personally identifiable information, including but not limited to your name and email address. We can also obtain some basic information from third-party services used to perform login to our Service. The information that we collect will be used to contact or identify you. Your name, picture, user ID and comments are public and may be indexed by search engines. A keyed hash of your IP address is stored with each comment and vote; administrators can see the one on a comment.
 
-### How users may request deletion of that data
+## How users may request deletion of that data
 
 Comments and the pictures in them, your avatar and notification address are kept until they are deleted at your request. By default, the sign-in cookie lasts 200 hours after your last visit.
 
 To request deletion, click "Request deletion of my data" on your profile page and send the email it prepares to the site administrator. If you commented anonymously, there is no such button; ask the site administrator. When the administrator opens the link in that email, your comments, your name on them, the pictures you uploaded that those comments still show, your notification addresses and your avatar are removed. A picture that another commenter’s comment on the same page also shows is kept. The votes you gave on other comments stay counted and are kept under your user ID. Other commenters cannot see how you voted, but administrators can get it from exports and backups. Backups made before then keep your comments and notification addresses until they are replaced; by default the ten most recent daily backups are kept.
 
-### Log Data
+## Log Data
 
 We want to inform you that whenever you visit our Service, we collect information that your browser sends to us that is called Log Data. Remark42 logs the API and sign-in requests it serves: the address requested with its parameters, the time, the response status, a shortened one-way hash of your IP address and the start of what you submitted, such as the text of a comment. When a request fails, the line can also carry your user name and user ID. Some error lines, including sign-in, avatar and failed picture or RSS responses, can carry your IP address. With debug logging on, the log also records each new comment in full with its author’s name and user ID, and records your name and user ID when you sign in through a social login and whenever a request renews your session, whatever the sign-in method. It does not record your browser version or how long you stay on a page.
 
-### Cookies
+## Cookies
 
 Cookies are files with a small amount of data that is commonly used as an anonymous unique identifier. These are sent to your browser from the website that you visit and are stored on your computer’s hard drive. Our website uses these “cookies” to confirm user identity. You have the option to either accept or refuse these cookies, and know when a cookie is being sent to your computer. If you choose to refuse our cookies, you may not be able to use some portions of our Service. The comment widget also keeps some data in your browser’s local storage: the email address you signed in with, until you sign out, your unsent comment, and display settings such as sort order and hidden users.
 
-### Service Providers
+## Service Providers
 
 We may employ third-party companies and individuals due to the following reasons:
 
@@ -32,22 +32,22 @@ We may employ third-party companies and individuals due to the following reasons
 
 If you sign in by email, Remark42 sends the sign-in code through the mail server the site operator set up, and sends an MD5 hash of your address to Gravatar to look up your picture. If the operator turns on notifications, the commenter’s name, the text of the comment and of the comment it answers, and the page address are sent to the services the operator configured, such as a mail server, Telegram, Slack or a webhook; if you subscribed to replies, they are delivered to your email address or Telegram account. The login provider you choose knows that you signed in. Pictures that commenters embed from other sites are loaded by your browser from those sites, unless the operator set Remark42 to fetch and serve them itself. On remark42.com, your browser asks GitHub for the latest release number.
 
-### Security
+## Security
 
 We value your trust in providing us your Personal Information, thus we are striving to use commercially acceptable means of protecting it. But remember that no method of transmission over the internet, or method of electronic storage is 100% secure and reliable, and we cannot guarantee its absolute security.
 
-#### Links to Other Sites
+### Links to Other Sites
 
 Our Service may contain links to other sites. If you click on a third-party link, you will be directed to that site. Note that these external sites are not operated by us. Therefore, we strongly advise you to review the Privacy Policy of these websites. We have no control over, and assume no responsibility for the content, privacy policies, or practices of any third-party sites or services.
 
-### Children’s Privacy
+## Children’s Privacy
 
 Our Services do not address anyone under the age of 13. We do not knowingly collect personal identifiable information from children under 13. In the case we discover that a child under 13 has provided us with personal information, we immediately delete this from our servers. If you are a parent or guardian, and you are aware that your child has provided us with personal information, please contact us so that we will be able to do necessary actions.
 
-### Changes to This Privacy Policy
+## Changes to This Privacy Policy
 
 We may update our Privacy Policy from time to time. Thus, we advise you to review this page periodically for any changes. We will notify you of any changes by posting the new Privacy Policy on this page. These changes are effective immediately, after they are posted on this page.
 
-### Contact Us
+## Contact Us
 
 If you have any questions or suggestions about our Privacy Policy, do not hesitate to contact us through [https://github.com/umputun/remark42/discussions](https://github.com/umputun/remark42/discussions).

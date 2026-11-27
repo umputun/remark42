@@ -139,7 +139,7 @@ Note the use of the `client:idle` directive which will hydrate the component onc
 
 This example demonstrates how to integrate the Remark42 commenting system using a React/Preact component. The component manages the insertion and removal of the Remark42 script in the DOM, provides the ability to toggle between light and dark themes, and includes areas for embedding comments and displaying a comment count. This makes it easy to incorporate a commenting system into a React/Preact application.
 
-#### Comment.tsx
+### Comment.tsx
 
 ```ts
 import { useEffect, useState } from "preact/hooks"
@@ -241,7 +241,7 @@ export function Comments() {
 }
 ```
 
-#### Using it in an Astro component
+### Using it in an Astro component
 
 ```js
 ---

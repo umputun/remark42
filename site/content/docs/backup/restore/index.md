@@ -16,7 +16,7 @@ A file name without `/` is looked up in `${BACKUP_PATH}`, `/srv/var/backup` in t
 
 The command only submits the job: it prints `completed, status=202` and exits while the server imports the file in the background. The result is in the server's log (`docker logs remark42`): `import request completed` with the number of comments, or a line with `import failed`. A second restore, import or URL migration for the same site is refused with 409 while one is running.
 
-### Import/restore without removing existing comments
+## Import/restore without removing existing comments
 
 The `restore` command removes the existing comments on the site, and so does an import. To add comments from Disqus, WordPress or Commento while keeping the ones you have, combine two backups and restore the result. Stop all writes from step 1 until the server log confirms the final restore: a comment or subscription saved in between is in neither file and is lost. For example, block the site at the reverse proxy and run the commands with `--url=http://127.0.0.1:8080`, which reaches the server directly instead of through `REMARK_URL`.
 

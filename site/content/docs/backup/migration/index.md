@@ -10,7 +10,7 @@ The import command only submits the job: it prints `completed, status=202` and e
 
 On Linux, the container makes its own `app` user the owner of `./var` at every start, which can stop a host user other than root from writing there. Copy a file into the container with `docker cp <file> remark42:/srv/var/<file>`, or set `APP_UID` to your host user's ID to keep `./var` writable for you.
 
-### Initial import from Disqus
+## Initial import from Disqus
 
 1. Disqus provides export of all comments on your site in a gzipped file. This option is available in your Moderation panel at Disqus Admin > Setup > Export. The export will be sent into a queue and then emailed to the address associated with your account once it's ready. Direct link to export will be something like `https://<shortname>.disqus.com/admin/discussions/export/`. See [importing-exporting](https://help.disqus.com/en/articles/1717199-importing-exporting) for more details
 2. Copy this file to `/srv/var` in the Remark42 container. There is no need to unpack it: a file name ending in `.gz` is unpacked during the import
@@ -22,7 +22,7 @@ The import also fetches each commenter's avatar from Disqus and stores it with t
 
 Left out of the import: the comments of deleted threads, votes, and avatars of guests who commented without a Disqus account. Deleted comments and comments marked as spam are kept without their text and author only when they have replies, so the replies stay in their thread; otherwise they are not shown.
 
-### Initial import from WordPress
+## Initial import from WordPress
 
 1. Use [that instruction](https://wordpress.com/support/export/) to export comments to file using standard WordPress functionality
 2. Copy this file to `/srv/var` in the Remark42 container
@@ -34,7 +34,7 @@ The visibility of a post is not carried over. Approved comments of every post in
 
 Comment text is shown the way WordPress shows it: blank lines start paragraphs, line breaks are kept, bare links and email addresses become links and text smilies become emoji. Markdown is not interpreted, as WordPress does not interpret it either. Quotes and dashes are curled unless `DISABLE_FANCY_TEXT_FORMATTING` is set.
 
-### Initial import from Commento
+## Initial import from Commento
 
 1. Copy the exported JSON file to `/srv/var` in the Remark42 container
 2. Run import command (`ADMIN_PASSWD` must be enabled on the server for it to work) - `docker exec -it remark42 remark42 import -p commento -f /srv/var/{commento-export-name}.json -s {your site ID}`

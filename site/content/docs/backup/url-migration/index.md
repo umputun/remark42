@@ -6,7 +6,7 @@ Here is an example of how to move your comments after your posts are moved, from
 
 Remap exports the site's comments, clears the site and imports them back with the new addresses, so a failure in the middle leaves the site incomplete: make a [backup](https://remark42.com/docs/backup/backup/) first. Afterwards every comment is marked as imported, and the stored hashes of the voters' IP addresses are gone, so the same-IP vote restriction (`VOTES_IP`) starts afresh.
 
-### Rules file
+## Rules file
 
 First, create a `rules` file in the server's data directory, `/srv/var` in the container and `./var` on the host.
 
@@ -27,7 +27,7 @@ docker exec remark42 sh -c 'echo "https://example.org/blog/* https://example.org
 
 or set `APP_UID` to your host user's ID to keep `./var` writable for you.
 
-### Applying the remap
+## Applying the remap
 
 After rules file is ready, run the following command (`ADMIN_PASSWD` must be enabled on the server for it to work):
 
