@@ -46,7 +46,7 @@ func TestTelegram_Send(t *testing.T) {
 
 some text
 
-"<i>some parent text with a <a href="http://example.org">link</a> and special text:&amp; &lt; &gt; &amp;</i>"
+"<i>some parent text with a link and special text:&amp; &lt; &gt; &amp;</i>"
 
 ↦  <a href="http://example.org/">[test title]</a>`,
 		res)
@@ -68,6 +68,21 @@ some text
 	assert.Equal(t, `<a href="#remark42__comment-"></a>
 
 <b>Lorem ipsum <i>dolor sit amet</i>, consectetur adipiscing <code>elit, sed do eiusmod tempor incididunt</code> ut...</b>`, res)
+}
+
+func TestTelegram_BuildMessageDropsLinks(t *testing.T) {
+	tb := Telegram{}
+	c := store.Comment{ID: "999", ParentID: "1", Locator: store.Locator{URL: "https://example.org/"},
+		Text: `<p>see <b><a href="https://evil.example/login" rel="nofollow ugc">Sign in</a></b> now</p>`}
+	c.User.Name = "from"
+	cp := store.Comment{ID: "1", Text: `<p>parent <a href="https://evil.example/">https://example.org/help</a></p>`}
+	cp.User.Name = "to"
+
+	assert.Equal(t, `<a href="https://example.org/#remark42__comment-999">from</a> -> <a href="https://example.org/#remark42__comment-1">to</a>
+
+see <b>Sign in</b> now
+
+"<i>parent https://example.org/help</i>"`, tb.buildMessage(Request{Comment: c, parent: cp}))
 }
 
 func TestTelegram_SendVerification(t *testing.T) {
