@@ -1,7 +1,7 @@
 import type { StylesDeclaration } from 'utils/set-dom-props';
 import { setAttributes, setStyles } from 'utils/set-dom-props';
 import { createIframe } from 'utils/create-iframe';
-import type { Profile } from 'common/types';
+import type { ProfileRequest } from 'common/types';
 
 const PROFILE_TITLE = 'Profile | Remark42';
 
@@ -23,7 +23,7 @@ function createElement<K extends keyof HTMLElementTagNameMap>(
   return element;
 }
 
-function createFragment(params: Profile & Record<string, string | unknown>) {
+function createFragment(params: ProfileRequest & Record<string, string | unknown>) {
   removeIframe();
   // the iframe is hidden until it reveals itself, and a hidden element cannot take
   // focus, so focus from the reveal rather than on a timer
@@ -84,7 +84,7 @@ function handleKeydown(evt: KeyboardEvent) {
   closeProfile();
 }
 
-export function openProfile(params: Profile & Record<string, string | unknown>) {
+export function openProfile(params: ProfileRequest & Record<string, string | unknown>) {
   setStyles(document.body, { overflow: 'hidden' });
   createFragment(params);
   animateAppear();

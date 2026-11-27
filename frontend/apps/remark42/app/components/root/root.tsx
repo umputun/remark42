@@ -35,6 +35,7 @@ import { uploadImage, getPreview } from 'common/api';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { bindActions } from 'utils/actionBinder';
 import { postMessageToParent, parseMessage, isFromParent, updateIframeHeight } from 'utils/post-message';
+import { answerReaderAsks } from 'utils/reader';
 import { useActions } from 'hooks/useAction';
 import { RevealedComments } from 'components/root/in-view/in-view';
 import { setCollapse } from 'store/thread/actions';
@@ -136,6 +137,7 @@ export class Root extends Component<Props, State> {
 
   heightObserver: ResizeObserver | null = null;
   heightFallbackTimeout: number | null = null;
+  stopAnsweringReaderAsks: (() => void) | null = null;
 
   startHeightReporting = () => {
     if (this.heightObserver) {
@@ -164,6 +166,7 @@ export class Root extends Component<Props, State> {
     });
 
     window.addEventListener('message', this.onMessage);
+    this.stopAnsweringReaderAsks = answerReaderAsks(() => this.props.user);
   }
 
   componentWillUnmount() {
@@ -171,6 +174,7 @@ export class Root extends Component<Props, State> {
       window.clearTimeout(this.heightFallbackTimeout);
     }
     this.heightObserver?.disconnect();
+    this.stopAnsweringReaderAsks?.();
   }
 
   /** `restLoaded` is set when the thread was loaded to its end for this link, which happens once */

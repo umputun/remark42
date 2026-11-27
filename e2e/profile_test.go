@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -200,4 +201,121 @@ func TestProfile_LoadingAndFailureStates(t *testing.T) {
 		"the profile offered another page after the list failed to load")
 	waitHidden(t, overlay.Locator("h3.profile-title"),
 		"the profile showed its comments heading after the list failed to load")
+}
+
+// TestProfile_PageLearnsNothingOfTheReader covers the messages the widget posts to open a profile,
+// which any page framing it reads. Opening one's own profile has to name nobody, and opening the
+// profile of the author of a comment has to leave out whether that author is the reader. The
+// profile frame still recognizes the reader in both, by asking the widget frame, so each half also
+// requires the sign-out the reader's own profile offers: without it, a widget that sent nothing at
+// all would pass
+func TestProfile_PageLearnsNothingOfTheReader(t *testing.T) {
+	t.Parallel()
+
+	t.Run("own profile from the auth panel", func(t *testing.T) {
+		t.Parallel()
+
+		page, frame, _ := quietReader(t, threadURL(t), "profilequietpanel")
+		require.NoError(t, frame.Locator(`[title="Open your profile"]`).Click())
+		waitVisible(t, profileSignout(page))
+
+		messages := profileMessages(t, page)
+		require.NotEmpty(t, messages, "the page saw no profile message, so nothing here was checked")
+		for _, m := range messages {
+			for _, key := range []string{"id", "name", "picture", "current"} {
+				assert.NotContains(t, m, key, "the page was told the %s of the reader: %v", key, m)
+			}
+		}
+
+		// the sidebar slides in once the widget frame has answered, and its close button is on it.
+		// A sidebar that never slid in leaves the reader under a dimmed page with no way out
+		require.NoError(t, page.FrameLocator(`iframe[src*="page=profile"]`).
+			GetByTitle("Close profile").Click())
+		waitHidden(t, page.Locator(`iframe[src*="page=profile"]`), "the reader's own profile did not close")
+	})
+
+	t.Run("own name above a comment", func(t *testing.T) {
+		t.Parallel()
+
+		page, frame, reader := quietReader(t, threadURL(t), "profilequietname")
+		comment := frame.Locator("article").Filter(playwright.LocatorFilterOptions{HasText: "profile quiet " + reader})
+		require.NoError(t, comment.Locator("button", playwright.LocatorLocatorOptions{HasText: reader}).First().Click())
+		waitVisible(t, profileSignout(page))
+
+		messages := profileMessages(t, page)
+		require.NotEmpty(t, messages, "the page saw no profile message, so nothing here was checked")
+		for _, m := range messages {
+			assert.NotContains(t, m, "current", "the page was told the author is the reader: %v", m)
+		}
+	})
+
+	// with AUTH_SEND_JWT_HEADER the widget frame keeps the session as a token in its memory. A
+	// browser that blocks third-party cookies stores none for the frame, which is the case here once
+	// the cookies are gone: the profile frame then has no session, and only the widget frame can say
+	// who the reader is. The page is on another site, so the two frames find each other as frames
+	// of a foreign page
+	t.Run("own profile in header mode on another site", func(t *testing.T) {
+		t.Parallel()
+
+		page, frame, _ := quietReader(t, httpsThread(t, "profile-quiet-header"), "profilequietheader")
+		require.NoError(t, page.Context().ClearCookies())
+
+		require.NoError(t, frame.Locator(`[title="Open your profile"]`).Click())
+		waitVisible(t, profileSignout(page))
+
+		// read after the profile opened, since a response on the way could have set a cookie again
+		cookies, err := page.Context().Cookies(httpsURL)
+		require.NoError(t, err)
+		assert.False(t, slices.ContainsFunc(cookies, func(c playwright.Cookie) bool { return c.Name == "JWT" }),
+			"the profile frame had a cookie session of its own, so this case does not show the widget frame answering")
+	})
+}
+
+// quietReader signs a new reader in, posts a comment as them and starts recording every profile
+// message the widget posts to the page from then on
+func quietReader(t *testing.T, thread, prefix string) (playwright.Page, playwright.FrameLocator, string) {
+	t.Helper()
+
+	page := newPage(t)
+	frame := openURL(t, page, thread)
+	reader := anonName(prefix)
+	signInAnon(t, page, frame, reader)
+	postComment(t, frame, "profile quiet "+reader)
+
+	_, err := page.Evaluate(`() => {
+		window.e2eMessages = [];
+		window.addEventListener('message', (e) => {
+			if (e.data && typeof e.data === 'object') window.e2eMessages.push(e.data);
+		});
+	}`)
+	require.NoError(t, err)
+	return page, frame, reader
+}
+
+// profileMessages hands back the profile messages the page has received since quietReader. The
+// answer the widget frame gives the profile frame must not be among what the page received at all
+func profileMessages(t *testing.T, page playwright.Page) []map[string]any {
+	t.Helper()
+
+	got, err := page.Evaluate(`() => window.e2eMessages`)
+	require.NoError(t, err)
+	var out []map[string]any
+	for _, m := range got.([]any) {
+		msg, ok := m.(map[string]any)
+		if !ok {
+			continue
+		}
+		for _, key := range []string{"reader", "readerAnswer", "readerAsk"} {
+			assert.NotContains(t, msg, key, "the page received the exchange between the frames: %v", msg)
+		}
+		if p, ok := msg["profile"].(map[string]any); ok {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// profileSignout is the sign-out the profile offers on the reader's own profile only
+func profileSignout(page playwright.Page) playwright.Locator {
+	return page.FrameLocator(`iframe[src*="page=profile"]`).Locator(".profile-signout")
 }

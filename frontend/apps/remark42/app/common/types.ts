@@ -11,7 +11,14 @@ export type User = {
 };
 
 /** data which is used on user-info page */
-export type Profile = Pick<User, 'id' | 'name' | 'picture'> & { current?: '1' };
+export type Profile = Pick<User, 'id' | 'name' | 'picture'>;
+
+/**
+ * What the widget posts to the page to open a profile. The page reads it, so it says nothing of the
+ * reader: it names the author whose name was clicked, or nobody when readers open their own, and
+ * carries the token the profile frame quotes when it asks the widget who the reader is
+ */
+export type ProfileRequest = Partial<Profile> & { token: string };
 
 export interface BlockedUser {
   id: string;

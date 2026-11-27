@@ -115,7 +115,7 @@ describe('embed', () => {
     const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
 
     window.dispatchEvent(
-      new MessageEvent('message', { data: { profile: { id: 'reader', current: '1' } }, source: iframe.contentWindow })
+      new MessageEvent('message', { data: { profile: { token: 'token' } }, source: iframe.contentWindow })
     );
     expect(document.querySelectorAll('iframe')).toHaveLength(2);
     expect(document.body.style.overflow).toBe('hidden');

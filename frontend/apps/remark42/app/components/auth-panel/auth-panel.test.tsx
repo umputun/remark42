@@ -78,7 +78,7 @@ describe('<AuthPanel />', () => {
     });
 
     // the message goes to whatever page embeds the widget
-    it('sends the parent only the profile fields when the user opens their own profile', () => {
+    it('tells the parent nothing of the reader when they open their own profile', () => {
       const postMessageToParent = jest.spyOn(postMessage, 'postMessageToParent').mockReturnValue(true);
       const { getByTitle } = createWrapper({
         ...DefaultProps,
@@ -97,9 +97,8 @@ describe('<AuthPanel />', () => {
       fireEvent.click(getByTitle('Open your profile'));
 
       expect(postMessageToParent).toHaveBeenCalledTimes(1);
-      expect(postMessageToParent).toHaveBeenCalledWith({
-        profile: { id: 'john', name: 'John', picture: 'http://localhost/john.png', current: '1' },
-      });
+      // only the token the profile frame asks this frame with, which names nobody
+      expect(postMessageToParent).toHaveBeenCalledWith({ profile: { token: expect.any(String) } });
       postMessageToParent.mockRestore();
     });
   });

@@ -5,6 +5,7 @@ import { render } from 'tests/utils';
 import * as api from 'common/api';
 import * as pq from 'utils/parse-query';
 import * as postMessage from 'utils/post-message';
+import * as reader from 'utils/reader';
 import type { Comment, User } from 'common/types';
 
 import { Profile } from './profile';
@@ -39,6 +40,14 @@ const commentStub: Comment = {
   user: userStub,
 };
 const commentsStub = [commentStub, commentStub, commentStub];
+
+/** Opens the profile of the reader: the widget frame answers that the reader is the one shown */
+function openAsReader(params: Record<string, string>) {
+  jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...params, token: 'token' }));
+  jest
+    .spyOn(reader, 'askReader')
+    .mockImplementation(async () => ({ id: params.id, name: params.name, picture: params.picture }));
+}
 
 describe('<Profile />', () => {
   it('should render user without comments', async () => {
@@ -86,12 +95,12 @@ describe('<Profile />', () => {
   });
 
   it('should render current user without comments', async () => {
-    jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, current: '1' }));
+    openAsReader(userParamsStub);
     jest.spyOn(api, 'getUserComments').mockImplementation(async () => ({ comments: [], count: 0 }));
 
-    const { getByText, getByTitle, findByText, queryByTestId, queryByRole } = render(<Profile />);
+    const { getByText, findByTitle, findByText, queryByTestId, queryByRole } = render(<Profile />);
 
-    expect(getByTitle('Sign out')).toBeInTheDocument();
+    expect(await findByTitle('Sign out')).toBeInTheDocument();
     expect(getByText('Request deletion of my data')).toBeInTheDocument();
     expect(await findByText('No comments yet.')).toBeInTheDocument();
     expect(queryByTestId('comments-counter')).not.toBeInTheDocument();
@@ -99,7 +108,7 @@ describe('<Profile />', () => {
   });
 
   it('should render current user with comments without load more button', async () => {
-    jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, current: '1' }));
+    openAsReader(userParamsStub);
     jest
       .spyOn(api, 'getUserComments')
       .mockImplementation(async () => ({ comments: commentsStub, count: commentsStub.length }));
@@ -115,7 +124,7 @@ describe('<Profile />', () => {
 
   it('should render current user with comments with load more button', async () => {
     const comments = Array(15).fill(commentStub);
-    jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, current: '1' }));
+    openAsReader(userParamsStub);
     jest.spyOn(api, 'getUserComments').mockImplementation(async () => ({ comments, count: comments.length }));
 
     const { findByText, queryByTitle, queryByText, queryByTestId, queryByRole } = render(<Profile />);
@@ -128,15 +137,15 @@ describe('<Profile />', () => {
   });
 
   it('leaves the sign-out to the widget and sends no logout request of its own', async () => {
-    jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, current: '1' }));
+    openAsReader(userParamsStub);
     jest.spyOn(api, 'getUserComments').mockImplementation(async () => ({ comments: [], count: 0 }));
     const posted = jest.spyOn(postMessage, 'postMessageToParent').mockReturnValue(true);
     posted.mockClear();
     fetchMock.mockClear();
 
-    const { getByTitle } = render(<Profile />);
+    const { getByTitle, findByTitle } = render(<Profile />);
 
-    fireEvent.click(getByTitle('Sign out'));
+    fireEvent.click(await findByTitle('Sign out'));
 
     // the page removes this frame on the message, and a request sent from it would be cancelled
     expect(posted).toHaveBeenCalledWith({ profile: null, signout: true });
@@ -188,9 +197,7 @@ describe('<Profile />', () => {
       .mockImplementation(async () => ({ comments: new Array(10).fill(commentStub), count: 15 }));
     // an anonymous user is recognised by the id prefix, and the button is only ever offered on
     // the reader's own profile, so both have to hold for the assertion to mean anything
-    jest
-      .spyOn(pq, 'parseQuery')
-      .mockImplementation(() => ({ ...userParamsStub, id: 'anonymous_1', name: 'anonymous_1', current: '1' }));
+    openAsReader({ ...userParamsStub, id: 'anonymous_1', name: 'anonymous_1' });
 
     render(<Profile />);
 
@@ -204,7 +211,7 @@ describe('<Profile />', () => {
     });
 
     it('offers the reader who signed in with email a link to the Gravatar avatar page', async () => {
-      jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, id: 'email_1', current: '1' }));
+      openAsReader({ ...userParamsStub, id: 'email_1' });
 
       render(<Profile />);
 
@@ -229,7 +236,7 @@ describe('<Profile />', () => {
     it.each(['github_1', 'anonymous_1', 'telegram_1'])(
       'does not offer it to the reader signed in as %s, whose avatar is not from Gravatar',
       async (id) => {
-        jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, id, current: '1' }));
+        openAsReader({ ...userParamsStub, id });
 
         render(<Profile />);
 
@@ -238,6 +245,56 @@ describe('<Profile />', () => {
         expect(screen.queryByText(/gravatar/i)).not.toBeInTheDocument();
       }
     );
+  });
+
+  describe("whether the profile is the reader's own", () => {
+    beforeEach(() => {
+      // the spies outlive each case, and a call made in an earlier one would satisfy these
+      jest
+        .spyOn(api, 'getUserComments')
+        .mockClear()
+        .mockImplementation(async () => ({ comments: [], count: 0 }));
+      jest.spyOn(reader, 'askReader').mockClear();
+    });
+
+    it('shows the reader the widget answers for when the page names nobody', async () => {
+      jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ token: 'token' }));
+      const ask = jest.spyOn(reader, 'askReader').mockImplementation(async () => userParamsStub);
+
+      const { container } = render(<Profile />);
+
+      expect(await screen.findByTitle('Sign out')).toBeInTheDocument();
+      expect(ask).toHaveBeenCalledWith('token');
+      // the sidebar slides in only with this class, and its close button is on it
+      await waitFor(() => expect(container.querySelector('.profile')).toHaveClass('rootAppear'));
+      expect(screen.getByText('username')).toBeInTheDocument();
+      await waitFor(() => expect(api.getUserComments).toHaveBeenCalledWith('1', { limit: 10, skip: 0 }));
+    });
+
+    it('takes it from the widget only, never from the page', async () => {
+      // the page can put anything in the query, the flag the profile once trusted among it
+      jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, current: '1', token: 'token' }));
+      const ask = jest.spyOn(reader, 'askReader').mockImplementation(async () => ({ ...userParamsStub, id: 'other' }));
+
+      render(<Profile />);
+
+      expect(await screen.findByText('No comments yet.')).toBeInTheDocument();
+      await waitFor(() => expect(ask).toHaveBeenCalled());
+      await ask.mock.results[0].value;
+      expect(screen.queryByTitle('Sign out')).not.toBeInTheDocument();
+    });
+
+    it('closes when nobody is signed in to show the own profile of', async () => {
+      jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ token: 'token' }));
+      jest.spyOn(reader, 'askReader').mockImplementation(async () => null);
+      const posted = jest.spyOn(postMessage, 'postMessageToParent').mockReturnValue(true);
+      posted.mockClear();
+
+      const { container } = render(<Profile />);
+
+      await waitFor(() => expect(posted).toHaveBeenCalledWith({ profile: null }));
+      expect(container.querySelector('.profile')).toBeNull();
+    });
   });
 
   it('sets dir on the root element from the active locale (direction mapping itself is covered by common/direction.test.ts)', () => {

@@ -93,15 +93,12 @@ describe('<Comment />', () => {
 
   describe('opening a profile', () => {
     // the message goes to whatever page embeds the widget, and an admin's copy of a comment has
-    // the commenter's IP hash in its user record
+    // the commenter's IP hash in its user record. Whether the author is the reader it does not
+    // say, so the two messages differ in the id only
     it.each([
-      ['of another user', 'someone', { id: 'someone', name: 'username', picture: 'http://localhost/somepicture-url' }],
-      [
-        'of the current user',
-        'testuser',
-        { id: 'testuser', name: 'username', picture: 'http://localhost/somepicture-url', current: '1' },
-      ],
-    ])('sends the parent only the profile fields %s', (_label, id, expected) => {
+      ['of another user', 'someone'],
+      ['of the current user', 'testuser'],
+    ])('sends the parent only the profile fields %s', (_label, id) => {
       const postMessageToParent = jest.spyOn(postMessage, 'postMessageToParent').mockReturnValue(true);
       const props = getProps();
       props.user!.admin = true;
@@ -111,7 +108,9 @@ describe('<Comment />', () => {
       fireEvent.click(screen.getByText('username'));
 
       expect(postMessageToParent).toHaveBeenCalledTimes(1);
-      expect(postMessageToParent).toHaveBeenCalledWith({ profile: expected });
+      expect(postMessageToParent).toHaveBeenCalledWith({
+        profile: { id, name: 'username', picture: 'http://localhost/somepicture-url', token: expect.any(String) },
+      });
       postMessageToParent.mockRestore();
     });
   });

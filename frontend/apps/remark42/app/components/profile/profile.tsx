@@ -11,6 +11,7 @@ import { setStyles } from 'utils/set-dom-props';
 import { Avatar } from 'components/avatar';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { postMessageToParent } from 'utils/post-message';
+import { askReader } from 'utils/reader';
 import { Comment } from 'components/comment';
 import { Preloader } from 'components/preloader';
 import { SignOutIcon } from 'components/icons/signout';
@@ -19,7 +20,7 @@ import { CrossIcon } from 'components/icons/cross';
 import { IconButton } from 'components/icon-button/icon-button';
 import { Button } from 'components/auth/components/button';
 import { messages } from 'components/auth/auth.messages';
-import type { Comment as CommentType, Theme, User } from 'common/types';
+import type { Comment as CommentType, Profile as ProfileType, Theme, User } from 'common/types';
 
 import { Counter } from './components/counter';
 
@@ -48,7 +49,14 @@ function signout() {
 export function Profile() {
   const intl = useIntl();
   const rootRef = useRef<HTMLDivElement>(null);
-  const user = useMemo(() => parseQuery(), []);
+  const query = useMemo(() => parseQuery(), []);
+  // the author whose name was clicked, or, when readers open their own profile, whoever the widget
+  // frame answers is signed in
+  const [user, setUser] = useState<ProfileType | null>(() =>
+    query.id ? { id: query.id, name: query.name, picture: query.picture } : null
+  );
+  // only the widget frame knows whether the reader is the one shown; the page never says
+  const [isCurrent, setIsCurrent] = useState(false);
   const [isCommentsLoading, setIsCommentsLoading] = useState(false);
   const [error, setError] = useState(false);
   const [comments, setComments] = useState<CommentType[] | null>(null);
@@ -57,12 +65,17 @@ export function Profile() {
   const commentsSkipCountsRef = useRef(0);
   const [isSigningOut, setSigningOut] = useState(false);
 
+  const userId = user?.id;
   const fetchComments = useCallback(async () => {
+    if (!userId) {
+      return;
+    }
+
     setIsCommentsLoading(true);
     setError(false);
 
     try {
-      const { comments, count } = await getUserComments(user.id, {
+      const { comments, count } = await getUserComments(userId, {
         skip: commentsSkipCountsRef.current,
         limit: COMMENTS_LIMIT,
       });
@@ -76,9 +89,7 @@ export function Profile() {
     } finally {
       setIsCommentsLoading(false);
     }
-    // Disable the rule because we won't have any update in `user`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [userId]);
 
   function handleClickClose() {
     const rootElement = rootRef.current;
@@ -110,6 +121,27 @@ export function Profile() {
   }, [fetchComments]);
 
   useEffect(() => {
+    if (!query.token) {
+      return;
+    }
+
+    askReader(query.token).then((reader) => {
+      if (!query.id) {
+        if (reader) {
+          setUser(reader);
+          setIsCurrent(true);
+        } else {
+          // the reader signed out before the profile asked, so there is nobody to show
+          postMessageToParent({ profile: null });
+        }
+        return;
+      }
+
+      setIsCurrent(reader?.id === query.id);
+    });
+  }, [query]);
+
+  useEffect(() => {
     const styles = { height: '100%', padding: 0 };
 
     setStyles(document.documentElement, styles);
@@ -130,18 +162,19 @@ export function Profile() {
     };
   }, []);
 
+  // the root renders only once there is somebody to show, which for the reader's own profile is
+  // after the widget frame has answered
   useEffect(() => {
     if (rootRef.current) {
       rootRef.current.classList.add(styles.rootAppear);
     }
-  }, []);
+  }, [user]);
 
-  if (!user.id) {
+  if (!user) {
     return null;
   }
 
   const isLoadMoreVisible = commentsAmount > commentsSkipCountsRef.current;
-  const isCurrent = user.current === '1';
   const commentsJSX = comments?.length ? (
     <>
       <div className={styles.titleWrapper}>
@@ -167,7 +200,7 @@ export function Profile() {
           level={0}
           view="user"
           isCommentsDisabled={false}
-          theme={(user.theme as Theme) || 'light'}
+          theme={(query.theme as Theme) || 'light'}
         />
       ))}
       {isLoadMoreVisible && (

@@ -298,7 +298,12 @@ func TestWidgets_ProfileOpensInItsOwnIframe(t *testing.T) {
 	waitVisible(t, profile.First())
 	src, err := profile.First().GetAttribute("src")
 	require.NoError(t, err)
-	assert.Contains(t, src, "current=1", "the profile should open on the signed-in user")
+	// the page learns nothing of the reader from it: the profile frame asks the widget frame who
+	// that is, and dev_user inside the frame below is the answer
+	assert.Contains(t, src, "token=", "the profile frame has no token to ask the widget frame with")
+	for _, param := range []string{"id=", "name=", "current="} {
+		assert.NotContains(t, src, "&"+param, "the page was told the reader's %s", param)
+	}
 
 	// the frame reveals itself after five seconds whether or not its bundle ran, so a 404 or a
 	// dead script would satisfy a visibility check on its own. look inside it
