@@ -47,7 +47,7 @@ services:
 The `nginx.conf` would then look something like:
 
 ```nginx
-  location /remark42/ {
+  location ^~ /remark42/ {
     rewrite /remark42/(.*) /$1 break;
     proxy_pass http://remark42:8080/; # use internal docker name of remark42 container for proxy
     proxy_set_header Host $http_host;
@@ -56,6 +56,8 @@ The `nginx.conf` would then look something like:
     proxy_set_header X-Forwarded-Proto $scheme;
   }
 ```
+
+With `^~`, a request whose longest matching prefix is `/remark42/` goes to this location without nginx checking regular expression locations. Without it, a regular expression location elsewhere in the server block, such as `location ~ \.(png|jpg|ico|cur|css)$` for static files, catches requests like `/remark42/web/remark.css` and looks for them among the site's own files instead of passing them to Remark42, so they return 404.
 
 Because this configuration sets `X-Real-IP` and `X-Forwarded-For`, set [`--trusted-proxy`](../../configuration/parameters/#trusted-proxies-and-client-ip) to the network Nginx connects from (for a same-compose Nginx that is the Docker network, e.g. `172.16.0.0/12`). Without it Remark42 trusts those headers from any client and logs a warning at start, which lets a client spoof its IP and bypass rate limiting and vote de-duplication.
 
