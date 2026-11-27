@@ -804,8 +804,6 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 	}
 
 	remarkURL := "https://demo.remark42.com"
-	premod, err := NewPremoderationStrategy("none")
-
 	srv = &Rest{
 		DataService: dataStore,
 		Authenticator: auth.NewService(auth.Opts{
@@ -842,8 +840,10 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 		NotifyService:    notify.NopService,
 		EmojiEnabled:     true,
 		openRouteLimiter: 100,
-		Premoderation:    premod,
 	}
+	premod, err := NewPremoderator("none", dataStore)
+	require.NoError(t, err)
+	srv.Premoderator = premod
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 
 	// add some providers. Needed because we don't allow users with unlisted providers to authenticate

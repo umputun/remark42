@@ -52,6 +52,7 @@
   "comment.hide": "Hide user",
   "comment.hide-user-comment": "Do you want to hide all comments by {userName}?",
   "comment.paid-patreon": "Patreon Paid Subscriber",
+  "comment.pending-approval": "Comment pending approval",
   "comment.pin": "Pin",
   "comment.pin-comment": "Do you want to pin this comment?",
   "comment.reply": "Reply",

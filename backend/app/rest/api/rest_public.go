@@ -31,6 +31,7 @@ type public struct {
 	commentFormatter *store.CommentFormatter
 	imageService     *image.Service
 	premoderation    Premoderation
+	premoderator     Premoderator
 }
 
 type pubStore interface {
@@ -98,12 +99,14 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 			comments = []store.Comment{} // error should clear comments and continue for post info
 		}
 
+		unfilteredComments := slices.Clone(comments)
 		switch s.premoderation {
 		case PremoderationNone:
 		default:
-			if !user.Admin {
+			if !user.Admin { // todo this might be redundant now
 				log.Printf("[DEBUG] premoderation enabled (%s) and user is not admin. Hiding comments", s.premoderation)
-				comments = filterComments(comments, func(c store.Comment) bool { return !c.PendingApproval || c.User.ID == user.ID })
+
+				comments = s.premoderator.FilterVisibleTo(unfilteredComments, user)
 			}
 		}
 
@@ -129,7 +132,7 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if format == "tree" {
-			withInfo := treeWithInfo{Tree: service.MakeTree(comments, sort, limit, offsetID), Info: commentsInfo}
+			withInfo := treeWithInfo{Tree: service.MakeTree(unfilteredComments, sort, limit, offsetID, user, s.premoderator.Active()), Info: commentsInfo}
 			if limit > 0 && offsetID == "" { // the first page lists the pins of the later ones too
 				withInfo.Pinned = pinnedComments(comments)
 			}
@@ -186,15 +189,10 @@ func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// filter deleted from last comments view. Blocked marked as deleted and will sneak in without
-
 		deleteFilter := func(c store.Comment) bool { return !c.Deleted }
-		filters := []func(c store.Comment) bool{deleteFilter}
-		if s.premoderation != PremoderationNone && !rest.GetUserOrEmpty(r).Admin {
-			approvedFilter := func(c store.Comment) bool { return !c.PendingApproval || user.ID == c.User.ID }
-			filters = append(filters, approvedFilter)
-		}
+		comments = filterComments(comments, deleteFilter)
 		// we don't want to leak unapproved comments
-		return filterComments(comments, filters...), nil
+		return s.premoderator.FilterVisibleTo(comments, user), nil
 	}, http.StatusInternalServerError, "can't get last comments", rest.ErrInternal)
 }
 
@@ -205,11 +203,16 @@ func (s *public) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
 
 	log.Printf("[DEBUG] get comments by id %s, %s %s", id, siteID, url)
+	user := rest.GetUserOrEmpty(r)
 
-	comment, err := s.dataService.Get(store.Locator{SiteID: siteID, URL: url}, id, rest.GetUserOrEmpty(r))
+	comment, err := s.dataService.Get(store.Locator{SiteID: siteID, URL: url}, id, user)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id", rest.ErrCommentNotFound)
 		return
+	}
+
+	if !s.premoderator.VisibleTo(comment, user) {
+		comment = store.Comment{} // todo check this makes sense
 	}
 
 	if err = R.RenderJSONWithHTML(w, r, comment); err != nil {
@@ -241,7 +244,8 @@ func (s *public) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	key := cache.NewKey(siteID).ID(urlKey(r, true)).Scopes(userID, siteID)
 	s.cachedJSON(w, r, key, func() (any, error) {
-		comments, e := s.dataService.User(siteID, userID, limit, skip, rest.GetUserOrEmpty(r))
+		user := rest.GetUserOrEmpty(r)
+		comments, e := s.dataService.User(siteID, userID, limit, skip, user)
 		if e != nil {
 			if strings.Contains(e.Error(), "no comments for user") { // store returns this error when no comments found
 				return userComments{Comments: []store.Comment{}}, nil
@@ -251,13 +255,9 @@ func (s *public) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 		// filter deleted from last comments view. Blocked marked as deleted and will sneak in without
 		deleteFilter := func(c store.Comment) bool { return !c.Deleted }
-		filters := []func(c store.Comment) bool{deleteFilter}
-		if s.premoderation != PremoderationNone && !rest.GetUserOrEmpty(r).Admin {
-			approvedFilter := func(c store.Comment) bool { return !c.PendingApproval || c.User.ID == userID }
-			filters = append(filters, approvedFilter)
-		}
+		filteredComments := filterComments(comments, deleteFilter)
 		// we don't want to leak unapproved comments
-		filteredComments := filterComments(comments, filters...)
+		filteredComments = s.premoderator.FilterVisibleTo(comments, user)
 
 		count, e := s.dataService.UserCount(siteID, userID)
 		if e != nil {

@@ -15,6 +15,7 @@ function getProps(): Props {
     bannedUser: false,
     readOnly: false,
     editing: false,
+    deleted: false,
     replying: false,
     onCopy: jest.fn(),
     onDelete: jest.fn(),

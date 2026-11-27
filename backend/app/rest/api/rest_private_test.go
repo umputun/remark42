@@ -459,7 +459,11 @@ func TestRest_CreateReplyWithoutParentRefused(t *testing.T) {
 }
 
 func TestRest_CreateReplyToExistingParent(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t, func(srv *Rest) {
+		p, err := NewPremoderator("none", srv.DataService)
+		require.NoError(t, err)
+		srv.Premoderator = p
+	})
 	defer teardown()
 
 	const postURL = "https://radio-t.com/blah1"
@@ -641,7 +645,11 @@ func TestRest_CreateWithQuotes(t *testing.T) {
 }
 
 func TestRest_Update(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t, func(srv *Rest) {
+		p, err := NewPremoderator("none", srv.DataService)
+		require.NoError(t, err)
+		srv.Premoderator = p
+	})
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",

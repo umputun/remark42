@@ -734,7 +734,8 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 	if err != nil {
 		return nil, fmt.Errorf("failed to make config of ssl server params: %w", err)
 	}
-	premod, err := api.NewPremoderationStrategy(s.Premoderation)
+
+	premoderator, err := api.NewPremoderator(s.Premoderation, dataService)
 	if err != nil {
 		return nil, err
 	}
@@ -770,7 +771,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 		DisableSignature:           s.DisableSignature,
 		DisableFancyTextFormatting: s.DisableFancyTextFormatting,
 		ExternalImageProxy:         s.ImageProxy.CacheExternal,
-		Premoderation:              premod,
+		Premoderator:               premoderator,
 	}
 
 	// assigned only when there is one: telegramService is an interface field, so a nil

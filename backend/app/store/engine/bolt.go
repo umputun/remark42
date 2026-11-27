@@ -475,6 +475,7 @@ func (b *BoltDB) lastComments(siteID string, maximum int, since time.Time) (comm
 // "users" bucket has sub-bucket for each userID, and keeps it as ts:ref.
 // Deleted comments keep their reference there; unless withDeleted is set they are passed over
 // and do not count towards limit or skip.
+// TODO here we pass a "withDeleted" flag, can we do the same for pending comments?
 func (b *BoltDB) userComments(siteID, userID string, limit, skip int, withDeleted bool) (comments []store.Comment, err error) {
 	comments = []store.Comment{}
 

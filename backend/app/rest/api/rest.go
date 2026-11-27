@@ -29,38 +29,6 @@ import (
 	"github.com/umputun/remark42/backend/app/webassets"
 )
 
-// Premoderation strategy defined in the system as part of the initialization.
-// Unapproved messages are only visible to mods who can decide to approve it.
-type Premoderation string
-
-const (
-	// PremoderationNone means that all messages approved by default
-	PremoderationNone Premoderation = "none"
-	// PremoderationFirst means that once a message from a user is approved, all previous messages from the same user are also approved
-	PremoderationFirst Premoderation = "first"
-	// PremoderationAll requires all messages to be approved
-	PremoderationAll Premoderation = "all"
-	// PremoderationLinks requires all messages that contain links are not from admin or verified users need to be approved
-	PremoderationLinks Premoderation = "links"
-)
-
-// NewPremoderationStrategy matches the provided string with available premoderations strategies.
-// Defaults to PremoderationLinks
-func NewPremoderationStrategy(str string) (Premoderation, error) {
-	switch strings.ToLower(strings.TrimSpace(str)) {
-	case string(PremoderationLinks), "":
-		return PremoderationLinks, nil
-	case string(PremoderationFirst):
-		return PremoderationFirst, nil
-	case string(PremoderationAll):
-		return PremoderationAll, nil
-	case string(PremoderationNone):
-		return PremoderationNone, nil
-	default:
-		return "", fmt.Errorf("unkwonwn value selected for premoderation: %s", str)
-	}
-}
-
 // Rest is a rest access server
 type Rest struct {
 	Version string
@@ -99,7 +67,7 @@ type Rest struct {
 	DisableSignature           bool // prevent signature from being added to headers
 	DisableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
 	ExternalImageProxy         bool
-	Premoderation              Premoderation
+	Premoderator               Premoderator
 
 	SSLConfig         SSLConfig
 	httpsServer       *http.Server
@@ -389,7 +357,6 @@ func (s *Rest) routes() http.Handler {
 			r.With(rejectHead("GET")).HandleFunc("GET /deleteme", s.adminRest.deleteMeRequestCtrl)
 			r.HandleFunc("PUT /verify/{userid}", s.adminRest.setVerifyCtrl)
 			r.HandleFunc("PUT /pin/{id}", s.adminRest.setPinCtrl)
-			r.HandleFunc("PUT /comment/{id}", s.privRest.updateCommentCtrl)
 			r.HandleFunc("GET /blocked", s.adminRest.blockedUsersCtrl)
 			r.HandleFunc("PUT /readonly", s.adminRest.setReadOnlyCtrl)
 			r.HandleFunc("PUT /title/{id}", s.adminRest.setTitleCtrl)
@@ -415,6 +382,7 @@ func (s *Rest) routes() http.Handler {
 		rauth.Use(authMiddleware.Auth, matchSiteID, subscribersOnly(s.SubscribersOnly))
 		rauth.Use(R.NoCache, logInfoWithBody)
 
+		rauth.HandleFunc("PUT /comment/{id}", s.privRest.updateCommentCtrl)
 		rauth.HandleFunc("POST /preview", s.privRest.previewCommentCtrl)
 		rauth.HandleFunc("POST /comment", s.privRest.createCommentCtrl)
 		if s.AnonVote {
@@ -470,7 +438,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		imageService:     s.ImageService,
 		commentFormatter: s.CommentFormatter,
 		readOnlyAge:      s.ReadOnlyAge,
-		premoderation:    s.Premoderation,
+		premoderator:     s.Premoderator,
 	}
 
 	privGrp := private{
@@ -484,7 +452,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		telegramService:            s.TelegramService,
 		remarkURL:                  s.RemarkURL,
 		disableFancyTextFormatting: s.DisableFancyTextFormatting,
-		premoderation:              s.Premoderation,
+		premoderator:               s.Premoderator,
 	}
 
 	admGrp := admin{
@@ -493,13 +461,14 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		cache:         s.Cache,
 		authenticator: s.Authenticator,
 		readOnlyAge:   s.ReadOnlyAge,
-		premoderation: s.Premoderation,
+		premoderator:  s.Premoderator,
 		notifyService: s.NotifyService,
 	}
 
 	rssGrp := rss{
-		dataService: s.DataService,
-		cache:       s.Cache,
+		dataService:  s.DataService,
+		premoderator: s.Premoderator,
+		cache:        s.Cache,
 	}
 
 	return pubGrp, privGrp, admGrp, rssGrp

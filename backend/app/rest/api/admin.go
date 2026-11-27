@@ -27,7 +27,7 @@ type admin struct {
 	authenticator *auth.Service
 	readOnlyAge   int
 	migrator      *Migrator
-	premoderation Premoderation
+	premoderator  Premoderator
 	notifyService *notify.Service
 }
 
@@ -346,15 +346,15 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 func (a *admin) approveCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
-	approveStatus := r.URL.Query().Get("approve") == "1"
+	approveStatus := r.URL.Query().Get("approved") == "1"
 
+	// todo should we move this into the premoderator struct?
 	var comment store.Comment
 	var err error
-	switch a.premoderation {
+	switch a.premoderator.strategy {
 	// if we use the "ApproveFirst" strategy we need to approve all pending comments once one is approved
 	case PremoderationFirst:
 		comment, err = a.dataService.ApproveComments(locator, id, approveStatus, true)
-		// ! todo what about the new links mode?
 	default:
 		comment, err = a.dataService.ApproveComments(locator, id, approveStatus, false)
 	}

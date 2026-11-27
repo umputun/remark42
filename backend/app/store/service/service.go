@@ -752,6 +752,10 @@ func (s *DataStore) ApproveComments(locator store.Locator, commentID string, app
 		return comment, err
 	}
 
+	if comment.Deleted {
+		return comment, nil
+	}
+
 	comment.PendingApproval = !approveStatus
 	err = s.Engine.Update(comment)
 	if err != nil {
@@ -764,10 +768,7 @@ func (s *DataStore) ApproveComments(locator store.Locator, commentID string, app
 
 	// grab the user and all his messages
 	user := comment.User
-	// ! todo we might need to pass an empty locator to grab comments across posts
-	if approvePrevious {
-		locator.URL = ""
-	}
+	locator.URL = ""
 	comments, err := s.Find(locator, "-time", user)
 	if err != nil {
 		return comment, err
@@ -775,7 +776,7 @@ func (s *DataStore) ApproveComments(locator store.Locator, commentID string, app
 
 	// approve the unapproved ones including the one this method was called against
 	for _, c := range comments {
-		// ignore messages from other users. There must be a better way of solving this. But something changed in the last few months
+		// ignore messages from other users
 		if c.User.ID != user.ID {
 			continue
 		}

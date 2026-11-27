@@ -4,7 +4,7 @@
   align-items: center;
 }
 
-.user > * + * {
+.user>*+* {
   margin-inline-start: 4px;
 }
 
@@ -82,6 +82,12 @@
   margin-top: 8px;
 }
 
+.warning {
+  margin-inline-start: 8px;
+  vertical-align: middle;
+  color: rgb(var(--color30));
+}
+
 .status {
   margin-inline-start: 8px;
   vertical-align: middle;
@@ -126,7 +132,7 @@
   padding-block: 12px;
   padding-inline: 28px 0;
 
-  & > .body {
+  &>.body {
     & .text {
       display: none;
     }
@@ -155,7 +161,7 @@
     display: none;
   }
 
-  @media (pointer: coarse) and (width <= 768px) {
+  @media (pointer: coarse) and (width <=768px) {
     border: 8px solid;
     padding-bottom: 0;
 
@@ -177,7 +183,7 @@
   position: relative;
   z-index: 1;
 
-  @media (pointer: coarse) and (width <= 768px) {
+  @media (pointer: coarse) and (width <=768px) {
     border: 8px solid;
 
     & .info {
@@ -208,6 +214,7 @@
 }
 
 .viewAdmin {
+
   &,
   &.themeLight,
   &.themeDark {
@@ -218,6 +225,7 @@
 }
 
 .viewPreview {
+
   &,
   &.themeLight,
   &.themeDark {
@@ -318,7 +326,7 @@
       border-color: var(--color7);
     }
 
-    @media (pointer: coarse) and (width <= 768px) {
+    @media (pointer: coarse) and (width <=768px) {
       border-color: var(--color7);
     }
   }
@@ -328,7 +336,7 @@
       border-color: var(--color7);
     }
 
-    @media (pointer: coarse) and (width <= 768px) {
+    @media (pointer: coarse) and (width <=768px) {
       border-color: var(--color7);
     }
   }
@@ -368,7 +376,7 @@
       border-color: var(--color5);
     }
 
-    @media (pointer: coarse) and (width <= 768px) {
+    @media (pointer: coarse) and (width <=768px) {
       border-color: var(--color5);
     }
   }
@@ -378,7 +386,7 @@
       border-color: var(--color5);
     }
 
-    @media (pointer: coarse) and (width <= 768px) {
+    @media (pointer: coarse) and (width <=768px) {
       border-color: var(--color5);
     }
   }

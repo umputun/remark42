@@ -42,7 +42,7 @@ type private struct {
 	telegramService            telegramService
 	remarkURL                  string
 	disableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
-	premoderation              Premoderation
+	premoderator               Premoderator
 }
 
 // telegramService is a subset of Telegram service used for setting up user telegram notifications
@@ -178,7 +178,8 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	comment, err := s.handlePremoderation(comment, user)
+	comment, err := s.premoderator.premoderateComment(comment, user)
+
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "error handling premoderation", rest.ErrPremoderationFailure)
 		return
@@ -216,54 +217,7 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	_ = R.EncodeJSON(w, http.StatusCreated, &finalComment)
 }
 
-func (s *private) handlePremoderation(comment store.Comment, user store.User) (store.Comment, error) {
-	// admin messages are approved by default
-	if user.Admin {
-		comment.PendingApproval = false
-		return comment, nil
-	}
-
-	// if previous comments were approved and the strategy is "first" approve other comments by default
-	switch s.premoderation {
-	case PremoderationLinks:
-		if comment.User.Admin || comment.User.Verified {
-			comment.PendingApproval = false
-			return comment, nil
-		}
-
-		hasLink, err := comment.ContainsLinks()
-		if err != nil {
-			return store.Comment{}, err
-		}
-
-		if hasLink {
-			comment.PendingApproval = true
-			return comment, nil
-		}
-
-	case PremoderationFirst:
-		prevComments, err := s.dataService.User(user.SiteID, user.ID, 100, 0, user) // ! todo: check the usage of limit/skip
-		if err != nil {
-			if errors.Is(err, engine.ErrNoUserComments) { // this is the first message for this user
-				comment.PendingApproval = true
-				return comment, nil
-			}
-			return store.Comment{}, fmt.Errorf("error accessing user's comments: %s", err.Error())
-		}
-		// if there is a previously approved comment then approve the new comment
-		for _, c := range prevComments {
-			if c.PendingApproval {
-				comment.PendingApproval = false
-				return comment, nil
-			}
-		}
-	case PremoderationAll: // we need to approve every single comment
-		comment.PendingApproval = true
-	default: // if no premoderation is applied we mark new comments as approved
-		comment.PendingApproval = false
-	}
-	return comment, nil
-}
+// todo should this be part of the admin routes??
 
 // PUT /comment/{id}?site=siteID&url=post-url - update comment
 func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {

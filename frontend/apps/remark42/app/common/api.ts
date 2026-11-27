@@ -206,7 +206,7 @@ export const approveComment = ({
   id,
   text,
 }: {
-  approved: boolean;
+  approved: number;
   id: Comment['id'];
   text: string;
-}): Promise<Comment> => adminFetcher.put(`/comment/${id}/approve`, { url }, { approved, text });
+}): Promise<{ id: string, approved: boolean }> => adminFetcher.put(`/comment/${id}/approve`, { url, approved }, { text });

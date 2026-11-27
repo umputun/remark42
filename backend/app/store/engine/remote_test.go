@@ -16,7 +16,7 @@ import (
 )
 
 func TestRemote_Create(t *testing.T) {
-	ts := testServer(t, `{"method":"store.create","params":{"id":"123","pid":"","text":"msg","user":{"name":"","id":"","picture":"","admin":false},"locator":{"site":"site","url":"http://example.com/url"},"score":0,"vote":0,"time":"0001-01-01T00:00:00Z"},"id":1}`,
+	ts := testServer(t, `{"method":"store.create","params":{"id":"123","pid":"","text":"msg","user":{"name":"","id":"","picture":"","admin":false},"locator":{"site":"site","url":"http://example.com/url"},"score":0,"vote":0,"time":"0001-01-01T00:00:00Z","pendingApproval":false},"id":1}`,
 		`{"result":"12345","id":1}`)
 	defer ts.Close()
 	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
@@ -88,7 +88,7 @@ func TestRemote_FailedStatus(t *testing.T) {
 }
 
 func TestRemote_Update(t *testing.T) {
-	ts := testServer(t, `{"method":"store.update","params":{"id":"123","pid":"","text":"msg","user":{"name":"","id":"","picture":"","admin":false},"locator":{"site":"site123","url":"http://example.com/url"},"score":0,"vote":0,"time":"0001-01-01T00:00:00Z"},"id":1}`, `{}`)
+	ts := testServer(t, `{"method":"store.update","params":{"id":"123","pid":"","text":"msg","user":{"name":"","id":"","picture":"","admin":false},"locator":{"site":"site123","url":"http://example.com/url"},"score":0,"vote":0,"time":"0001-01-01T00:00:00Z","pendingApproval":false},"id":1}`, `{}`)
 	defer ts.Close()
 	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 

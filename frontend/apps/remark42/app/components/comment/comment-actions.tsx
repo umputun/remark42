@@ -22,6 +22,7 @@ export type Props = {
   replying: boolean | undefined;
   editable: boolean;
   editDeadline: number | undefined;
+  deleted: boolean | undefined;
   onCopy(): void;
   onToggleEditing(): void;
   onDelete(): void;
@@ -45,6 +46,7 @@ export function CommentActions({
   replying,
   currentUser,
   bannedUser,
+  deleted,
   editDeadline,
   onCopy,
   onToggleEditing,
@@ -105,9 +107,11 @@ export function CommentActions({
             <Button kind="link" size="sm" onClick={onTogglePin}>
               {intl.formatMessage(pinned ? messages.unpin : messages.pin)}
             </Button>
-            <Button kind="link" size="sm" onClick={onToggleApprove}>
-              {intl.formatMessage(pendingApproval ? messages.approve : messages.disapprove)}
-            </Button>
+            {!deleted &&
+              <Button kind="link" size="sm" onClick={onToggleApprove}>
+                {intl.formatMessage(pendingApproval ? messages.approve : messages.disapprove)}
+              </Button>
+            }
             {bannedUser ? (
               <Button kind="link" size="sm" onClick={onUnblockUser}>
                 {intl.formatMessage(messages.unblock)}

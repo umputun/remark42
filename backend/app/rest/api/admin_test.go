@@ -1605,7 +1605,9 @@ func TestAdmin_GetUserInfoEmptyWithoutError(t *testing.T) {
 
 func TestAdmin_ApproveComments(t *testing.T) {
 	ts, srv, teardown := startupT(t, func(srv *Rest) {
-		srv.Premoderation = PremoderationAll
+		p, err := NewPremoderator("all", srv.DataService)
+		require.NoError(t, err)
+		srv.Premoderator = p
 	})
 	defer teardown()
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
@@ -1632,13 +1634,15 @@ func TestAdmin_ApproveComments(t *testing.T) {
 	err = decoder.Decode(&c)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, true, c.PendingApproval)
+	assert.Equal(t, false, c.PendingApproval)
 	t.Logf("Approve comment response: %+v", c)
 }
 
 func TestAdmin_ApprovePreviousComments(t *testing.T) {
 	ts, srv, teardown := startupT(t, func(srv *Rest) {
-		srv.Premoderation = PremoderationFirst
+		p, err := NewPremoderator("first", srv.DataService)
+		require.NoError(t, err)
+		srv.Premoderator = p
 	})
 	defer teardown()
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
@@ -1674,17 +1678,17 @@ func TestAdmin_ApprovePreviousComments(t *testing.T) {
 	err = decoder.Decode(&c)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, true, c.PendingApproval)
+	assert.Equal(t, false, c.PendingApproval)
 	t.Logf("Approve comment response: %+v", c)
 
 	// given our moderation strategy ensure that also other comments have been approved
 	c2, err = srv.pubRest.dataService.Get(c2.Locator, id2, c2.User)
 	t.Logf("c2: %+v", c2)
 	assert.NoError(t, err)
-	assert.Equal(t, true, c2.PendingApproval)
+	assert.Equal(t, false, c2.PendingApproval)
 
 	c3, err = srv.pubRest.dataService.Get(c3.Locator, id3, c3.User)
 	t.Logf("c3: %+v", c3)
 	assert.NoError(t, err)
-	assert.Equal(t, true, c3.PendingApproval)
+	assert.Equal(t, false, c3.PendingApproval)
 }

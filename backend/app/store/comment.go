@@ -35,7 +35,7 @@ type Comment struct {
 	Deleted         bool                   `json:"delete,omitempty" bson:"delete"`
 	Imported        bool                   `json:"imported,omitempty" bson:"imported"`
 	PostTitle       string                 `json:"title,omitempty" bson:"title"`
-	PendingApproval bool                   `json:"pendingApproval,omitempty" bson:"pendingApproval"`
+	PendingApproval bool                   `json:"pendingApproval" bson:"pendingApproval"`
 }
 
 // Locator keeps site and url of the post
@@ -417,7 +417,7 @@ func (c *Comment) SanitizeText(inp string) string {
 
 // ContainsLinks checks if in the original version of the comments are present HTLM <a> tags
 func (c *Comment) ContainsLinks() (bool, error) {
-	doc, err := nethtml.Parse(strings.NewReader(c.Orig))
+	doc, err := nethtml.Parse(strings.NewReader(c.Text))
 	if err != nil {
 		fmt.Errorf("[WARN] can't parse comment. Assuming it contains links, %w", err)
 		return true, err
