@@ -1,4 +1,4 @@
-import { defineMessages } from 'common/intl';
+import { defineMessages } from 'common/intl-message';
 
 export const messages = defineMessages<string>({
   signin: {
