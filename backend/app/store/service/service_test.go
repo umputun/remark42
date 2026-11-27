@@ -2207,7 +2207,7 @@ func TestService_SetMetas(t *testing.T) {
 	err := b.SetMetas("radio-t", umetas, pmetas)
 	assert.NoError(t, err, "empty metas")
 
-	um1 := UserMetaData{ID: "user1", Verified: true, Details: engine.UserDetailEntry{Email: "test@example.org"}}
+	um1 := UserMetaData{ID: "user1", Verified: true, Details: engine.UserDetailEntry{Email: "test@example.org", GithubAccount: "github_account"}}
 	um2 := UserMetaData{ID: "user2"}
 	um2.Blocked.Status = true
 	um2.Blocked.Until = time.Now().AddDate(0, 1, 1)
@@ -2222,6 +2222,9 @@ func TestService_SetMetas(t *testing.T) {
 	val, err := b.Engine.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: engine.UserEmail})
 	assert.NoError(t, err)
 	assert.Equal(t, []engine.UserDetailEntry{{UserID: "user1", Email: "test@example.org"}}, val)
+	account, err := b.GetUserGithubAccount("radio-t", "user1")
+	assert.NoError(t, err)
+	assert.Equal(t, "github_account", account, "the github account is restored too")
 }
 
 func TestService_SetMetasExpiredBlock(t *testing.T) {
@@ -2257,6 +2260,9 @@ func TestService_UserDetailsOperations(t *testing.T) {
 	result, err = b.SetUserTelegram("radio-t", "u1", "test@example.com")
 	assert.NoError(t, err, "No error inserting entry expected")
 	assert.Equal(t, "test@example.com", result)
+	result, err = b.SetUserGithubAccount("radio-t", "u1", "github_account")
+	assert.NoError(t, err, "No error inserting entry expected")
+	assert.Equal(t, "github_account", result)
 
 	// read valid entry back
 	result, err = b.GetUserEmail("radio-t", "u1")
@@ -2266,11 +2272,33 @@ func TestService_UserDetailsOperations(t *testing.T) {
 	assert.NoError(t, err, "No error reading entry expected")
 	assert.Equal(t, "test@example.com", result)
 
+	result, err = b.GetUserGithubAccount("radio-t", "u1")
+	assert.NoError(t, err, "No error reading entry expected")
+	assert.Equal(t, "github_account", result)
+
 	// delete existing entry
 	err = b.DeleteUserDetail("radio-t", "u1", engine.UserEmail)
 	assert.NoError(t, err, "No error deleting entry expected")
 	err = b.DeleteUserDetail("radio-t", "u1", engine.UserTelegram)
 	assert.NoError(t, err, "No error deleting entry expected")
+	result, err = b.GetUserGithubAccount("radio-t", "u1")
+	assert.NoError(t, err, "No error reading entry expected")
+	assert.Equal(t, "github_account", result, "kept when the other details are deleted")
+	_, err = b.SetUserEmail("radio-t", "u1", "test@example.com")
+	assert.NoError(t, err)
+	err = b.DeleteUserDetail("radio-t", "u1", engine.AllUserDetails)
+	assert.NoError(t, err, "No error deleting entry expected")
+	result, err = b.GetUserEmail("radio-t", "u1")
+	assert.NoError(t, err)
+	assert.Empty(t, result, "deleting all details removes the email")
+	result, err = b.GetUserGithubAccount("radio-t", "u1")
+	assert.NoError(t, err)
+	assert.Equal(t, "github_account", result, "and keeps the github account")
+	err = b.DeleteUserDetail("radio-t", "u1", engine.UserGithubAccount)
+	assert.NoError(t, err, "No error deleting entry expected")
+	result, err = b.GetUserGithubAccount("radio-t", "u1")
+	assert.NoError(t, err, "No error reading entry expected")
+	assert.Empty(t, result)
 
 	// read deleted entry
 	result, err = b.GetUserEmail("radio-t", "u1")

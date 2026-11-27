@@ -279,6 +279,16 @@ func TestRPC_userDetailHndl(t *testing.T) {
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []engine.UserDetailEntry{{UserID: "u2", Email: "other@example.com"}}, result, "the entry on test-site is unchanged")
 
+	// the github account goes through the remote engine to the store and back, next to the email
+	result, err = re.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u3",
+		Detail: engine.UserGithubAccount, Update: "github_account"})
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []engine.UserDetailEntry{{UserID: "u3", GithubAccount: "github_account"}}, result)
+	result, err = re.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u3", Detail: engine.UserGithubAccount})
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []engine.UserDetailEntry{{UserID: "u3", GithubAccount: "github_account"}}, result)
+	require.NoError(t, re.Delete(engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u3", UserDetail: engine.UserGithubAccount}))
+
 	// stateless tests without changing the state we set up before
 	var testData = []struct {
 		req      engine.UserDetailRequest

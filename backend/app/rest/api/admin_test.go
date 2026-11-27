@@ -1230,3 +1230,63 @@ func TestAdmin_GetUserInfoEmptyWithoutError(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, code, body)
 	assert.Contains(t, body, "no comments for user nobody")
 }
+
+// a user's avatar can be stored twice: under the user ID, where the providers store it, and in another
+// file the current picture names, as for a GitHub user signed in before the account check. A deletion
+// removes both
+func TestAdmin_DeleteUserAvatarUnderUserID(t *testing.T) {
+	for _, byAdmin := range []bool{true, false} {
+		t.Run(fmt.Sprintf("by admin %v", byAdmin), func(t *testing.T) {
+			ts, srv := startupT(t)
+			avatars := srv.Authenticator.AvatarProxy().Store
+
+			earlier, err := avatars.Put("user1", strings.NewReader("earlier picture"))
+			require.NoError(t, err)
+			current, err := avatars.Put("user1-account", strings.NewReader("current picture"))
+			require.NoError(t, err)
+			require.NotEqual(t, earlier, current)
+			user := store.User{Name: "user1", ID: "user1", Picture: "https://demo.remark42.com/api/v1/avatar/" + current}
+			_, err = srv.DataService.Create(store.Comment{Text: "test", Locator: store.Locator{SiteID: "remark42",
+				URL: "https://radio-t.com/blah"}, User: user})
+			require.NoError(t, err)
+
+			method, url := http.MethodDelete, ts.URL+"/api/v1/admin/user/user1?site=remark42"
+			if !byAdmin {
+				method, url = http.MethodGet, ts.URL+"/api/v1/admin/deleteme?token="+deleteMeToken(t, srv, "remark42", "user1", user.Picture)
+			}
+			body, code := call(t, method, url, "", adminPasswd)
+			require.Equal(t, http.StatusOK, code, body)
+
+			for name, avatarID := range map[string]string{"the picture's avatar": current, "the avatar under the user id": earlier} {
+				_, _, err = avatars.Get(avatarID)
+				assert.Error(t, err, "%s is removed", name)
+			}
+		})
+	}
+}
+
+// a GitHub user who signed in before the account check has the earlier picture under the login-based ID and
+// the current one under the account-based ID; a deletion that knows only the earlier one removes both
+func TestAdmin_DeleteUserAvatarOfGithubAccount(t *testing.T) {
+	ts, srv := startupT(t)
+	avatars := srv.Authenticator.AvatarProxy().Store
+
+	earlier, err := avatars.Put("github_login", strings.NewReader("earlier picture"))
+	require.NoError(t, err)
+	current, err := avatars.Put("github_account", strings.NewReader("current picture"))
+	require.NoError(t, err)
+	_, err = srv.DataService.SetUserGithubAccount("remark42", "github_login", "github_account")
+	require.NoError(t, err)
+	user := store.User{Name: "user1", ID: "github_login", Picture: "https://demo.remark42.com/api/v1/avatar/" + earlier}
+	_, err = srv.DataService.Create(store.Comment{Text: "test", Locator: store.Locator{SiteID: "remark42",
+		URL: "https://radio-t.com/blah"}, User: user})
+	require.NoError(t, err)
+
+	body, code := call(t, http.MethodDelete, ts.URL+"/api/v1/admin/user/github_login?site=remark42", "", adminPasswd)
+	require.Equal(t, http.StatusOK, code, body)
+
+	for name, avatarID := range map[string]string{"the earlier picture": earlier, "the current picture": current} {
+		_, _, err = avatars.Get(avatarID)
+		assert.Error(t, err, "%s is removed", name)
+	}
+}

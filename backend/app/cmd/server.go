@@ -1120,9 +1120,25 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) (int, erro
 		if p.cid == "" || p.csec == "" {
 			continue
 		}
-		if p.name == "microsoft" {
+		switch p.name {
+		case "microsoft":
 			authenticator.AddMicrosoftProvider(p.cid, p.csec, s.Auth.Microsoft.Tenant)
-		} else {
+		case "github":
+			// the user ID is made from the numeric account ID and the login goes into an attribute, for
+			// bindGithubAccount; the other parameters are the ones the authenticator gives its own providers
+			authenticator.AddCustomHandler(provider.NewGithub(provider.Params{
+				URL:                  s.authURL(),
+				JwtService:           authenticator.TokenService(),
+				Issuer:               authIssuer,
+				AvatarSaver:          authenticator.AvatarProxy(),
+				Cid:                  p.cid,
+				Csecret:              p.csec,
+				L:                    authLogger(),
+				UserAttributes:       provider.UserAttributes{"login": githubLoginAttr},
+				GithubNumericID:      true,
+				AllowedRedirectHosts: s.allowedRedirectHosts(),
+			}))
+		default:
 			authenticator.AddProvider(p.name, p.cid, p.csec)
 		}
 	}
@@ -1481,6 +1497,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		}
 		audience := c.Audience[0]
 
+		bindGithubAccount(c.User, audience, ds)
 		if s.SubscribersOnly {
 			updatePaidSub(c.User, time.Now())
 		}

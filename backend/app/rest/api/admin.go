@@ -1,10 +1,12 @@
 package api
 
 import (
+	"crypto/sha1" //nolint:gosec // the avatar store names an avatar by the sha1 of the user id
 	"errors"
 	"fmt"
 	"net/http"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -32,6 +34,7 @@ type adminStore interface {
 	Delete(locator store.Locator, commentID string, mode store.DeleteMode) error
 	DeleteUser(siteID, userID string, mode store.DeleteMode) error
 	DeleteUserDetail(siteID, userID string, detail engine.UserDetail) error
+	GetUserGithubAccount(siteID, userID string) (string, error)
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
 	SetBlock(siteID, userID string, status bool, ttl time.Duration) error
 	BlockedUsers(siteID string) ([]store.BlockedUser, error)
@@ -175,20 +178,45 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	R.RenderJSON(w, R.JSON{"user_id": claims.User.ID, "site_id": claims.Audience})
 }
 
-// removeAvatar removes the user's avatar from the avatar store. An already-removed avatar is fine
-// (a repeated request stays idempotent), but a genuine store failure is returned, which
-// avatar.ErrNotFound lets us tell apart
+// removeAvatar removes the user's avatar from the avatar store: the one the picture names, the one stored
+// under the user ID, where the providers store it, and for a GitHub user with an account recorded, the
+// one stored under the account-based ID. The GitHub provider stores the picture under the account-based ID,
+// and a user who signed in before the account check also has an earlier picture under the login-based ID;
+// the picture of a comment or a session can name either. An already-removed avatar is fine (a repeated
+// request stays idempotent), but a genuine store failure is returned, which avatar.ErrNotFound lets us
+// tell apart
 func (a *admin) removeAvatar(picture, userID, siteID string) error {
-	if picture == "" || a.authenticator.AvatarProxy() == nil {
+	if a.authenticator.AvatarProxy() == nil {
 		return nil
 	}
-	avatarID := avatarIDFromPicture(picture)
-	if avatarID == "" {
-		log.Printf("[WARN] unexpected avatar picture %q for user %s on site %s, skipping removal", picture, userID, siteID)
-		return nil
+	var avatarIDs []string
+	if picture != "" {
+		if avatarID := avatarIDFromPicture(picture); avatarID != "" {
+			avatarIDs = append(avatarIDs, avatarID)
+		} else {
+			log.Printf("[WARN] unexpected avatar picture %q for user %s on site %s, skipping its removal", picture, userID, siteID)
+		}
 	}
-	if err := a.authenticator.AvatarProxy().Store.Remove(avatarID); err != nil && !errors.Is(err, avatar.ErrNotFound) {
-		return err
+	ownIDs := []string{userID}
+	if strings.HasPrefix(userID, "github_") {
+		account, err := a.dataService.GetUserGithubAccount(siteID, userID)
+		if err != nil {
+			log.Printf("[WARN] can't read the github account of %s on site %s to remove its avatar, %v", userID, siteID, err)
+		}
+		ownIDs = append(ownIDs, account)
+	}
+	for _, id := range ownIDs {
+		if id == "" {
+			continue
+		}
+		if avatarID := fmt.Sprintf("%x.image", sha1.Sum([]byte(id))); !slices.Contains(avatarIDs, avatarID) { //nolint:gosec // the avatar store's own naming
+			avatarIDs = append(avatarIDs, avatarID)
+		}
+	}
+	for _, avatarID := range avatarIDs {
+		if err := a.authenticator.AvatarProxy().Store.Remove(avatarID); err != nil && !errors.Is(err, avatar.ErrNotFound) {
+			return err
+		}
 	}
 	return nil
 }
