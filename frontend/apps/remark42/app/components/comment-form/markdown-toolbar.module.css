@@ -23,7 +23,7 @@
   cursor: pointer;
 
   &:hover {
-    color: rgb(var(--primary-color));
+    color: rgb(var(--link-color));
   }
 }
 
@@ -46,6 +46,6 @@
   color: rgb(var(--secondary-text-color));
 
   &:hover {
-    color: rgb(var(--primary-brighter-color));
+    color: rgb(var(--link-color));
   }
 }

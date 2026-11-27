@@ -228,11 +228,11 @@
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
-      color: rgb(var(--primary-color));
+      color: rgb(var(--link-color));
     }
 
     & .titleLink {
-      color: rgb(var(--primary-color));
+      color: rgb(var(--link-color));
       text-decoration: none;
 
       &:hover {
@@ -252,7 +252,7 @@
     }
 
     & .username {
-      color: rgb(var(--lighter-text-color));
+      color: rgb(var(--link-color));
     }
 
     & .text {
@@ -278,7 +278,7 @@
   }
 
   & .titleLink {
-    color: rgb(var(--primary-color));
+    color: rgb(var(--link-color));
     font-weight: bold;
     text-decoration: none;
     text-overflow: ellipsis;
@@ -309,7 +309,7 @@
     color: rgb(var(--lighter-text-color));
 
     &:hover {
-      color: rgb(var(--primary-brighter-color));
+      color: rgb(var(--link-hover-color));
     }
   }
 

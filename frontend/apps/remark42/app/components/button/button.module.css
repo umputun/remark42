@@ -23,15 +23,15 @@
 .kindLink {
   background: transparent;
   font-weight: 600;
-  color: rgb(var(--primary-color));
+  color: rgb(var(--link-color));
 
   &:hover {
-    color: rgb(var(--primary-brighter-color));
+    color: rgb(var(--link-hover-color));
   }
 
   &:disabled,
   &:hover:disabled {
-    color: rgb(var(--primary-color));
+    color: rgb(var(--link-color));
   }
 }
 

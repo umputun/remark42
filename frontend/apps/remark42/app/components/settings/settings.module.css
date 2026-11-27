@@ -9,11 +9,11 @@
 .action {
   margin-inline-start: 8px;
   font-weight: 700;
-  color: rgb(var(--primary-color));
+  color: rgb(var(--link-color));
   cursor: pointer;
 
   &:hover {
-    color: rgb(var(--primary-brighter-color));
+    color: rgb(var(--link-hover-color));
   }
 
   &::before {

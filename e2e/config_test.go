@@ -69,8 +69,9 @@ func TestConfig_CustomPropertiesReachTheWidget(t *testing.T) {
 // the dark theme has the ones custom-properties.css sets on .dark. A color an integrator passes in
 // custom_properties is an inline style on the root element, so it wins over the light theme's. It
 // does not reach the dark theme for a property .dark sets again, --primary-color among them: .dark
-// is on the body, below the root. Links and the sign-in button read the same property. Nothing but
-// a browser can check this: the unit tests never load a stylesheet
+// is on the body, below the root. Links read --link-color, which .dark leaves alone, so an
+// integrator's link color applies in both themes. Nothing but a browser can check this: the unit
+// tests never load a stylesheet
 func TestConfig_ThemeDecidesTheTextColors(t *testing.T) {
 	t.Parallel()
 
@@ -82,16 +83,22 @@ func TestConfig_ThemeDecidesTheTextColors(t *testing.T) {
 		{name: "light", config: map[string]any{"theme": "light"},
 			link: "rgb(0, 117, 117)", button: "rgb(0, 117, 117)", label: "rgb(255, 255, 255)"},
 		{name: "dark", config: map[string]any{"theme": "dark"},
-			link: "rgb(0, 153, 153)", button: "rgb(0, 153, 153)", label: "rgb(255, 255, 255)"},
+			link: "rgb(0, 170, 170)", button: "rgb(0, 153, 153)", label: "rgb(255, 255, 255)"},
+		{name: "an integrator's link color in light",
+			config: map[string]any{"theme": "light", "custom_properties": map[string]any{"--link-color": "1, 2, 3"}},
+			link:   "rgb(1, 2, 3)", button: "rgb(0, 117, 117)", label: "rgb(255, 255, 255)"},
+		{name: "an integrator's link color in dark",
+			config: map[string]any{"theme": "dark", "custom_properties": map[string]any{"--link-color": "1, 2, 3"}},
+			link:   "rgb(1, 2, 3)", button: "rgb(0, 153, 153)", label: "rgb(255, 255, 255)"},
 		{name: "an integrator's primary color in light",
 			config: map[string]any{"theme": "light", "custom_properties": map[string]any{"--primary-color": "1, 2, 3"}},
-			link:   "rgb(1, 2, 3)", button: "rgb(1, 2, 3)", label: "rgb(255, 255, 255)"},
+			link:   "rgb(0, 117, 117)", button: "rgb(1, 2, 3)", label: "rgb(255, 255, 255)"},
 		// --inverse-text-color is not among the properties .dark sets again, so it shows that the
 		// dark theme still takes an integrator's value where it has none of its own
-		{name: "an integrator's colors in dark",
+		{name: "an integrator's primary color in dark",
 			config: map[string]any{"theme": "dark", "custom_properties": map[string]any{
 				"--primary-color": "1, 2, 3", "--inverse-text-color": "4, 5, 6"}},
-			link: "rgb(0, 153, 153)", button: "rgb(0, 153, 153)", label: "rgb(4, 5, 6)"},
+			link: "rgb(0, 170, 170)", button: "rgb(0, 153, 153)", label: "rgb(4, 5, 6)"},
 	}
 
 	for _, tt := range tbl {

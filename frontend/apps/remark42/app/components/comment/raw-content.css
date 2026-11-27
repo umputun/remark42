@@ -10,7 +10,7 @@
   }
 
   & a {
-    color: rgb(var(--primary-color));
+    color: rgb(var(--link-color));
     text-decoration: underline;
 
     &:hover {

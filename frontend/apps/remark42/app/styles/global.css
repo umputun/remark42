@@ -5,6 +5,8 @@
 :root.light {
   --primary-color: 0, 117, 117;
   --primary-brighter-color: 0, 128, 128;
+  --link-color: 0, 117, 117;
+  --link-hover-color: 0, 92, 92;
   --lighter-text-color: 106, 106, 106;
   --deactivated-color: 106, 106, 106;
 }
@@ -50,12 +52,12 @@ button {
 }
 
 a {
-  color: rgb(var(--primary-color));
+  color: rgb(var(--link-color));
   text-decoration: none;
   cursor: pointer;
 
   &:hover {
-    color: rgb(var(--primary-brighter-color));
+    color: rgb(var(--link-hover-color));
   }
 }
 

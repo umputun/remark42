@@ -145,18 +145,20 @@ var remark_config = {
 }
 ```
 
-The variables are `--primary-color`, `--primary-brighter-color`, `--primary-text-color`,
-`--secondary-text-color`, `--inverse-text-color`, `--lighter-text-color`, `--deactivated-color`,
-`--primary-background-color`, `--secondary-background-color`, `--highlight-color`,
-`--selection-color`, `--shadow-color`, `--line-color`, `--line-brighter-color`, `--upvote-color`,
-`--downvote-color`, `--verified-color`, `--ghost-color`, `--error-color`, `--error-background` and
-`--white-color`. Their default values are in
+The variables are `--primary-color`, `--primary-brighter-color`, `--link-color`,
+`--link-hover-color`, `--primary-text-color`, `--secondary-text-color`, `--inverse-text-color`,
+`--lighter-text-color`, `--deactivated-color`, `--primary-background-color`,
+`--secondary-background-color`, `--highlight-color`, `--selection-color`, `--shadow-color`,
+`--line-color`, `--line-brighter-color`, `--upvote-color`, `--downvote-color`, `--verified-color`,
+`--ghost-color`, `--error-color`, `--error-background` and `--white-color`. Their default values are
+in
 [`custom-properties.css`](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/app/styles/custom-properties.css).
-A variable left out keeps its default. In the light theme four of them start from darker values, set
+A variable left out keeps its default. In the light theme six of them start from darker values, set
 on `:root.light` in
 [`global.css`](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/app/styles/global.css)
-so text reads on white: `--primary-color`, `--primary-brighter-color`, `--lighter-text-color` and
-`--deactivated-color`. A value passed here replaces those too, so check its contrast on white.
+so text reads on white: `--primary-color`, `--primary-brighter-color`, `--link-color`,
+`--link-hover-color`, `--lighter-text-color` and `--deactivated-color`. A value passed here replaces
+those too, so check its contrast on white.
 
 `custom_properties` reaches the comments widget only. The last comments widget renders into your
 page and keeps the defaults, and the counter takes its styling from your page.
@@ -165,7 +167,9 @@ The dark theme sets eleven of them again: `--primary-color`, `--primary-brighter
 `--primary-text-color`, `--secondary-text-color`, `--primary-background-color`,
 `--secondary-background-color`, `--highlight-color`, `--line-color`, `--line-brighter-color`,
 `--error-color` and `--error-background`. A value passed for one of these applies in the light theme
-only; the other variables apply in both themes.
+only; the other variables apply in both themes. Links read `--link-color` and `--link-hover-color`,
+which the dark theme does not set again, so a link color applies in both themes. Button fills read
+`--primary-color`.
 
 The note above covers the colors too: which element reads which variable can change between
 versions. The numbered variables, `--color0` to `--color48`, were replaced by the named ones and

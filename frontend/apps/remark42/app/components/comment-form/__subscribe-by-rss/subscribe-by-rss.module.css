@@ -7,9 +7,9 @@
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
-  color: rgb(var(--primary-color));
+  color: rgb(var(--link-color));
 
   &:hover {
-    color: rgb(var(--primary-brighter-color));
+    color: rgb(var(--link-hover-color));
   }
 }
