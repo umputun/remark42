@@ -75,7 +75,7 @@ func (p DirectHandler) Name() string { return p.ProviderName }
 //	{
 //	  "user": "name",
 //	  "passwd": "xyz",
-//	  "aud": "bar",
+//	  "aud": "bar"
 //	}
 func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	logReq := p.scrubPasswordFromRequest(r)

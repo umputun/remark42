@@ -63,8 +63,8 @@ const (
 - `GET /auth/email/login?site=site-id&user=name&address=user@example.org` - send a sign-in token to the address, with `AUTH_EMAIL_ENABLE` set; see [email authentication](https://remark42.com/docs/configuration/email/). Returns `{"user": "name", "address": "user@example.org"}`. The address has to be a bare one: with a display name, a comment, a group, a quoted local part, a second address or spaces around it the call gets 403. `GET /auth/email/login?token=token` then signs the user in, within 30 minutes; a token used once gets 403
 - `GET /auth/telegram/login?site=site-id` - start Telegram sign-in, with `AUTH_TELEGRAM` set. Returns `{"token": "token", "bot": "bot-name"}`; the user sends `/start token` to the bot. `GET /auth/telegram/login?site=site-id&token=token` then signs the user in. Both steps have to finish within 10 minutes; the call answers 404 while the bot has no message, and for an unknown, expired or already used token
 - `GET /auth/anonymous/login?user=name&aud=site-id` - sign in anonymously, with `AUTH_ANON` set. The [authorization page](https://remark42.com/docs/configuration/authorization/#anonymous) describes the accepted names
-- `GET /auth/user` - the signed-in user as stored in the token, 401 without a valid token
-- `GET /auth/status` - returns `{"status": "logged in", "user": "name"}` or `{"status": "not logged in"}`
+- `GET /auth/user` - the signed-in user as stored in the token, 401 without a valid token or for a session the server refuses, such as a blocked user's. Admin Basic credentials, accepted when `ADMIN_PASSWD` is set, take precedence over the token and return the admin user
+- `GET /auth/status` - returns `{"status": "logged in", "user": "name"}` or `{"status": "not logged in"}`, with the same checks as `/auth/user`
 - `GET /auth/list` - list of enabled providers
 - `GET /auth/logout` - logout
 

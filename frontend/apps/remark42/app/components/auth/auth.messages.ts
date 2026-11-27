@@ -28,8 +28,8 @@ export const messages = defineMessages<string>({
     defaultMessage: 'Email address',
   },
   token: {
-    id: 'token',
-    defaultMessage: 'Paste the token from the email',
+    id: 'token.pasteOrLink',
+    defaultMessage: 'Paste the token from the email, or click the link in it',
   },
   expiredToken: {
     id: 'token.expired',

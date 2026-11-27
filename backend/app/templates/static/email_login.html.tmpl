@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta name="viewport" content="width=device-width"/>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+	<title>Sign in | Remark42</title>
+</head>
+<body>
+<div style="text-align: center; font-family: Arial, sans-serif; font-size: 18px;">
+	<h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
+	{{- if .SignedIn}}
+	<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em;">Signed in as <b>{{.User}}</b> on site <b>{{.Site}}</b></p>
+	<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em; font-size: 0.8em; opacity: 0.8;">You can return to the comments now.</p>
+	{{- else}}
+	<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em;">Sign in as <b>{{.User}}</b> on site <b>{{.Site}}</b> in this browser</p>
+	<form id="confirm" method="post">
+		<button type="submit" style="font-size: 18px; padding: 0.5em 1.5em; border: 0; border-radius: 0.3em; background-color: #4fbbd6; color: #fff; cursor: pointer;">Sign in</button>
+	</form>
+	{{- end}}
+</div>
+<script nonce="{{.Nonce}}">
+	// posting in place keeps this tab at one history entry, which is what lets the browser close it.
+	// The answer replaces the page whatever it is, and only a sign-in closes it. The plain form sends
+	// again only a post that got no answer, or a sign-in whose answer was cut off: the server has spent
+	// the link on any other
+	(function () {
+		function closeSoon() {
+			setTimeout(function () { window.close(); }, 500);
+		}
+		var form = document.getElementById('confirm');
+		if (!form) {
+			closeSoon();
+			return;
+		}
+		form.addEventListener('submit', function (e) {
+			e.preventDefault();
+			form.querySelector('button').disabled = true;
+			fetch(window.location.href, {method: 'POST'})
+				.catch(function () {
+					form.submit();
+					return null;
+				})
+				.then(function (r) {
+					if (!r) {
+						return;
+					}
+					return r.text().then(function (html) {
+						document.body.innerHTML = new DOMParser().parseFromString(html, 'text/html').body.innerHTML;
+						if (r.ok) {
+							closeSoon();
+						}
+					}, function () {
+						// the answer was cut off. A signed-in browser is shown so by the plain form; a refusal
+						// came after the link was spent, so sending it again would only report it used
+						if (r.ok) {
+							form.submit();
+							return;
+						}
+						form.textContent = 'The sign-in did not go through, ask for a new email from the comments.';
+					});
+				});
+		});
+	})();
+</script>
+</body>
+</html>

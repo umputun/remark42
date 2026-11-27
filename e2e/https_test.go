@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"runtime"
 	"slices"
@@ -431,7 +432,7 @@ func frameKeepsPartitionedCookies(t *testing.T, page playwright.Page) bool {
 }
 
 // loopbackProxy starts an http proxy that answers CONNECT for any name by connecting to the same port on
-// 127.0.0.1, and returns its address. It is how an engine without --host-resolver-rules reaches the
+// 127.0.0.1, and forwards a plain http request there the same way, and returns its address. It is how an engine without --host-resolver-rules reaches the
 // services of this stack under the names they are configured with
 func loopbackProxy(t *testing.T) string {
 	t.Helper()
@@ -439,11 +440,30 @@ func loopbackProxy(t *testing.T) string {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
+	// a transport of its own, so no proxy from the environment is used and its connections go with it
+	transport := &http.Transport{}
+	t.Cleanup(transport.CloseIdleConnections)
+	forward := &httputil.ReverseProxy{
+		Transport: transport,
+		Rewrite: func(pr *httputil.ProxyRequest) {
+			port := pr.In.URL.Port()
+			if port == "" {
+				port = "80"
+			}
+			// the Host header keeps the name the browser asked for, which is what the service answers to
+			pr.Out.URL.Host = net.JoinHostPort("127.0.0.1", port)
+		},
+	}
+
 	srv := &http.Server{
 		ReadHeaderTimeout: 5 * time.Second,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != http.MethodConnect {
-				http.Error(w, "this proxy only tunnels", http.StatusMethodNotAllowed)
+				if r.URL.Host == "" {
+					http.Error(w, "not a proxy request", http.StatusBadRequest)
+					return
+				}
+				forward.ServeHTTP(w, r)
 				return
 			}
 			_, port, err := net.SplitHostPort(r.Host)

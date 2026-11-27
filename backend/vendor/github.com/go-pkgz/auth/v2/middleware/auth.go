@@ -131,21 +131,21 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 			if claims.User != nil { // if uinfo in token populate it to context
 				// validator passed by client and performs check on token or/and claims
 				if a.Validator != nil && !a.Validator.Validate(tkn, claims) {
+					a.resetCookies(w, r, tkn)
 					onError(h, w, r, fmt.Errorf("user %s/%s blocked", claims.User.Name, claims.User.ID))
-					a.JWTService.Reset(w)
 					return
 				}
 
 				// check if user provider is allowed
 				if !a.isProviderAllowed(&claims) {
+					a.resetCookies(w, r, tkn)
 					onError(h, w, r, fmt.Errorf("user %s/%s provider is not allowed", claims.User.Name, claims.User.ID))
-					a.JWTService.Reset(w)
 					return
 				}
 
 				if a.JWTService.IsExpired(claims) {
 					if claims, err = a.refreshExpiredToken(w, claims, tkn); err != nil {
-						a.JWTService.Reset(w)
+						a.resetCookies(w, r, tkn)
 						onError(h, w, r, fmt.Errorf("can't refresh token: %w", err))
 						return
 					}
@@ -206,8 +206,34 @@ func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims token.
 		a.RefreshCache.Set(tkn, c)
 	}
 
-	a.Logf("[DEBUG] token refreshed for %+v", claims.User)
+	a.Logf("[DEBUG] token refreshed for %s", claims.User.ID)
 	return c, nil
+}
+
+// resetCookies expires the auth cookies before a rejection is answered, but only when the rejected
+// token is the request's own session cookie. JWTService.Get reads the token from the query or a header
+// before the cookie; a rejected token from there belongs to whoever made the link or the request, and
+// clearing the cookies would sign out the user who merely followed it. Reset also sets a text/plain
+// Content-Type, meant for logout responses; here the response belongs to the error handler or, under
+// Trace, to the wrapped handler, so the header is put back as it was
+func (a *Authenticator) resetCookies(w http.ResponseWriter, r *http.Request, tkn string) {
+	fromCookie := false
+	for _, c := range r.Cookies() {
+		if c.Value != "" && c.Value == tkn {
+			fromCookie = true
+			break
+		}
+	}
+	if !fromCookie {
+		return
+	}
+	ct, had := w.Header()["Content-Type"]
+	a.JWTService.Reset(w)
+	if had {
+		w.Header()["Content-Type"] = ct
+		return
+	}
+	w.Header().Del("Content-Type")
 }
 
 // AdminOnly middleware allows access for admins only

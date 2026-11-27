@@ -414,6 +414,8 @@ func (s *Rest) routes() http.Handler {
 		rroot.HandleFunc("POST /email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
 		rroot.HandleFunc("GET /email/subscribe.html", s.privRest.emailSubscribeCtrl)
 		rroot.HandleFunc("POST /email/subscribe.html", s.privRest.emailSubscribeCtrl)
+		rroot.HandleFunc("GET /email/login.html", s.privRest.emailLoginCtrl)
+		rroot.HandleFunc("POST /email/login.html", s.privRest.emailLoginCtrl)
 	})
 
 	// file server for /web: the frontend build first, then the assets embedded in the binary.

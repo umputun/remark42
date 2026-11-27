@@ -166,6 +166,17 @@ func TestAuth_EmailSignsIn(t *testing.T) {
 func signInEmail(t *testing.T, page playwright.Page, frame playwright.FrameLocator, username, address string) {
 	t.Helper()
 
+	token := verificationToken(t, requestSignInEmail(t, frame, username, address))
+	require.NoError(t, frame.Locator(".auth-token-textarea").Fill(token))
+
+	assertSignedIn(t, page, frame)
+}
+
+// requestSignInEmail sends the email sign-in form, waits for the token step and returns the
+// message the reader gets
+func requestSignInEmail(t *testing.T, frame playwright.FrameLocator, username, address string) string {
+	t.Helper()
+
 	pauseForAuthLimit()
 	require.NoError(t, frame.Locator(".auth-button").Click())
 	waitVisible(t, frame.Locator(".auth-dropdown"))
@@ -181,11 +192,7 @@ func signInEmail(t *testing.T, page playwright.Page, frame playwright.FrameLocat
 	require.NoError(t, frame.Locator(".auth-submit").Click())
 
 	waitVisible(t, frame.Locator(".auth-token-textarea"))
-
-	token := verificationToken(t, mailpitMessage(t, address))
-	require.NoError(t, frame.Locator(".auth-token-textarea").Fill(token))
-
-	assertSignedIn(t, page, frame)
+	return mailpitMessage(t, address)
 }
 
 // assertSignedIn checks the panel has swapped Sign in for the signed-in user's own controls.
@@ -215,12 +222,19 @@ func assertSignedIn(t *testing.T, page playwright.Page, frame playwright.FrameLo
 	waitHidden(t, frame.Locator(".auth-button"), "the panel still offers sign-in after a sign-in")
 }
 
-// verificationToken pulls the JWT out of the confirmation mail
+// verificationToken pulls the token to paste out of the confirmation mail. The mail carries the
+// link's own token too, inside the link, and that one is skipped: the login endpoint takes either,
+// so pasting the link's token would pass while the token meant for pasting went untested
 func verificationToken(t *testing.T, body string) string {
 	t.Helper()
-	m := regexp.MustCompile(`[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}`).FindString(body)
-	require.NotEmpty(t, m, "no token in message body:\n%s", body)
-	return m
+	re := regexp.MustCompile(`(tkn=)?([A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,})`)
+	for _, m := range re.FindAllStringSubmatch(body, -1) {
+		if m[1] == "" {
+			return m[2]
+		}
+	}
+	require.FailNow(t, "no token to paste in message body", body)
+	return ""
 }
 
 // TestAuth_SignOutEndsTheSession covers the one half of authentication nothing tested at any

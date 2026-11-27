@@ -24,7 +24,7 @@ import { Button } from 'components/button';
 import { Dropdown, useDropdown } from 'components/dropdown';
 import { Preloader } from 'components/preloader';
 import { TextareaAutosize } from 'components/textarea-autosize';
-import { getPersistedEmail } from 'components/auth/auth.utils';
+import { getPersistedEmail, isCompleteToken } from 'components/auth/auth.utils';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { isJwtExpired } from 'utils/jwt';
 
@@ -280,11 +280,14 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
       e.preventDefault();
       setError(null);
 
+      // a token still being pasted or typed is not sent, the server would refuse it
+      const pasted = value.trim();
+
       try {
-        if (value.length > 0 && isJwtExpired(value)) {
+        if (pasted.length > 0 && isJwtExpired(pasted)) {
           setError(intl.formatMessage(messages.expiredToken));
-        } else {
-          sendForm(value);
+        } else if (isCompleteToken(pasted)) {
+          sendForm(pasted);
         }
       } catch (e) {}
 

@@ -180,20 +180,21 @@ func (th *TelegramHandler) processUpdates(ctx context.Context, updates *telegram
 
 		th.requests.RLock()
 		authRequest, ok := th.requests.data[token]
-		if !ok { // no such token
-			th.requests.RUnlock()
+		th.requests.RUnlock()
+		// an expired request stays in the map until the next cleanup, and the site's check refuses it
+		if !ok || time.Now().After(authRequest.expires) {
 			err := th.Telegram.Send(ctx, update.Message.Chat.ID, th.ErrorMsg)
 			if err != nil {
 				th.Logf("failed to notify telegram peer: %v", err)
 			}
 			continue
 		}
-		th.requests.RUnlock()
 
+		// a missing picture does not block the login, the user gets an identicon instead
 		avatarURL, err := th.Telegram.Avatar(ctx, update.Message.Chat.ID)
 		if err != nil {
-			th.Logf("failed to get user avatar: %v", err)
-			continue
+			th.Logf("[WARN] failed to get user avatar, confirming the login without it: %v", err)
+			avatarURL = ""
 		}
 
 		id := th.ProviderName + "_" + authtoken.HashID(sha1.New(), fmt.Sprint(update.Message.Chat.ID))
@@ -498,7 +499,7 @@ func (tg *tgAPI) GetUpdates(ctx context.Context) (*telegramUpdate, error) {
 
 // Send sends a message to telegram peer
 func (tg *tgAPI) Send(ctx context.Context, id int, msg string) error {
-	url := fmt.Sprintf("sendMessage?chat_id=%d&text=%s", id, neturl.PathEscape(msg))
+	url := fmt.Sprintf("sendMessage?chat_id=%d&text=%s", id, neturl.QueryEscape(msg))
 	return tg.request(ctx, url, &struct{}{})
 }
 

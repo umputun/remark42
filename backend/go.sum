@@ -40,8 +40,8 @@ github.com/gavv/httpexpect v2.0.0+incompatible h1:1X9kcRshkSKEjNJJxX9Y9mQ5BRfbxU
 github.com/gavv/httpexpect v2.0.0+incompatible/go.mod h1:x+9tiU1YnrOvnB725RkpoLv1M62hOWzwo5OXotisrKc=
 github.com/go-oauth2/oauth2/v4 v4.6.0 h1:g1M92LQh9NbDmovPNG2iJ25rtbXPXBrRv+lorehLc44=
 github.com/go-oauth2/oauth2/v4 v4.6.0/go.mod h1:BXiOY+QZtZy2ewbsGk2B5P8TWmtz/Rf7ES5ZttQFxfQ=
-github.com/go-pkgz/auth/v2 v2.5.0 h1:b0RsK0A7FbVb2G96oO05xZGhUZBNjQ+6cxctUtA7Y4s=
-github.com/go-pkgz/auth/v2 v2.5.0/go.mod h1:iZx2JiGZ8Aef+wM0BPLMQY8aur4fLE0uyPhFRO9dYQ4=
+github.com/go-pkgz/auth/v2 v2.5.1-0.20261125172638-6c14f3e2219a h1:FYBuR1rk5UQGm4yMUI7FyihP/i7hjOP9Vb8DGK1/uHo=
+github.com/go-pkgz/auth/v2 v2.5.1-0.20261125172638-6c14f3e2219a/go.mod h1:xt8EaJNK1+EeP3jSfVttHY1hSUJhydvUpN1GFeG/7eQ=
 github.com/go-pkgz/email v0.8.0 h1:6+Tgjfj7zFccFCPmURV2spKDXDb7aX/iWXBY2hBa9ww=
 github.com/go-pkgz/email v0.8.0/go.mod h1:+wgi4x7S33IuCzfcCM5euN0GwQG6XvO/PBLxrNffYLI=
 github.com/go-pkgz/expirable-cache/v3 v3.2.0 h1:F3gLZ7mRt0aAy2PLHFFhiQP9aHlCIV89gea5cTJ5JMg=
@@ -90,8 +90,8 @@ github.com/jessevdk/go-flags v1.6.1 h1:Cvu5U8UGrLay1rZfv/zP7iLpSHGUZ/Ou68T0iX1bB
 github.com/jessevdk/go-flags v1.6.1/go.mod h1:Mk8T1hIAWpOiJiHa9rJASDK2UGWji0EuPGBnNLMooyc=
 github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7C0MuV77Wo=
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
-github.com/klauspost/compress v1.20.4 h1:dD0v/bvxtjCBqQu6sx1TNWkalEY5lNTIe+HY9w8TeNI=
-github.com/klauspost/compress v1.20.4/go.mod h1:LUdAzn7YLVvxLpc7y3V1m40wESHTgc1422pwwBSKYuI=
+github.com/klauspost/compress v1.20.5 h1:rJj5VjH4xQxbnLphg6eqUcDxRFCw1jpMdDY9qXlrwSs=
+github.com/klauspost/compress v1.20.5/go.mod h1:LUdAzn7YLVvxLpc7y3V1m40wESHTgc1422pwwBSKYuI=
 github.com/klauspost/cpuid/v2 v2.4.0 h1:S6Hrbc7+ywsr0r+RLapfGBHfyefhCTwEh3A0tV913Dw=
 github.com/klauspost/cpuid/v2 v2.4.0/go.mod h1:19jmZ9mjzoF//ddRSUsv0zfBTJWh3QJh9FNxZTMrGxU=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=

@@ -167,7 +167,7 @@ func TestServerApp_CustomOAuthProviderSignIn(t *testing.T) {
 
 	t.Run("no session without a value in the id field and without an email", func(t *testing.T) {
 		status, userID := customOAuthSignIn(t, app, "no-id", "")
-		assert.Equal(t, http.StatusInternalServerError, status)
+		assert.Equal(t, http.StatusServiceUnavailable, status)
 		assert.Empty(t, userID, "user id of the session")
 	})
 

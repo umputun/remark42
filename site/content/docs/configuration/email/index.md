@@ -232,6 +232,7 @@ Remark42 uses golang templates for email templating. Templates are located in `b
 Now we have the following templates:
 
 - `email_confirmation_login.html.tmpl` – used for confirmation of login
+- `email_login.html.tmpl` – used for the page the sign-in link in the login confirmation email opens, both before and after the sign-in
 - `email_confirmation_subscription.html.tmpl` – used for confirmation of subscription
 - `email_subscribe.html.tmpl` – used for the page the link in the subscription confirmation email opens, both before and after the subscription is confirmed
 - `email_reply.html.tmpl` – used for sending replies to user comments (when the user subscribed to it) and for noticing admins about new comments on a site
@@ -244,6 +245,7 @@ To replace any template, add the file with the same name to the working director
 volumes:
   - ./var:/srv/var
   - ./customised_templates/email_confirmation_login.html.tmpl:/srv/email_confirmation_login.html.tmpl:ro
+  - ./customised_templates/email_login.html.tmpl:/srv/email_login.html.tmpl:ro
   - ./customised_templates/email_confirmation_subscription.html.tmpl:/srv/email_confirmation_subscription.html.tmpl:ro
   - ./customised_templates/email_subscribe.html.tmpl:/srv/email_subscribe.html.tmpl:ro
   - ./customised_templates/email_reply.html.tmpl:/srv/email_reply.html.tmpl:ro
@@ -312,13 +314,26 @@ Sent when a user logs in via email authentication.
 | Variable | Type | Description |
 |----------|------|-------------|
 | `{{.User}}` | string | Username |
-| `{{.Token}}` | string | Login token |
+| `{{.Token}}` | string | Login token to paste into the comments |
+| `{{.LinkToken}}` | string | Login token for the sign-in link; the link is `{{.URL}}/email/login.html?tkn={{.LinkToken}}`. Using one of the two tokens leaves the other valid |
+| `{{.URL}}` | string | Remark42 address, `REMARK_URL` |
 | `{{.Site}}` | string | Site name |
 | `{{.Address}}` | string | Recipient address |
 
+#### `email_login.html.tmpl` — sign-in link page
+
+Shown at `/email/login.html` when the sign-in link from the login confirmation email is opened. It signs in the browser that opens it. Without `{{.SignedIn}}` the page must offer a form posting back to itself (`<form method="post">`), as opening the link alone does not sign in: mail scanners open links in incoming messages on their own.
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `{{.User}}` | string | Username |
+| `{{.Site}}` | string | Site name |
+| `{{.SignedIn}}` | bool | True once the form was submitted and this browser is signed in, or when it already was |
+| `{{.Nonce}}` | string | Value for the `nonce` attribute of an inline `<script>`; the page's Content Security Policy runs no other script |
+
 #### `error_response.html.tmpl`
 
-Shown when the subscription confirmation page or the unsubscribe page fails.
+Shown when the subscription confirmation page, the unsubscribe page or the sign-in link page fails.
 
 | Variable | Type | Description |
 |----------|------|-------------|
@@ -332,7 +347,10 @@ For plain-text login confirmations, set `AUTH_EMAIL_CONTENT_TYPE=text/plain` and
 ```text
 Confirmation for {{.User}} on site {{.Site}}
 
-Copy this token into the login form:
+Open this link to sign in in this browser:
+{{.URL}}/email/login.html?tkn={{.LinkToken}}
+
+Or copy this token into the login form:
 {{.Token}}
 
 Sent to {{.Address}}

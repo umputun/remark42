@@ -197,6 +197,39 @@ describe('<SubscribeByEmailForm/>', () => {
     expect(screen.getByRole('button', { name: 'Unsubscribe' })).toBeTruthy();
   });
 
+  it.each`
+    text                                           | what
+    ${''}                                          | ${'an emptied field'}
+    ${validToken.slice(0, -1)}                     | ${'a token without the end of its signature'}
+    ${validToken.split('.').slice(0, 2).join('.')} | ${'a token without a signature'}
+  `('sends nothing for $what', async ({ text }) => {
+    const { container } = createWrapper();
+
+    fireEvent.input(container.querySelector('input') as HTMLInputElement, { target: { value: 'some@email.com' } });
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    await act(() => sleep(0));
+
+    fireEvent.input(container.querySelector('textarea') as HTMLTextAreaElement, { target: { value: text } });
+    await act(() => sleep(0));
+
+    expect(emailConfirmationForSubscribeMock).not.toHaveBeenCalled();
+  });
+
+  it('sends a pasted token without the spaces around it', async () => {
+    const { container } = createWrapper();
+
+    fireEvent.input(container.querySelector('input') as HTMLInputElement, { target: { value: 'some@email.com' } });
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    await act(() => sleep(0));
+
+    fireEvent.input(container.querySelector('textarea') as HTMLTextAreaElement, {
+      target: { value: ` ${validToken}\n` },
+    });
+    await act(() => sleep(0));
+
+    expect(emailConfirmationForSubscribeMock).toHaveBeenCalledWith(validToken);
+  });
+
   it('should pass throw unsubscribe process', async () => {
     const { container } = createWrapper({ ...initialStore, user: { ...user, email_subscription: true } });
 

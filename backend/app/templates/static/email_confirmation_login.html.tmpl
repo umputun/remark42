@@ -9,6 +9,10 @@
 <div style="text-align: center; font-family: Arial, sans-serif; font-size: 18px;">
 	<h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
 	<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em;">Confirmation for <b>{{.User}}</b> on site <b>{{.Site}}</b></p>
+	{{- if and .URL .LinkToken}}
+	<p style="position: relative; margin: 0 0 1em 0;"><a href="{{.URL}}/email/login.html?tkn={{.LinkToken}}" style="display: inline-block; padding: 0.5em 1.5em; border-radius: 0.3em; background-color: #4fbbd6; color: #fff; text-decoration: none;">Sign in</a></p>
+	<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em; font-size: 0.8em;">If the comments are open in another browser or device, paste the token below there instead.</p>
+	{{- end}}
 	<div style="background-color: #eee; max-width: 20em; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
 		<p style="position: relative; margin: 0 0 0.5em 0;">TOKEN</p>
 		<p style="position: relative; font-size: 0.7em; opacity: 0.8;"><i>Please copy and paste this text into “token” field on comments page to login</i></p>
