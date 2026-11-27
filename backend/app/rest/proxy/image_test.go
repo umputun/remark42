@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -45,54 +44,6 @@ func gopherPNG() io.Reader { return base64.NewDecoder(base64.StdEncoding, string
 func gopherPNGBytes() []byte {
 	img, _ := io.ReadAll(gopherPNG())
 	return img
-}
-
-func TestImage_Extract(t *testing.T) {
-	tbl := []struct {
-		inp string
-		res []string
-	}{
-		{
-			`<p> blah <img src="http://radio-t.com/img.png"/> test</p>`,
-			[]string{"http://radio-t.com/img.png"},
-		},
-		{
-			`<p> blah <img src="https://radio-t.com/img.png"/> test</p>`,
-			[]string{},
-		},
-		{
-			`<img src="http://radio-t.com/img2.png"/>`,
-			[]string{"http://radio-t.com/img2.png"},
-		},
-		{
-			`<img src="http://radio-t.com/img3.png"/> <div>xyz <img src="http://images.pexels.com/67636/img4.jpeg"> </div>`,
-			[]string{"http://radio-t.com/img3.png", "http://images.pexels.com/67636/img4.jpeg"},
-		},
-		{
-			`<img src="https://radio-t.com/img3.png"/> <div>xyz <img src="http://images.pexels.com/67636/img4.jpeg"> </div>`,
-			[]string{"http://images.pexels.com/67636/img4.jpeg"},
-		},
-		{
-			`abcd <b>blah</b> <h1>xxx</h1>`,
-			[]string{},
-		},
-	}
-	img := Image{HTTP2HTTPS: true}
-
-	for i, tt := range tbl {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			res, err := img.extract(tt.inp, func(src string) bool { return strings.HasPrefix(src, "http://") })
-			assert.NoError(t, err)
-			assert.Equal(t, tt.res, res)
-		})
-	}
-}
-
-func TestImage_Replace(t *testing.T) {
-	img := Image{HTTP2HTTPS: true, RoutePath: "/img"}
-	r := img.replace(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`,
-		[]string{"http://radio-t.com/img3.png", "http://images.pexels.com/67636/img4.jpeg"})
-	assert.Equal(t, `<img src="/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
 }
 
 func TestImage_Routes(t *testing.T) {
@@ -272,10 +223,10 @@ func TestImage_RoutesTimedOut(t *testing.T) {
 func TestImage_ConvertProxyMode(t *testing.T) {
 	img := Image{HTTP2HTTPS: true, RoutePath: "/img"}
 	r := img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
-	assert.Equal(t, `<img src="/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
+	assert.Equal(t, `<img src="/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw=="/>`, r)
 
 	r = img.Convert(`<img src="https://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
-	assert.Equal(t, `<img src="https://radio-t.com/img3.png"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
+	assert.Equal(t, `<img src="https://radio-t.com/img3.png"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw=="/>`, r)
 
 	img = Image{HTTP2HTTPS: true, RoutePath: "/img", RemarkURL: "http://example.com"}
 	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz`)
@@ -289,10 +240,10 @@ func TestImage_ConvertProxyMode(t *testing.T) {
 func TestImage_ConvertCachingMode(t *testing.T) {
 	img := Image{CacheExternal: true, RoutePath: "/img", RemarkURL: "https://remark42.com"}
 	r := img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
-	assert.Equal(t, `<img src="https://remark42.com/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="https://remark42.com/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
+	assert.Equal(t, `<img src="https://remark42.com/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="https://remark42.com/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw=="/>`, r)
 
 	r = img.Convert(`<img src="https://radio-t.com/img3.png"/> xyz <img src="https://images.pexels.com/67636/img4.jpeg">`)
-	assert.Equal(t, `<img src="https://remark42.com/img?src=aHR0cHM6Ly9yYWRpby10LmNvbS9pbWczLnBuZw=="/> xyz <img src="https://remark42.com/img?src=aHR0cHM6Ly9pbWFnZXMucGV4ZWxzLmNvbS82NzYzNi9pbWc0LmpwZWc=">`, r)
+	assert.Equal(t, `<img src="https://remark42.com/img?src=aHR0cHM6Ly9yYWRpby10LmNvbS9pbWczLnBuZw=="/> xyz <img src="https://remark42.com/img?src=aHR0cHM6Ly9pbWFnZXMucGV4ZWxzLmNvbS82NzYzNi9pbWc0LmpwZWc="/>`, r)
 
 	r = img.Convert(`<img src="https://remark42.com/pictures/1.png"/>`)
 	assert.Equal(t, `<img src="https://remark42.com/pictures/1.png"/>`, r)
@@ -304,7 +255,60 @@ func TestImage_ConvertCachingMode(t *testing.T) {
 	// both Caching and Proxy enabled
 	img = Image{CacheExternal: true, HTTP2HTTPS: true, RoutePath: "/img", RemarkURL: "https://remark42.com"}
 	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
-	assert.Equal(t, `<img src="https://remark42.com/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="https://remark42.com/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
+	assert.Equal(t, `<img src="https://remark42.com/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="https://remark42.com/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw=="/>`, r)
+}
+
+// TestImage_ConvertSrcForms covers image sources a search of the html text for the src got wrong: one that is
+// escaped in the html, one that occurs in the text outside src, one that occurs inside the proxy URL itself
+// (an empty src or "/"), and one that only starts with the remark42 URL
+func TestImage_ConvertSrcForms(t *testing.T) {
+	img := Image{CacheExternal: true, RoutePath: "/img", RemarkURL: "https://remark42.com"}
+	proxied := func(src string) string {
+		return "https://remark42.com/img?src=" + base64.URLEncoding.EncodeToString([]byte(src))
+	}
+
+	t.Run("escaped src", func(t *testing.T) {
+		r := img.Convert(`<img src="http://a.test/p.gif?a=1&amp;b=2"/>`)
+		assert.Equal(t, `<img src="`+proxied("http://a.test/p.gif?a=1&b=2")+`"/>`, r)
+	})
+
+	t.Run("link to the image's URL is kept", func(t *testing.T) {
+		r := img.Convert(`<a href="http://a.test/c.gif">http://a.test/c.gif</a> <img src="http://a.test/c.gif"/>`)
+		assert.Equal(t, `<a href="http://a.test/c.gif">http://a.test/c.gif</a> <img src="`+proxied("http://a.test/c.gif")+`"/>`, r)
+	})
+
+	t.Run("empty src", func(t *testing.T) {
+		in := strings.Repeat(`<img src=""/>`, 8) + strings.Repeat("A", 400)
+		assert.Equal(t, in, img.Convert(in), "an empty src is left as it is")
+	})
+
+	t.Run("src inside the proxy URL", func(t *testing.T) {
+		for _, src := range []string{"/", "t", "h"} {
+			r := img.Convert(strings.Repeat(`<img src="`+src+`"/>`, 40))
+			assert.Equal(t, strings.Repeat(`<img src="`+proxied(src)+`"/>`, 40), r, "src %q", src)
+		}
+	})
+
+	t.Run("URL that only starts with remark42's", func(t *testing.T) {
+		for _, src := range []string{"https://remark42.com.attacker.example/a.png", "https://remark42.com@attacker.example/a.png",
+			"https://remark42.comattacker.example/a.png"} {
+			assert.Equal(t, `<img src="`+proxied(src)+`"/>`, img.Convert(`<img src="`+src+`"/>`), src)
+		}
+		own := `<img src="https://remark42.com/api/v1/picture/dev/1.png"/>`
+		assert.Equal(t, own, img.Convert(own), "remark42's own image")
+	})
+
+	t.Run("html nested too deep to parse", func(t *testing.T) {
+		in := strings.Repeat("<b>", 520) + `<img src="http://a.test/nested.gif"/>`
+		r := img.Convert(in)
+		assert.NotContains(t, r, "<img", "no image is left in a comment whose images can't be found")
+		assert.Contains(t, r, "nested.gif", "the text is kept, escaped")
+	})
+
+	t.Run("upper case http in https mode", func(t *testing.T) {
+		https := Image{HTTP2HTTPS: true, RoutePath: "/img", RemarkURL: "https://remark42.com"}
+		assert.Equal(t, `<img src="`+proxied("HTTP://a.test/c.gif")+`"/>`, https.Convert(`<img src="HTTP://a.test/c.gif"/>`))
+	})
 }
 
 func TestImage_PrivateIPBlocking(t *testing.T) {

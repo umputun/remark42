@@ -143,6 +143,20 @@ func TestRest_CreateAndPreviewWithImage(t *testing.T) {
 		assert.Equal(t, true, pngRead, "original image accessed to be shown to user")
 	})
 
+	t.Run("every stored image is proxied", func(t *testing.T) {
+		text := `plain <img src=\"http://attacker.example/plain.png\"> amp ![](http://attacker.example/a.png?a=1&b=2) ` +
+			`hidden <svg><title><!-- </title><img src=\"http://attacker.example/hidden.png\" --></title></svg> ` +
+			strings.Repeat(`<img src>`, 8)
+		b, code := call(t, http.MethodPost, ts.URL+"/api/v1/comment?site=remark42",
+			`{"text": "`+text+`", "locator":{"url": "https://radio-t.com/blah2", "site": "remark42"}}`, adminPasswd)
+		require.Equal(t, http.StatusCreated, code, b)
+		c := R.JSON{}
+		require.NoError(t, json.Unmarshal([]byte(b), &c), b)
+		stored := c["text"].(string)
+		assert.NotContains(t, stored, "attacker.example", "an image is stored with its own address")
+		assert.Equal(t, 3, strings.Count(stored, srv.RemarkURL+"/api/v1/img?src="), stored)
+		assert.Less(t, len(stored), 2048, "empty sources don't multiply the text")
+	})
 }
 
 func TestRest_CreateOldPost(t *testing.T) {

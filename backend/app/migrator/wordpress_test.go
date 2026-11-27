@@ -144,9 +144,11 @@ func TestWP_Convert_MD(t *testing.T) {
 	// wordpress shows comments as html with paragraphs and links added, markdown stays text
 	assert.Equal(t, "<p>Row1<br/>\nRow2</p>\n<p>Row4</p>\n", comments[0].Text)
 	assert.Equal(t, "<p>markdown `text`</p>\n", comments[1].Text)
-	expText := `<p>Row1 Link <a href="http://releases.rancher.com/os/latest" rel="nofollow ugc">http://releases.rancher.com/os/latest</a>`
+	expText := `<p>Row1 Link <a href="http://releases.rancher.com/os/latest" rel="nofollow">http://releases.rancher.com/os/latest</a>`
 	expText += " markdown `text` blah</p>\n<p>Row3 markdown“`md block“`</p>\n"
 	assert.Equal(t, expText, comments[2].Text)
+	comments[2].Sanitize()
+	assert.Contains(t, comments[2].Text, `rel="nofollow ugc"`, "the link is marked as user content when stored")
 }
 
 func TestWordPress_CommentTextIndependent(t *testing.T) {

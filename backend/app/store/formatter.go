@@ -63,13 +63,19 @@ func (f *CommentFormatter) FormatText(txt string, raw bool) (res string) {
 	return f.FormatHTML(f.unEscape(res))
 }
 
-// FormatHTML applies external converters to text that is already HTML, shortens its links and marks its images lazy.
+// FormatHTML shortens the links of text that is already HTML, sanitizes it, applies external converters and
+// marks its images lazy.
+//
+// The converters and lazyImage find images with an HTML parser, while the sanitizer reads tags one at a time,
+// and the two can disagree: an <img> inside an HTML comment within an SVG <title> is comment text to the parser
+// and a tag to the sanitizer. Sanitizing first gives the converters the tags that are stored. Links are
+// shortened before that, as the sanitizer can re-encode a link's href so that it no longer equals its text.
 func (f *CommentFormatter) FormatHTML(commentHTML string) (res string) {
-	res = commentHTML
+	res = f.shortenAutoLinks(commentHTML, shortURLLen)
+	res = sanitizeBalanced(res)
 	for _, conv := range f.converters {
 		res = conv.Convert(res)
 	}
-	res = f.shortenAutoLinks(res, shortURLLen)
 	res = f.lazyImage(res)
 	return res
 }
