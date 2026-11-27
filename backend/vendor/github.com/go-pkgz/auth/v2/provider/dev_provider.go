@@ -2,9 +2,11 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -100,25 +102,15 @@ func (d *DevAuthServer) Run(ctx context.Context) { // nolint (gocyclo)
 				}
 
 			case strings.HasPrefix(r.URL.Path, "/user"):
-				ava := fmt.Sprintf("http://%s:%d/avatar?user=%s", d.Provider.Host, d.Provider.Port, d.username)
-				res := fmt.Sprintf(`{
-					"id": "%s",
-					"name":"%s",
-					"picture":"%s"
-					}`, d.username, d.username, ava)
-
+				ava := fmt.Sprintf("http://%s:%d/avatar?user=%s", d.Provider.Host, d.Provider.Port, url.QueryEscape(d.username))
+				info := map[string]string{"id": d.username, "name": d.username, "picture": ava}
 				if d.GetEmailFn != nil {
-					email := d.GetEmailFn(d.username)
-					res = fmt.Sprintf(`{
-					"id": "%s",
-					"name":"%s",
-					"picture":"%s",
-					"email": "%s"
-					}`, d.username, d.username, ava, email)
+					info["email"] = d.GetEmailFn(d.username)
 				}
+				res, _ := json.Marshal(info) // a map of strings always marshals
 
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
-				if _, err = w.Write([]byte(res)); err != nil {
+				if _, err = w.Write(res); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
@@ -199,9 +191,11 @@ func NewDev(p Params) Oauth2Handler {
 	return oh
 }
 
-var devUserFormTmpl = `
-<html>
+var devUserFormTmpl = `<!DOCTYPE html>
+<html lang="en">
 	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>Dev OAuth</title>
 		<style>
 			body {
@@ -254,11 +248,12 @@ var devUserFormTmpl = `
 				margin: 0;
 				width: 100%;
 				text-align: inherit;
+				box-sizing: border-box;
 			}
 
 			.form-submit {
 				border: none;
-				background: hsl(200, 50%, 50%);
+				background: hsl(200, 50%, 40%);
 				color: white;
 				font: inherit;
 				padding: 0.4em 0.8em 0.3em 0.8em;
@@ -268,11 +263,11 @@ var devUserFormTmpl = `
 
 			.form-submit:hover,
 			.form-submit:focus {
-				background-color: hsl(200, 50%, 70%);
+				background-color: hsl(200, 50%, 32%);
 			}
 
 			.form-submit:active {
-				background-color: hsl(200, 80%, 70%);
+				background-color: hsl(200, 80%, 25%);
 			}
 
 			.username-label,
@@ -309,11 +304,11 @@ var devUserFormTmpl = `
 			<input type="submit" class="form-submit" value="Authorize" />
 			<p class="notice">Not for production use</p>
 		</form>
+		<script>
+			var input = document.querySelector(".username-input");
+			input.focus();
+			input.setSelectionRange(0, input.value.length)
+		</script>
 	</body>
-	<script>
-		var input = document.querySelector(".username-input");
-		input.focus();
-		input.setSelectionRange(0, input.value.length)
-	</script>
 </html>
 `

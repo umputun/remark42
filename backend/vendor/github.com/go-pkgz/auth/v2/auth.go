@@ -44,8 +44,8 @@ type Opts struct {
 	SecretReader   token.Secret        // reader returns secret for given site id (aud), required
 	ClaimsUpd      token.ClaimsUpdater // updater for jwt to add/modify values stored in the token
 	SecureCookies  bool                // makes jwt cookie secure
-	TokenDuration  time.Duration       // token's TTL, refreshed automatically
-	CookieDuration time.Duration       // cookie's TTL. This cookie stores JWT token
+	TokenDuration  time.Duration       // token's TTL, refreshed automatically, default 15 minutes
+	CookieDuration time.Duration       // cookie's TTL. This cookie stores JWT token, default 31 days
 
 	DisableXSRF bool // disable XSRF protection, useful for testing/debugging
 	DisableIAT  bool // disable IssuedAt claim
@@ -86,7 +86,9 @@ type Opts struct {
 	// only, pass a getter returning an empty slice.
 	AllowedRedirectHosts token.AllowedHosts
 
-	AvatarStore         avatar.Store // store to save/load avatars, required (use avatar.NoOp to disable avatars support)
+	// nil AvatarStore disables the avatar proxy and keeps the provider's picture URL (Telegram leaves it empty);
+	// avatar.NoOp stores nothing and leaves Picture pointing at an empty avatar path
+	AvatarStore         avatar.Store // store to save/load avatars, optional
 	AvatarResizeLimit   int          // resize avatar's limit in pixels
 	AvatarIdenticonSize int          // size of generated identicon avatars in pixels, default 300
 	AvatarRoutePath     string       // avatar routing prefix, i.e. "/api/v1/avatar", default `/avatar`
@@ -94,7 +96,7 @@ type Opts struct {
 
 	AdminPasswd      string                      // if presented, allows basic auth with user admin and given password
 	BasicAuthChecker middleware.BasicAuthFunc    // custom checker for basic auth; when set, AdminPasswd is bypassed entirely
-	AudienceReader   token.Audience              // list of allowed aud values, default (empty) allows any
+	AudienceReader   token.Audience              // allowed aud values; nil (default) allows any, an empty list rejects every token
 	AudSecrets       bool                        // allow multiple secrets (secret per aud)
 	Logger           logger.L                    // logger interface, default is no logging at all
 	RefreshCache     middleware.RefreshCache     // optional cache to keep refreshed tokens
@@ -103,7 +105,8 @@ type Opts struct {
 	// VerifConfirmationStore enforces one-shot consumption of email
 	// confirmation tokens issued by the verify provider. The default
 	// (nil) installs an in-memory store on first use of AddVerifProvider —
-	// fine for single-instance deployments. Multi-instance deployments
+	// fine for a single instance, but it lives in process memory, so a restart
+	// forgets redeemed tokens until they expire. Multi-instance deployments
 	// MUST supply a shared backend (e.g. Redis) implementing
 	// provider.VerifConfirmationStore, otherwise replay rejection works
 	// only on the instance that consumed the token.
@@ -196,6 +199,33 @@ func NewService(opts Opts) (res *Service) {
 // Handlers gets http.Handler for all providers and avatars
 func (s *Service) Handlers() (authHandler, avatarHandler http.Handler) {
 
+	// user and status report what the Auth middleware accepts: they run the same checks through Trace,
+	// so a user rejected by the Validator, or from a provider no longer registered, is not logged in.
+	// Only a user Trace itself put into the request counts, not one set by a middleware in front of it
+	traced := func(next func(w http.ResponseWriter, user token.User, ok bool)) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, outer *http.Request) {
+			// Trace passes the same request on when it sets no user, and a new one when it does
+			s.authMiddleware.Trace(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				user, err := token.GetUserInfo(r)
+				next(w, user, err == nil && r != outer)
+			})).ServeHTTP(w, outer)
+		})
+	}
+	userHandler := traced(func(w http.ResponseWriter, user token.User, ok bool) {
+		if !ok {
+			_ = rest.EncodeJSON(w, http.StatusUnauthorized, rest.JSON{"error": "unauthorized"})
+			return
+		}
+		rest.RenderJSON(w, user)
+	})
+	statusHandler := traced(func(w http.ResponseWriter, user token.User, ok bool) {
+		if !ok {
+			rest.RenderJSON(w, rest.JSON{"status": "not logged in"})
+			return
+		}
+		rest.RenderJSON(w, rest.JSON{"status": "logged in", "user": user.Name})
+	})
+
 	ah := func(w http.ResponseWriter, r *http.Request) {
 		elems := strings.Split(r.URL.Path, "/")
 		if len(elems) < 2 {
@@ -225,27 +255,13 @@ func (s *Service) Handlers() (authHandler, avatarHandler http.Handler) {
 
 		// show user info
 		if elems[len(elems)-1] == "user" {
-			claims, _, err := s.jwtService.Get(r)
-			if err != nil || claims.User == nil {
-				msg := "user is nil"
-				if err != nil {
-					msg = err.Error()
-				}
-				_ = rest.EncodeJSON(w, http.StatusUnauthorized, rest.JSON{"error": msg})
-				return
-			}
-			rest.RenderJSON(w, claims.User)
+			userHandler.ServeHTTP(w, r)
 			return
 		}
 
 		// status of logged-in user
 		if elems[len(elems)-1] == "status" {
-			claims, _, err := s.jwtService.Get(r)
-			if err != nil || claims.User == nil {
-				rest.RenderJSON(w, rest.JSON{"status": "not logged in"})
-				return
-			}
-			rest.RenderJSON(w, rest.JSON{"status": "logged in", "user": claims.User.Name})
+			statusHandler.ServeHTTP(w, r)
 			return
 		}
 
@@ -323,6 +339,8 @@ func (s *Service) addProviderByName(name string, p provider.Params) {
 		prov = provider.NewMicrosoft(p)
 	case "twitter":
 		prov = provider.NewTwitter(p)
+	case "twitter_v2":
+		prov = provider.NewTwitterV2(p)
 	case "patreon":
 		prov = provider.NewPatreon(p)
 	case "discord":
@@ -330,6 +348,8 @@ func (s *Service) addProviderByName(name string, p provider.Params) {
 	case "dev":
 		prov = provider.NewDev(p)
 	default:
+		// apple, telegram and custom providers have their own registration methods
+		s.logger.Logf("[ERROR] unknown provider %q, nothing registered", name)
 		return
 	}
 

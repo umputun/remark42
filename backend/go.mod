@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.14.0
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/didip/tollbooth/v8 v8.0.1
-	github.com/go-pkgz/auth/v2 v2.5.0
+	github.com/go-pkgz/auth/v2 v2.5.1-0.20261125172638-6c14f3e2219a
 	github.com/go-pkgz/jrpc v0.4.2
 	github.com/go-pkgz/lcw/v2 v2.1.2
 	github.com/go-pkgz/lgr v0.13.0
@@ -46,7 +46,7 @@ require (
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
-	github.com/klauspost/compress v1.20.4 // indirect
+	github.com/klauspost/compress v1.20.5 // indirect
 	github.com/montanaflynn/stats v0.14.0 // indirect
 	github.com/redis/go-redis/v9 v9.23.0 // indirect
 	github.com/rrivera/identicon v0.0.0-20240116195454-d5ba35832c0d // indirect

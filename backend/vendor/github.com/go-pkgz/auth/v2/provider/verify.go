@@ -92,7 +92,8 @@ func (f VerifConfirmationStoreFunc) MarkUsed(key string, ttl time.Duration) (boo
 }
 
 // NewInMemoryVerifStore returns a process-local default VerifConfirmationStore.
-// Suitable for single-instance deployments. Multi-instance deployments behind
+// Suitable for a single instance, but a restart empties it, so a token redeemed
+// before the restart can be redeemed again until it expires. Multi-instance deployments behind
 // a load balancer MUST supply a shared backend (e.g. Redis) -- otherwise an
 // attacker who lands on a different instance from the legitimate user can
 // replay the token there. The default's failure is silent: the request
@@ -138,11 +139,18 @@ func (s *inMemoryVerifStore) MarkUsed(key string, ttl time.Duration) (bool, erro
 	return false, nil
 }
 
-// confirmationKey hashes the raw token so the store key length is bounded
-// regardless of token size, and so the in-memory map doesn't retain the
-// signed token itself.
+// confirmationKey hashes the signed header.payload part of a parsed token, so the store key length
+// is bounded and the map doesn't retain the token itself. The signature segment is left out: the
+// base64 decoder ignores line breaks and the spare bits of the last character, so many spellings
+// of one signature verify, while the signed part has to match byte for byte. Only a token of three
+// segments is cut: a custom VerifTokenService may issue dotted tokens of another shape, and those
+// would share a key whenever they differ only after the last dot.
 func confirmationKey(rawToken string) string {
-	sum := sha256.Sum256([]byte(rawToken))
+	signed := rawToken
+	if strings.Count(rawToken, ".") == 2 {
+		signed = rawToken[:strings.LastIndexByte(rawToken, '.')]
+	}
+	sum := sha256.Sum256([]byte(signed))
 	return hex.EncodeToString(sum[:])
 }
 
@@ -198,6 +206,14 @@ type VerifTokenService interface {
 	Reset(w http.ResponseWriter)
 }
 
+// VerifLinkTokenState marks the confirmation token a message template gets as {{.LinkToken}}, in the
+// handshake state. It signs in like {{.Token}} and is redeemed apart from it, so a message can carry
+// one token in a link and the other to be typed or pasted, and opening the link in some other browser
+// does not use up the one the reader still has. Each is one-shot on its own, so a message carrying
+// both allows a second sign-in until the unused one expires. An application serving the link can
+// refuse every other token by this mark.
+const VerifLinkTokenState = "link"
+
 // Name of the handler
 func (e VerifyHandler) Name() string { return e.ProviderName }
 
@@ -231,6 +247,13 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// IsExpired reports only an exp in the past, and a token without one would stay redeemable each
+	// time its one-minute replay marker lapsed
+	if confClaims.ExpiresAt == nil {
+		rest.SendErrorJSON(w, scrubTokenFromRequest(r), e.L, http.StatusForbidden, fmt.Errorf("no expiry"), "failed to verify confirmation token")
+		return
+	}
+
 	// only a handshake token carrying this provider's name may sign someone in. Other tokens are
 	// signed with the same secret, including handshake tokens of the same user::address shape that
 	// an application mails for its own purposes, and none of them prove the holder received this
@@ -252,10 +275,8 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if store != nil {
 		ttl := time.Minute
-		if confClaims.ExpiresAt != nil {
-			if remaining := time.Until(confClaims.ExpiresAt.Time); remaining > 0 {
-				ttl = remaining
-			}
+		if remaining := time.Until(confClaims.ExpiresAt.Time); remaining > 0 {
+			ttl = remaining
 		}
 		alreadyUsed, markErr := store.MarkUsed(confirmationKey(tkn), ttl)
 		if markErr != nil {
@@ -272,12 +293,12 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	elems := strings.Split(confClaims.Handshake.ID, "::")
-	if len(elems) != 2 {
+	// the user name may contain the separator, the address follows its last occurrence
+	user, address, found := cutLast(confClaims.Handshake.ID, "::")
+	if !found {
 		rest.SendErrorJSON(w, scrubTokenFromRequest(r), e.L, http.StatusBadRequest, fmt.Errorf("%s", confClaims.Handshake.ID), "invalid handshake token")
 		return
 	}
-	user, address := elems[0], elems[1]
 	sessOnly := sessionOnlyFromRequest(r)
 
 	u := token.User{
@@ -346,6 +367,13 @@ func (e VerifyHandler) sendConfirmation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// the handshake id is user::address, split on its last separator, so only the user may contain one;
+	// a leading colon in the address would also move the split
+	if strings.Contains(":"+address, "::") {
+		rest.SendErrorJSON(w, r, e.L, http.StatusBadRequest, fmt.Errorf("address contains \"::\" or starts with \":\""), "invalid address")
+		return
+	}
+
 	claims := token.Claims{
 		Handshake: &token.Handshake{
 			State: "",
@@ -376,6 +404,18 @@ func (e VerifyHandler) sendConfirmation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// a token for a link differs from the first only by its mark, which is enough for it to be
+	// redeemed apart, since the confirmation store keys on the whole token
+	linkClaims := claims
+	linkHandshake := *claims.Handshake
+	linkHandshake.State = VerifLinkTokenState
+	linkClaims.Handshake = &linkHandshake
+	linkTkn, err := e.TokenService.Token(linkClaims)
+	if err != nil {
+		rest.SendErrorJSON(w, r, e.L, http.StatusForbidden, err, "failed to make login token")
+		return
+	}
+
 	tmpl := msgTemplate
 	if e.Template != "" {
 		tmpl = e.Template
@@ -387,15 +427,19 @@ func (e VerifyHandler) sendConfirmation(w http.ResponseWriter, r *http.Request) 
 	}
 
 	tmplData := struct {
-		User    string
-		Address string
-		Token   string
-		Site    string
+		User      string
+		Address   string
+		Token     string
+		LinkToken string
+		Site      string
+		URL       string
 	}{
-		User:    trim(user),
-		Address: trim(address),
-		Token:   tkn,
-		Site:    site,
+		User:      trim(user),
+		Address:   trim(address),
+		Token:     tkn,
+		LinkToken: linkTkn,
+		Site:      site,
+		URL:       strings.TrimSuffix(e.URL, "/"),
 	}
 	buf := bytes.Buffer{}
 	if err = emailTmpl.Execute(&buf, tmplData); err != nil {
@@ -432,4 +476,12 @@ func trim(inp string) string {
 		return res[:128]
 	}
 	return res
+}
+
+// cutLast slices s around the last instance of sep, returning the text before and after it
+func cutLast(s, sep string) (before, after string, found bool) {
+	if i := strings.LastIndex(s, sep); i >= 0 {
+		return s[:i], s[i+len(sep):], true
+	}
+	return s, "", false
 }

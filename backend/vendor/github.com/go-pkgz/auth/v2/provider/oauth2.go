@@ -225,11 +225,16 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	jData := map[string]any{}
 	if e := json.Unmarshal(data, &jData); e != nil {
-		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to unmarshal user info")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, e, "failed to unmarshal user info")
 		return
 	}
 	p.Logf("[DEBUG] got raw user info %s", userDataLogSummary(jData))
 	u := p.mapUser(jData, data)
+	// a user without id is the same user for everyone mapped this way
+	if u.ID == "" {
+		rest.SendErrorJSON(w, r, p.L, http.StatusServiceUnavailable, fmt.Errorf("no user id"), "failed to get user info")
+		return
+	}
 	if oauthClaims.NoAva {
 		u.Picture = "" // reset picture on no avatar request
 	}

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -108,11 +107,6 @@ type Opts struct {
 
 // NewService makes JWT service
 func NewService(opts Opts) *Service {
-	var once sync.Once
-	once.Do(func() {
-		jwt.MarshalSingleStringAsArray = false
-	})
-
 	res := Service{Opts: opts}
 
 	setDefault := func(fld *string, def string) {
@@ -154,7 +148,7 @@ func (j *Service) Token(claims Claims) (string, error) {
 		claims = j.ClaimsUpd.Update(claims)
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, wireClaims(claims))
 
 	if j.SecretReader == nil {
 		return "", fmt.Errorf("secret reader not defined")
@@ -162,6 +156,10 @@ func (j *Service) Token(claims Claims) (string, error) {
 
 	if err := j.checkAuds(&claims, j.AudienceReader); err != nil {
 		return "", fmt.Errorf("aud rejected: %w", err)
+	}
+
+	if len(claims.Audience) == 0 {
+		return "", fmt.Errorf("aud rejected: no audience provided")
 	}
 
 	secret, err := j.SecretReader.Get(claims.Audience[0]) // get secret via consumer defined SecretReader
@@ -446,8 +444,50 @@ func (j *Service) checkAuds(claims *Claims, audReader Audience) error {
 	return fmt.Errorf("aud %q not allowed", claimsAudience)
 }
 
+// wireClaims is the form Claims take in a token. Its MarshalJSON writes a single audience as a string,
+// the form v1 tokens use, and several audiences as an array, without setting the
+// jwt.MarshalSingleStringAsArray package variable, so other code using golang-jwt in the same process
+// keeps its own encoding. It is a separate type so that types embedding Claims keep their own encoding.
+type wireClaims Claims
+
+// MarshalJSON implements json.Marshaler
+func (c wireClaims) MarshalJSON() ([]byte, error) {
+	// registered repeats the fields of jwt.RegisteredClaims in their order, so the encoded claims keep
+	// their key order; its fields take precedence over the same names promoted from the embedded claims
+	type registered struct {
+		Issuer    string           `json:"iss,omitempty"`
+		Subject   string           `json:"sub,omitempty"`
+		Audience  audience         `json:"aud,omitempty"`
+		ExpiresAt *jwt.NumericDate `json:"exp,omitempty"`
+		NotBefore *jwt.NumericDate `json:"nbf,omitempty"`
+		IssuedAt  *jwt.NumericDate `json:"iat,omitempty"`
+		ID        string           `json:"jti,omitempty"`
+	}
+	type plain Claims // has no MarshalJSON, so the encoder does not call this one again
+	rc := c.RegisteredClaims
+	return json.Marshal(struct {
+		registered
+		plain
+	}{
+		registered: registered{Issuer: rc.Issuer, Subject: rc.Subject, Audience: audience(rc.Audience),
+			ExpiresAt: rc.ExpiresAt, NotBefore: rc.NotBefore, IssuedAt: rc.IssuedAt, ID: rc.ID},
+		plain: plain(c),
+	})
+}
+
+// audience encodes a single value as a string and several as an array
+type audience []string
+
+// MarshalJSON implements json.Marshaler
+func (a audience) MarshalJSON() ([]byte, error) {
+	if len(a) == 1 {
+		return json.Marshal(a[0])
+	}
+	return json.Marshal([]string(a))
+}
+
 func (c Claims) String() string {
-	b, err := json.Marshal(c)
+	b, err := json.Marshal(wireClaims(c))
 	if err != nil {
 		return fmt.Sprintf("%+v %+v", c.RegisteredClaims, c.User)
 	}
