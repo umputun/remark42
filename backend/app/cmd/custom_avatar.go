@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-pkgz/auth/v2/avatar"
@@ -41,7 +42,13 @@ func (a customAvatarSaver) Put(u token.User, _ *http.Client) (avatarURL string, 
 		if avatarURL, err = a.fetch(u); err == nil {
 			return avatarURL, nil
 		}
-		log.Printf("[WARN] can't store the picture of %s from %s, identicon is used: %v", u.ID, pictureHost(u.Picture), err)
+		// a Gravatar address asks for 404 when the email has no picture there, which most emails have not
+		if statusErr, ok := errors.AsType[pictureStatusError](err); ok && statusErr.code == http.StatusNotFound &&
+			strings.HasPrefix(u.Picture, gravatarAvatarURL) {
+			log.Printf("[DEBUG] no gravatar picture for %s, identicon is used", u.ID)
+		} else {
+			log.Printf("[WARN] can't store the picture of %s from %s, identicon is used: %v", u.ID, pictureHost(u.Picture), err)
+		}
 		u.Picture = ""
 	}
 	return a.proxy.Put(u, nil) // no picture, so nothing is requested and no client is needed
@@ -67,10 +74,18 @@ func (a customAvatarSaver) fetch(u token.User) (avatarURL string, err error) {
 	}
 	defer resp.Body.Close() //nolint:errcheck // nothing to do about a failed close of a response read to its limit
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("status %s", resp.Status)
+		return "", pictureStatusError{code: resp.StatusCode, status: resp.Status}
 	}
 	return a.proxy.PutContent(u.ID, resp.Body)
 }
+
+// pictureStatusError is the answer to a request for a picture with a status other than 200
+type pictureStatusError struct {
+	code   int
+	status string
+}
+
+func (e pictureStatusError) Error() string { return "status " + e.status }
 
 // pictureHost returns the host of a picture address for the log, where the rest of it has no place
 func pictureHost(picture string) string {

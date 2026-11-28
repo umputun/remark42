@@ -159,7 +159,7 @@ Notes:
 - The field variables name top-level keys of the user info response only; a field nested inside an object cannot be used.
 - Remark42 sends a PKCE (S256) challenge with every authorization request; providers without PKCE support ignore it.
 - The user's picture is downloaded from the URL in the picture field without the access token, and only from a public address. A picture on a private, loopback or link-local address, or one that needs the token, is not loaded, and the user gets a generated avatar.
-- With `AUTH_CUSTOM_GRAVATAR` enabled, Remark42 looks the email up on Gravatar at each login, which sends its hash to gravatar.com, so existing users get their Gravatar picture on their next login. Users without a Gravatar picture, or without an email in the user info response, get the generated avatar as before.
+- With `AUTH_CUSTOM_GRAVATAR` enabled, a user whose user info has an email and no picture gets the Gravatar picture of that email: Remark42 requests it at each such sign-in, which sends the email's MD5 hash to gravatar.com, so existing users get their Gravatar picture on their next sign-in. A picture from the provider always wins. A user whose email has no Gravatar picture, or whose user info has no email, gets the generated avatar as before.
 
 ### Your Site's Own Accounts
 

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -95,6 +96,37 @@ func TestCustomAvatarSaver_Put(t *testing.T) {
 			assert.NotEqual(t, picture, stored)
 			_, err = png.Decode(bytes.NewReader(stored))
 			assert.NoError(t, err, "identicon is stored in place of the picture")
+		})
+	}
+}
+
+// a Gravatar address asks for 404 when the email has no picture there, the usual answer, which leaves
+// the warnings to the pictures that fail
+func TestCustomAvatarSaver_PutLogsMissingGravatarQuietly(t *testing.T) {
+	logs := &bytes.Buffer{}
+	log.Setup(log.Out(logs), log.Err(logs))
+	t.Cleanup(func() { log.Setup() })
+	notFound := roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusNotFound, Status: "404 Not Found", Body: http.NoBody, Request: r}, nil
+	})
+
+	tbl := []struct {
+		name, picture string
+		warn          bool
+	}{
+		{name: "gravatar without a picture", picture: gravatarURL("a@example.com")},
+		{name: "provider picture not found", picture: "https://example.com/avatar.png", warn: true},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			logs.Reset()
+			proxy := &avatar.Proxy{L: log.Default(), Store: avatar.NewLocalFS(t.TempDir()), RoutePath: "/avatar", URL: "http://remark42.example.com"}
+			saver := customAvatarSaver{proxy: proxy, transport: notFound}
+
+			avatarURL, err := saver.Put(token.User{ID: "oidc_user1", Name: "user", Picture: tt.picture}, nil)
+			require.NoError(t, err)
+			assert.Contains(t, avatarURL, "http://remark42.example.com/avatar/", "signed in with an identicon")
+			assert.Equal(t, tt.warn, strings.Contains(logs.String(), " WARN "), logs.String())
 		})
 	}
 }
