@@ -284,7 +284,27 @@ describe('embed', () => {
 
       expect(src.searchParams.get('site_id')).toBe('remark');
       expect(src.searchParams.has('node')).toBe(false);
-      expect(root.querySelectorAll(MARKED)).toHaveLength(1);
+      expect(root.querySelectorAll(MARKED)).toHaveLength(0);
+    });
+
+    // the script mounts into the element with the default id as it loads, and an application then
+    // mounting into its own element has no instance of that first mount to destroy
+    it('moves the widget out of the element it was in when given another one', async () => {
+      const root = await mount();
+      const node = document.createElement('div');
+      document.body.appendChild(node);
+
+      window.REMARK42.createInstance({ ...window.remark_config, node });
+
+      expect(root.querySelectorAll(MARKED)).toHaveLength(0);
+      expect(document.querySelectorAll(MARKED)).toHaveLength(1);
+      expect(node.querySelectorAll(`:scope > ${MARKED}`)).toHaveLength(1);
+
+      // and back: the element with the default id gets a widget again once node is left out
+      window.REMARK42.destroy!();
+      window.REMARK42.createInstance({ ...window.remark_config });
+      expect(document.querySelectorAll(MARKED)).toHaveLength(1);
+      expect(root.querySelectorAll(`:scope > ${MARKED}`)).toHaveLength(1);
     });
 
     it('rejects a value that is not an element', async () => {
