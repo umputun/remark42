@@ -115,6 +115,29 @@ export const errorMessages = defineMessages<string | number>({
 
 export type FetcherError = string | ApiError | RequestError | unknown;
 
+/**
+ * Returns the backend's error code from a JSON error body, when the catalogue has a message of its
+ * own for it, and undefined otherwise.
+ *
+ * Code 0 is `ErrInternal`, which the backend sends for many unrelated failures, so it is left out:
+ * letting it win would replace a specific message picked by the HTTP status with the generic one.
+ * The catalogue also has entries keyed by HTTP status, so a code only counts when its entry is one
+ * of the backend's own `errors.<code>` messages.
+ */
+export function backendErrorCode(body: unknown): number | undefined {
+  if (typeof body !== 'object' || body === null) {
+    return undefined;
+  }
+
+  const { code } = body as { code?: unknown };
+
+  if (typeof code !== 'number' || code === 0 || errorMessages[code]?.id !== `errors.${code}`) {
+    return undefined;
+  }
+
+  return code;
+}
+
 export function extractErrorMessageFromResponse(response: FetcherError, intl: IntlShape): string {
   if (typeof response === 'string') {
     return response;
@@ -126,17 +149,33 @@ export function extractErrorMessageFromResponse(response: FetcherError, intl: In
     return intl.formatMessage(errorMessages[response.code] ?? errorMessages[0]);
   }
 
-  return intl.formatMessage(errorMessages[0]);
+  return intl.formatMessage(errorMessages[backendErrorCode(response) ?? 0]);
+}
+
+/** returns the body if it has the shape of the backend's error response, undefined otherwise */
+export function asApiError(body: unknown): ApiError | undefined {
+  if (typeof body !== 'object' || body === null || typeof (body as { error?: unknown }).error !== 'string') {
+    return undefined;
+  }
+
+  return body as ApiError;
 }
 
 export class RequestError extends Error {
+  /** the catalogue key the message is looked up by: a backend error code, an HTTP status or `fetch-error` */
   code: number | string;
   error: string;
+  /** the HTTP status of the response, absent when there was no response */
+  status?: number;
+  /** the error body the backend sent, absent when it sent none */
+  body?: ApiError;
 
-  constructor(message: string, code: number | string) {
+  constructor(message: string, code: number | string, status?: number, body?: ApiError) {
     super(message);
 
     this.code = code;
     this.error = message;
+    this.status = status;
+    this.body = body;
   }
 }

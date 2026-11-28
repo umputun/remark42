@@ -234,7 +234,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
               emailVerificationResponse = await emailVerificationForSubscribe(emailAddress);
               justSubscribed.current = true;
             } catch (e) {
-              if ((e as RequestError).code !== 409) {
+              if ((e as RequestError).status !== 409) {
                 throw e;
               }
               emailVerificationResponse = { address: emailAddress, updated: true };

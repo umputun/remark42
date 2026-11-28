@@ -158,7 +158,7 @@ func TestRest_VoteSameIP(t *testing.T) {
 	e := decodeError(t, body)
 	assert.Equal(t, http.StatusBadRequest, code)
 	assert.Equal(t, errorResponse{Error: "the same ip already voted for " + id, Details: "can't vote for comment",
-		Code: 14}, e, "rejected as a repeated vote, with no address hash")
+		Code: 17}, e, "rejected as an action, not a repeated vote, with no address hash")
 	secret, err := srv.DataService.AdminStore.Key("remark42")
 	require.NoError(t, err)
 	assert.NotContains(t, body, store.HashValue("127.0.0.1", secret), "no address hash in the body")

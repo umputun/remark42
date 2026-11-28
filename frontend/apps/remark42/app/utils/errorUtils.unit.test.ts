@@ -3,7 +3,13 @@ import { describe, it } from 'node:test';
 
 import { createIntl } from '../common/intl-message.ts';
 
-import { errorMessages, extractErrorMessageFromResponse, RequestError } from './errorUtils.ts';
+import {
+  asApiError,
+  backendErrorCode,
+  errorMessages,
+  extractErrorMessageFromResponse,
+  RequestError,
+} from './errorUtils.ts';
 
 /**
  * This is what a reader is shown when something fails, so a wrong answer here is the failure they
@@ -39,13 +45,19 @@ describe('extractErrorMessageFromResponse', () => {
     assert.equal(extractErrorMessageFromResponse(42, intl), fallback);
   });
 
-  // an error the backend sent as json is not a RequestError, so its own code is never looked up
-  // and it reads as the generic failure. worth stating, because the shape suggests otherwise
-  it('does not read the code off a plain error object', () => {
+  it('renders an error the backend sent as json from its own code', () => {
     assert.equal(
       extractErrorMessageFromResponse({ code: 3, error: 'no permission' }, intl),
-      'Something went wrong. Please try again a bit later.'
+      "You don't have permission for this operation."
     );
+  });
+
+  it('falls back for json whose code has no message of its own', () => {
+    const fallback = 'Something went wrong. Please try again a bit later.';
+
+    assert.equal(extractErrorMessageFromResponse({ code: 0, error: 'internal' }, intl), fallback);
+    assert.equal(extractErrorMessageFromResponse({ code: 403, error: 'a status, not a code' }, intl), fallback);
+    assert.equal(extractErrorMessageFromResponse({ error: 'no code at all' }, intl), fallback);
   });
 
   it('renders in the reader locale when the catalogue carries a translation', () => {
@@ -65,6 +77,48 @@ describe('extractErrorMessageFromResponse', () => {
   });
 });
 
+describe('backendErrorCode', () => {
+  it('returns every code the backend defines a message for', () => {
+    for (let code = 1; code <= 20; code++) {
+      assert.equal(backendErrorCode({ code, error: 'x' }), code);
+    }
+  });
+
+  // code 0 is ErrInternal, sent for many unrelated failures, so it must not replace the message
+  // the HTTP status picks
+  it('leaves out code 0', () => {
+    assert.equal(backendErrorCode({ code: 0, error: 'x' }), undefined);
+  });
+
+  // the catalogue has entries keyed by HTTP status too, which are not the backend's codes
+  it('does not take an HTTP status or an unknown number for a code', () => {
+    for (const code of [401, 403, 409, 429, 500, 21, 9999, -1]) {
+      assert.equal(backendErrorCode({ code }), undefined, `${code} was taken for a code`);
+    }
+  });
+
+  it('returns undefined for anything that is not an error body with a numeric code', () => {
+    for (const body of [undefined, null, 'error', 3, [], {}, { code: '3' }, { code: 'fetch-error' }]) {
+      assert.equal(backendErrorCode(body), undefined, `${JSON.stringify(body)} gave a code`);
+    }
+  });
+});
+
+describe('asApiError', () => {
+  it("returns a body in the shape of the backend's error response", () => {
+    const body = { code: 17, details: "can't process token", error: 'token is expired' };
+
+    assert.equal(asApiError(body), body);
+    assert.deepEqual(asApiError({ error: 'no code' }), { error: 'no code' });
+  });
+
+  it('returns undefined for anything without an error text', () => {
+    for (const body of [undefined, null, 'error', 3, [], {}, { code: 3 }, { error: 3 }]) {
+      assert.equal(asApiError(body), undefined, `${JSON.stringify(body)} was taken for an error body`);
+    }
+  });
+});
+
 describe('RequestError', () => {
   it('is an Error, so it survives a throw and carries a stack', () => {
     const err = new RequestError('gone wrong', 404);
@@ -79,6 +133,14 @@ describe('RequestError', () => {
 
   it('keeps a string code as a string instead of coercing it', () => {
     assert.equal(new RequestError('x', 'fetch-error').code, 'fetch-error');
+  });
+
+  it('keeps the HTTP status apart from the code the message is looked up by', () => {
+    const err = new RequestError('x', 17, 409);
+
+    assert.equal(err.code, 17);
+    assert.equal(err.status, 409);
+    assert.equal(new RequestError('x', 'fetch-error').status, undefined);
   });
 });
 
