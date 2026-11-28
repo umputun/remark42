@@ -2479,3 +2479,14 @@ func TestServerCommand_ExecuteReturnsSetupError(t *testing.T) {
 	err := s.Execute(args)
 	require.ErrorContains(t, err, "failed to setup application: failed to make data store engine")
 }
+
+func TestAuthRefreshCache_SetReplaces(t *testing.T) {
+	c := newAuthRefreshCache()
+	defer c.Close()
+
+	c.Set("tkn", token.Claims{User: &token.User{ID: "first"}})
+	c.Set("tkn", token.Claims{User: &token.User{ID: "second"}})
+	got, ok := c.Get("tkn")
+	require.True(t, ok)
+	assert.Equal(t, "second", got.User.ID, "a later refresh of the same token replaces the cached one")
+}
