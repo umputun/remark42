@@ -48,7 +48,7 @@ A single `location /` is all Remark42 needs: the API, the auth routes and the wi
 
 TLS is enabled with the `ssl` parameter of `listen`. The older `ssl on;` directive was removed in nginx 1.25.1, and a configuration that still uses it fails to load.
 
-`client_max_body_size` has to be at least [`IMAGE_MAX_SIZE`](../../configuration/parameters/) (5 MB by default) for image uploads to work, as nginx answers larger requests with `413 Request Entity Too Large` before they reach Remark42. Raise it further if you import backups through the admin API (`/api/v1/admin/import`).
+`client_max_body_size` has to exceed [`IMAGE_MAX_SIZE`](../../configuration/parameters/) by enough to cover the multipart encoding around the uploaded file, as nginx answers larger requests with `413 Request Entity Too Large` before they reach Remark42. With both set to the same byte count, images close to the limit are rejected; the `10m` above covers the default 5 MB. To restore or import a backup through nginx, keep it above the uncompressed size of the largest backup or export as well, since the `restore` and `import` commands send a `.gz` file unpacked.
 
 Note: `proxy_pass` points to internal DNS name `remark42` and is expected to run from the same compose. If Nginx runs outside compose, the real IP (or docker's bridge IP) should be used
 
