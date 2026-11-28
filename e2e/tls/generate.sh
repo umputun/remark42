@@ -22,7 +22,7 @@ fi
 openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
 	-keyout key.pem -out cert.pem \
 	-subj "/CN=remark42-e2e" \
-	-addext "subjectAltName=DNS:remark42-https,DNS:host-site-https,DNS:localhost,IP:127.0.0.1" \
+	-addext "subjectAltName=DNS:remark42-https,DNS:remark42-oauth,DNS:host-site-https,DNS:oauth-stub,DNS:localhost,IP:127.0.0.1" \
 	>/dev/null
 
 chmod 644 key.pem cert.pem

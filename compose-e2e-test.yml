@@ -345,6 +345,68 @@ services:
       timeout: 3s
       retries: 30
 
+  # an OAuth2 provider on a site of its own, for the instance below. Its authorize page is what the
+  # browser reaches, as oauth-stub over TLS through the resolver rules, and the token and user info
+  # calls are remark42's, as oauth-stub over plain http inside this network
+  oauth-stub:
+    build:
+      context: ./e2e/oauthstub
+    container_name: "remark42-e2e-oauth-stub"
+    ports:
+      - "127.0.0.1:8092:8092"
+      - "127.0.0.1:8493:8493"
+    environment:
+      # the authorize page over TLS, where a browser applies its Cross-Origin-Opener-Policy
+      - STUB_TLS_ADDR=:8493
+      - STUB_TLS_CERT=/tls/cert.pem
+      - STUB_TLS_KEY=/tls/key.pem
+    volumes:
+      - ./e2e/tls:/tls:ro
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8092/ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # OAuth sign-in for a widget framed by another site over TLS, which the popup hands over to the
+  # frame. With the configuration readers start from: SameSite left to the browser and no JWT
+  # header, so nothing but the handoff gives the frame a session
+  remark42-oauth:
+    image: ghcr.io/umputun/remark42:dev
+    container_name: "remark42-e2e-oauth"
+    pull_policy: never
+    depends_on:
+      remark42:
+        condition: service_started
+      oauth-stub:
+        condition: service_healthy
+
+    ports:
+      - "127.0.0.1:8445:8445"
+
+    environment:
+      - REMARK_URL=https://remark42-oauth:8445
+      - SECRET=12345
+      - SSL_TYPE=static
+      - SSL_PORT=8445
+      - SSL_CERT=/srv/tls/cert.pem
+      - SSL_KEY=/srv/tls/key.pem
+      - AUTH_CUSTOM_NAME=stubauth
+      - AUTH_CUSTOM_CID=e2e-client
+      - AUTH_CUSTOM_CSEC=e2e-secret
+      - AUTH_CUSTOM_AUTH_URL=https://oauth-stub:8493/authorize
+      - AUTH_CUSTOM_TOKEN_URL=http://oauth-stub:8092/token
+      - AUTH_CUSTOM_INFO_URL=http://oauth-stub:8092/user
+      - UPDATE_LIMIT=100
+    volumes:
+      - remark42-e2e-oauth-var:/srv/var
+      - ./e2e/tls:/srv/tls:ro
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--insecure", "https://localhost:8445/ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
   # catches the email-auth verification message; the suite reads it back over the HTTP API
   mailpit:
     image: axllent/mailpit:v1.30.7
@@ -370,3 +432,4 @@ volumes:
   remark42-e2e-noauth-var:
   remark42-e2e-anonvote-var:
   remark42-e2e-https-var:
+  remark42-e2e-oauth-var:

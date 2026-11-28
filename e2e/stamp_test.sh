@@ -5,7 +5,7 @@ set -eu
 stamp_script=$(cd "$(dirname "$0")" && pwd)/stamp.sh
 work=$(mktemp -d "${TMPDIR:-/tmp}/remark42-stamp.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
-mkdir -p "$work/e2e/telegramstub" "$work/backend" "$work/frontend"
+mkdir -p "$work/e2e/telegramstub" "$work/e2e/oauthstub" "$work/backend" "$work/frontend"
 cp "$stamp_script" "$work/e2e/stamp.sh"
 cd "$work"
 git init -q
@@ -14,6 +14,7 @@ git config user.email w3lld1@users.noreply.github.com
 printf 'original\n' > backend/source
 printf 'frontend\n' > 'frontend/file with spaces'
 printf 'stub\n' > e2e/telegramstub/source
+printf 'stub\n' > e2e/oauthstub/source
 printf 'image\n' > Dockerfile
 printf 'init\n' > docker-init.sh
 printf '*\n' > .dockerignore
@@ -78,6 +79,9 @@ git commit -qm suite
 same "$spaced" "$(stamp)" 'a suite-only commit preserves the stamp'
 printf 'edited stub\n' > e2e/telegramstub/source
 different "$spaced" "$(stamp)" 'the telegram image sources are included'
+telegram=$(stamp)
+printf 'edited stub\n' > e2e/oauthstub/source
+different "$telegram" "$(stamp)" 'the oauth stub image sources are included'
 plain=$(stamp)
 same "$plain" "$(E2E_COVERAGE=0 sh e2e/stamp.sh)" 'coverage=0 is a plain build'
 different "$plain" "$(E2E_COVERAGE=1 sh e2e/stamp.sh)" 'coverage=1 is a separate build'

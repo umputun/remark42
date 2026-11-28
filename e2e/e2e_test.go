@@ -78,6 +78,10 @@ const (
 	httpsHostSiteURL = "https://host-site-https:8444"
 	// the instance that page embeds, for the cases that also visit it as a site of its own
 	httpsURL = "https://remark42-https:8443"
+	// OAuth over TLS against a stub provider on a third site, for a widget framed by another site
+	oauthURL = "https://remark42-oauth:8445"
+	// the stub provider, as the browser reaches it: over TLS, where it can cut the popup off
+	oauthStubURL = "https://oauth-stub:8493"
 
 	// what this process asks for, since it is not the browser and has no resolver rules
 	probeURL         = "http://127.0.0.1:8080"
@@ -88,6 +92,7 @@ const (
 	hostSiteProbeURL  = "http://127.0.0.1:8090"
 	httpsProbeURL     = "https://127.0.0.1:8443"
 	httpsHostProbeURL = "https://127.0.0.1:8444"
+	oauthStubProbeURL = "http://127.0.0.1:8092"
 	mailpitURL        = "http://127.0.0.1:8025"
 
 	composeFile = "../compose-e2e-test.yml"
@@ -264,6 +269,7 @@ func stackReady(timeout time.Duration) bool {
 	}
 	urls = append(urls,
 		telegramStubURL+"/botstub-token/getMe",
+		oauthStubProbeURL+"/ping",
 		hostSiteProbeURL+"/post.html",
 		httpsHostProbeURL+"/post-https.html",
 		mailpitURL+"/api/v1/messages",
@@ -427,7 +433,7 @@ func forwardedReaderIP(second byte, seq int64) string {
 // instances is every remark42 service in compose-e2e-test.yml, by the address the browser asks for.
 // The resolver rules, the authorities that get a reader address and the readiness probes all come
 // from it, so a new instance is one line here
-var instances = parseServices(baseURL, shortEditURL, adminEditURL, jwtHeaderURL, noAuthURL, anonVoteURL, telegramURL, httpsURL)
+var instances = parseServices(baseURL, shortEditURL, adminEditURL, jwtHeaderURL, noAuthURL, anonVoteURL, telegramURL, httpsURL, oauthURL)
 
 // service is a compose service as the browser addresses it
 type service struct{ scheme, name, port string }
@@ -457,7 +463,7 @@ func (s service) loopback() string { return net.JoinHostPort("127.0.0.1", s.port
 // hostResolverRules maps every name the browser asks for, the instances and the host pages, back
 // to the loopback the stack publishes on
 func hostResolverRules() string {
-	services := append(parseServices(hostSiteURL, httpsHostSiteURL), instances...)
+	services := append(parseServices(hostSiteURL, httpsHostSiteURL, oauthStubURL), instances...)
 	rules := make([]string, 0, len(services))
 	for _, s := range services {
 		rules = append(rules, "MAP "+s.name+" 127.0.0.1")

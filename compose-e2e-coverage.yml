@@ -59,3 +59,9 @@ services:
       - GOCOVERDIR=/coverage
     volumes:
       - ./e2e/coverage/remark42-https:/coverage
+
+  remark42-oauth:
+    environment:
+      - GOCOVERDIR=/coverage
+    volumes:
+      - ./e2e/coverage/remark42-oauth:/coverage

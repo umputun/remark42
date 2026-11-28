@@ -61,9 +61,9 @@ func withPartitioningEnabled(t *testing.T) string {
 	return out
 }
 
-// The flows worth measuring in a third-party frame. OAuth is absent on purpose: the provider
-// callback lands in a popup, which is a top-level context of its own, so the cookie set there is
-// keyed to the auth host and never reaches the frame. Telegram is absent because the stack cannot
+// The flows worth measuring in a third-party frame that sign in from inside the frame. OAuth signs in
+// in a popup, a top-level page of its own, and reaches the frame through the handoff instead, which
+// handoff_test.go covers on an instance of its own. Telegram is absent because the stack cannot
 // answer as Telegram, see #2208.
 //
 // Email as well as anonymous because the partitioned pair is added to whichever response sets the
