@@ -297,6 +297,11 @@
     color: rgb(var(--lighter-text-color));
   }
 
+  /* bright enough to stay above 3:1 on a pinned comment that is collapsed */
+  & .verificationIconInactive {
+    color: rgb(var(--secondary-text-color));
+  }
+
   & .time {
     color: rgb(var(--secondary-text-color));
 

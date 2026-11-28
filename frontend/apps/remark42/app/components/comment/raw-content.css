@@ -237,7 +237,7 @@
   --chroma-07: #a1e6fb;
 
   & blockquote {
-    border-inline-start-color: rgb(var(--line-brighter-color));
+    border-inline-start-color: rgb(var(--lighter-text-color));
   }
 
   & table {
@@ -255,7 +255,7 @@
     & tr {
       background-color: rgb(var(--primary-background-color));
 
-      /* --line-color is too light here: links and inline code on it would drop below 3:1 */
+      /* the base stripe, --highlight-color, would put links at 3.6:1 here; this keeps them at 4.4:1 */
       &:nth-child(2n) {
         background-color: rgb(var(--secondary-background-color));
       }
