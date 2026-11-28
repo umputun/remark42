@@ -396,36 +396,21 @@ func (c *CharSet) prepareASCIIBitmap() {
 }
 
 func (c *CharSet) charInCategories(ch rune) bool {
+	// Categories form a union. A rune that fails to match a negated category
+	// can still match a later member.
 	for _, ct := range c.categories {
-		if ct.set != nil {
-			if ct.set.Contains(ch) != ct.Negate {
-				return true
-			}
-			// Each category contributes to a union. Failure to match one
-			// property must not prevent a later property from matching.
-			continue
+		var inCategory bool
+		switch {
+		case ct.set != nil:
+			inCategory = ct.set.Contains(ch)
+		case ct.Cat == SpaceCategoryText:
+			inCategory = unicode.IsSpace(ch)
+		case ct.Cat == WordCategoryText:
+			inCategory = IsWordChar(ch)
+		default:
+			inCategory = unicode.Is(ct.table, ch)
 		}
-		// special categories...then unicode
-		if ct.Cat == SpaceCategoryText {
-			if unicode.IsSpace(ch) {
-				// we found a space so we're done
-				// negate means this is a "bad" thing
-				return !ct.Negate
-			} else if ct.Negate {
-				return true
-			}
-		} else if ct.Cat == WordCategoryText {
-			if IsWordChar(ch) {
-				return !ct.Negate
-			} else if ct.Negate {
-				return true
-			}
-		} else if unicode.Is(ct.table, ch) {
-			// if we're in this unicode category then we're done
-			// if negate=true on this category then we "failed" our test
-			// otherwise we're good that we found it
-			return !ct.Negate
-		} else if ct.Negate {
+		if inCategory != ct.Negate {
 			return true
 		}
 	}
@@ -773,11 +758,8 @@ func (c *CharSet) addCategory(categoryName string, negate, caseInsensitive bool)
 	}
 
 	if caseInsensitive && (categoryName == "Ll" || categoryName == "Lu" || categoryName == "Lt") {
-		// when RegexOptions.IgnoreCase is specified then {Ll} {Lu} and {Lt} cases should all match
-		c.addCategories(
-			Category{Cat: "Ll", Negate: negate},
-			Category{Cat: "Lu", Negate: negate},
-			Category{Cat: "Lt", Negate: negate})
+		// LC groups all three cased letter categories so \P complements them together.
+		categoryName = "LC"
 	}
 	c.addCategories(Category{Cat: categoryName, Negate: negate})
 }
@@ -1545,6 +1527,9 @@ func (c CharSet) GetIfNRanges(n int) []SingleRange {
 	return nil
 }
 
+// GetIfOnlyUnicodeCategories describes sets that can be matched by a union of
+// Unicode tables with optional negation of the result. It returns nil if the
+// set cannot be represented this way.
 func (c *CharSet) GetIfOnlyUnicodeCategories() (cats []Category, negate bool) {
 	if c.sub != nil {
 		return nil, false
@@ -1552,23 +1537,21 @@ func (c *CharSet) GetIfOnlyUnicodeCategories() (cats []Category, negate bool) {
 	if len(c.ranges) > 0 {
 		return nil, false
 	}
-	// all cats need to be rationalized to the same negation or not
 	if len(c.categories) == 0 {
 		return nil, false
 	}
 
 	neg := c.categories[0].Negate
+	if neg && len(c.categories) > 1 {
+		// A union of complements would require negating an intersection.
+		return nil, false
+	}
 	for _, cat := range c.categories {
 		if neg != cat.Negate || cat.Cat == SpaceCategoryText || cat.Cat == WordCategoryText || cat.set != nil {
-			// negate some and not others...a problem
-			// or one of our non-unicode categories
 			return nil, false
 		}
 	}
 
-	// tell the caller to negate if either all the categories
-	// are negated or the set as a whole is negated, but not
-	// both
 	cats = make([]Category, len(c.categories))
 	for i, cat := range c.categories {
 		cats[i] = cat.Category

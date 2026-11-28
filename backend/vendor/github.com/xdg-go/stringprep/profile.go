@@ -1,6 +1,8 @@
 package stringprep
 
 import (
+	"strings"
+
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -13,9 +15,14 @@ type Profile struct {
 }
 
 var errProhibited = "prohibited character"
+var errTooManyCombining = "more than 30 consecutive combining characters (normalization inserted CGJ)"
 
 // Prepare transforms an input string to an output string following
 // the rules defined in the profile as defined by RFC-3454.
+//
+// If the profile normalizes, Prepare returns an Error when the decomposed
+// input has more than 30 consecutive combining characters, the limit of
+// the UAX #15 stream-safe text format.
 func (p Profile) Prepare(s string) (string, error) {
 	// Optimistically, assume output will be same length as input
 	temp := make([]rune, 0, len(s))
@@ -31,11 +38,13 @@ func (p Profile) Prepare(s string) (string, error) {
 	}
 
 	// Normalize
-	var out string
+	mapped := string(temp)
+	out := mapped
 	if p.Normalize {
-		out = norm.NFKC.String(string(temp))
-	} else {
-		out = string(temp)
+		out = norm.NFKC.String(mapped)
+		if insertedGraphemeJoiner(mapped, out) {
+			return "", Error{Msg: errTooManyCombining, Rune: 0x034F}
+		}
 	}
 
 	// Check prohibited
@@ -63,6 +72,15 @@ func (p Profile) applyMaps(r rune) ([]rune, bool) {
 		}
 	}
 	return nil, false
+}
+
+// insertedGraphemeJoiner reports whether NFKC added norm.GraphemeJoiner,
+// which x/text inserts after 30 consecutive non-starters (UAX #15
+// stream-safe format). Such output is not strict NFKC, and with table B.1
+// a second Prepare deletes the joiner and reorders the marks differently.
+// Stripping the joiner instead would leave non-NFKC output.
+func insertedGraphemeJoiner(in, out string) bool {
+	return strings.Count(out, norm.GraphemeJoiner) > strings.Count(in, norm.GraphemeJoiner)
 }
 
 func (p Profile) runeIsProhibited(r rune) bool {

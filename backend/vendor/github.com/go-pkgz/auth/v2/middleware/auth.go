@@ -5,9 +5,14 @@
 package middleware
 
 import (
+	"bytes"
 	"crypto/subtle"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/go-pkgz/auth/v2/logger"
@@ -33,7 +38,11 @@ type RefreshCache interface {
 	Set(key string, value token.Claims)
 }
 
-// TokenService defines interface accessing tokens
+// TokenService defines interface accessing tokens. On a refresh the middleware passes the claims Set returns
+// through JSON before the Validator and the handler see them, so attribute values have the types Get gives
+// on a later request: float64 for a number, or json.Number when the claims Get returned for the expired
+// token carry one. For a service whose Get decodes numbers as json.Number, a number ClaimsUpd adds to a
+// token whose attributes hold none is float64 on the request that refreshes it
 type TokenService interface {
 	Parse(tokenString string) (claims token.Claims, err error)
 	Set(w http.ResponseWriter, claims token.Claims) (token.Claims, error)
@@ -144,11 +153,18 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 				}
 
 				if a.JWTService.IsExpired(claims) {
-					if claims, err = a.refreshExpiredToken(w, claims, tkn); err != nil {
+					refreshed, err := a.refreshExpiredToken(w, claims, tkn)
+					if errors.Is(err, errRefreshRejected) {
+						a.resetCookies(w, r, tkn)
+						onError(h, w, r, fmt.Errorf("user %s/%s blocked", claims.User.Name, claims.User.ID))
+						return
+					}
+					if err != nil {
 						a.resetCookies(w, r, tkn)
 						onError(h, w, r, fmt.Errorf("can't refresh token: %w", err))
 						return
 					}
+					claims = refreshed
 				}
 
 				r = token.SetUserInfo(r, *claims.User) // populate user info to request context
@@ -185,30 +201,134 @@ func (a *Authenticator) isProviderAllowed(claims *token.Claims) bool {
 	return false
 }
 
-// refreshExpiredToken makes a new token with passed claims
+// errRefreshRejected is returned by refreshExpiredToken when the Validator refuses the refreshed claims
+var errRefreshRejected = errors.New("refreshed claims rejected")
+
+// refreshExpiredToken makes a new token with passed claims. The refresh runs ClaimsUpd, which can change
+// what the Validator decides, so the Validator checks the refreshed claims, with the token string of
+// the request, before the new cookies reach w. Refused claims are neither written nor cached
 func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims token.Claims, tkn string) (token.Claims, error) {
 
-	// cache refreshed claims for given token in order to eliminate multiple refreshes for concurrent requests
+	// cache refreshed claims for given token in order to eliminate multiple refreshes for concurrent requests.
+	// a copy per request, as UpdateUser and handlers change user attributes; an expired entry is refreshed again
 	if a.RefreshCache != nil {
-		if c, ok := a.RefreshCache.Get(tkn); ok {
-			// already in cache
-			return c, nil
+		if stored, ok := a.RefreshCache.Get(tkn); ok && !a.JWTService.IsExpired(stored) {
+			cached, err := decodedClaims(stored, hasNumber(stored))
+			if err != nil {
+				return token.Claims{}, fmt.Errorf("can't read cached claims: %w", err)
+			}
+			if a.Validator != nil && !a.Validator.Validate(tkn, cached) {
+				return token.Claims{}, errRefreshRejected
+			}
+			return cached, nil
 		}
 	}
 
-	claims.ExpiresAt = nil                // this will cause now+duration for refreshed token
-	c, err := a.JWTService.Set(w, claims) // set changes token
+	claims.ExpiresAt = nil // this will cause now+duration for refreshed token
+	hw := &headerWriter{header: w.Header().Clone()}
+	if hw.header == nil {
+		hw.header = http.Header{}
+	}
+	// how Get decodes numbers, read before Set, whose ClaimsUpd can change the user of claims in place
+	numbers := hasNumber(claims)
+	c, err := a.JWTService.Set(hw, claims) // set changes token
 	if err != nil {
 		return token.Claims{}, err
 	}
+	if c, err = decodedClaims(c, numbers); err != nil {
+		return token.Claims{}, fmt.Errorf("can't read refreshed claims: %w", err)
+	}
+	if c.User == nil {
+		return token.Claims{}, fmt.Errorf("no user info in the refreshed claims")
+	}
+	if len(c.Audience) == 1 { // as Get does for a token it reads
+		c.User.Audience = c.Audience[0]
+	}
+	if a.Validator != nil && !a.Validator.Validate(tkn, c) {
+		return token.Claims{}, errRefreshRejected
+	}
+	var stored token.Claims
+	if a.RefreshCache != nil {
+		// the cache keeps a copy apart from the one this request goes on with
+		if stored, err = decodedClaims(c, numbers); err != nil {
+			return token.Claims{}, fmt.Errorf("can't copy refreshed claims: %w", err)
+		}
+	}
+	// the headers as Set left them, as if it had written to w
+	for k := range w.Header() {
+		if _, ok := hw.header[k]; !ok {
+			delete(w.Header(), k)
+		}
+	}
+	maps.Copy(w.Header(), hw.header)
 
 	if a.RefreshCache != nil {
-		a.RefreshCache.Set(tkn, c)
+		a.RefreshCache.Set(tkn, stored)
 	}
 
 	a.Logf("[DEBUG] token refreshed for %s", claims.User.ID)
 	return c, nil
 }
+
+// decodedClaims returns the claims as a later request reads them from the token, through JSON. ClaimsUpd
+// may have put in values of other types than JSON gives back, an int for a number or a []string for a
+// list, and the Validator and the handler see the decoded types on every other request. With numbers set,
+// a number is decoded as json.Number, for a TokenService whose Get gives attributes so; the caller sets it
+// when the claims Get returned carry one, as the claims ClaimsUpd returns say nothing of how Get decodes.
+// So for such a service a number ClaimsUpd adds to a token whose attributes hold none comes out as float64
+// on the request that refreshes it. The result shares nothing with c, so a user ClaimsUpd shares is left alone
+func decodedClaims(c token.Claims, numbers bool) (token.Claims, error) {
+	data, err := json.Marshal(c)
+	if err != nil {
+		return token.Claims{}, err
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	if numbers {
+		dec.UseNumber()
+	}
+	res := token.Claims{}
+	if err = dec.Decode(&res); err != nil {
+		return token.Claims{}, err
+	}
+	return res, nil
+}
+
+// hasNumber reports whether a user attribute of the claims holds a json.Number, at any depth. Only a
+// TokenService that decodes numbers so, such as one parsing with jwt's UseJSONNumber, gives one
+func hasNumber(c token.Claims) bool {
+	if c.User == nil {
+		return false
+	}
+	var walk func(v any) bool
+	walk = func(v any) bool {
+		switch v := v.(type) {
+		case json.Number:
+			return true
+		case map[string]any:
+			for _, e := range v {
+				if walk(e) {
+					return true
+				}
+			}
+		case []any:
+			if slices.ContainsFunc(v, walk) {
+				return true
+			}
+		}
+		return false
+	}
+	return walk(c.User.Attributes)
+}
+
+// headerWriter gives TokenService.Set a copy of the response headers, which replace the live ones only
+// once the refreshed claims are accepted. Set writes headers only; a body or status written to it is dropped
+type headerWriter struct {
+	header http.Header
+}
+
+func (hw *headerWriter) Header() http.Header         { return hw.header }
+func (hw *headerWriter) Write(b []byte) (int, error) { return len(b), nil }
+func (hw *headerWriter) WriteHeader(int)             {}
 
 // resetCookies expires the auth cookies before a rejection is answered, but only when the rejected
 // token is the request's own session cookie. JWTService.Get reads the token from the query or a header

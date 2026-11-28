@@ -6,7 +6,7 @@ Package repeater implements a functional mechanism to repeat operations with dif
 
 ## Install and update
 
-`go get -u github.com/go-pkgz/repeater`
+`go get -u github.com/go-pkgz/repeater/v2`
 
 ## Usage
 
@@ -72,7 +72,7 @@ The package provides several retry strategies:
 2. **Backoff** - delay between retries increases according to the chosen algorithm:
    - Constant - same delay between attempts
    - Linear - delay increases linearly
-   - Exponential - delay doubles with each attempt
+   - Exponential - delay doubles with each attempt, up to the maximum delay
 
 Backoff strategy can be customized with:
 - Maximum delay cap
@@ -85,11 +85,13 @@ You can implement your own retry strategy by implementing the Strategy interface
 
 ```go
 type Strategy interface {
-    // NextDelay returns delay for the next attempt
+    // NextDelay returns the delay after the given failed attempt
     // attempt starts from 1
     NextDelay(attempt int) time.Duration
 }
 ```
+
+The first attempt runs at once. `NextDelay(n)` is the wait after the n-th failed attempt, and it is never asked for after the last one, so `NewWithStrategy(5, strategy)` calls it with 1 to 4.
 
 Example of a custom strategy that increases delay by a custom factor:
 
@@ -112,7 +114,7 @@ func (s CustomStrategy) NextDelay(attempt int) time.Duration {
 strategy := &CustomStrategy{Initial: time.Second, Factor: 1.5}
 r := repeater.NewWithStrategy(5, strategy)
 err := r.Do(ctx, func() error {
-    // attempts will be delayed by: 1s, 1.5s, 2.25s, 3.37s, 5.06s
+    // the four retries wait 1s, 1.5s, 2.25s and 3.375s
     return nil
 })
 ```
@@ -122,14 +124,19 @@ err := r.Do(ctx, func() error {
 For backoff strategy, several options are available:
 
 ```go
-WithMaxDelay(time.Duration)   // set maximum delay between retries
+WithMaxDelay(time.Duration)   // set maximum delay between retries, jitter included
 WithBackoffType(BackoffType)  // set backoff type (constant/linear/exponential)
-WithJitter(float64)           // add randomness to delays (0-1.0)
+WithJitter(float64)           // add randomness to delays (0-1.0, values outside are clamped)
 ```
+
+Without options, `NewBackoff` uses exponential backoff, a 30s maximum delay and jitter 0.1. A jitter factor f spreads each delay uniformly over plus or minus f/2 of it, so 0.1 means plus or minus 5%. The part of that range above the maximum delay is cut off, so a delay at or near the maximum spreads evenly below it. `WithMaxDelay(0)` removes the maximum.
+
+For every constructor, an attempts count below 1 means a single attempt, and `NewWithStrategy` with a nil strategy uses a fixed 1s delay.
 
 ## Error Handling
 
-- Stops on context cancellation
+- Stops on context cancellation, checked before each attempt and during the delay between attempts; `Do` then returns the context error, and `Stats().LastError` keeps the last error returned by the function
+- Does not interrupt a running function: it has to watch `ctx` itself to stop early
 - Can stop on specific errors (pass them as additional parameters to Do)
 - Special `ErrAny` to stop on any error
 - Returns last error if all attempts fail
@@ -180,7 +187,7 @@ When an error classifier is set:
 - After each error, the classifier function is called
 - If it returns `false`, the operation stops immediately
 - If it returns `true`, the retry logic continues
-- The classifier takes precedence over the critical errors list
+- When a classifier is set, the errors passed to `Do`, `ErrAny` included, are ignored
 
 This feature works with all repeater strategies (NewFixed, NewBackoff, NewWithStrategy).
 
@@ -218,7 +225,7 @@ The `Stats` struct provides the following information:
 - `TotalDuration` - Total elapsed time from start to finish
 - `WorkDuration` - Time spent executing the function (excluding delays)
 - `DelayDuration` - Time spent in delays between attempts
-- `LastError` - Last error encountered (nil if succeeded)
+- `LastError` - Last error returned by the function (nil if succeeded); the context error only when the context ended before the first attempt
 - `StartedAt` - When the repeater started
 - `FinishedAt` - When the repeater finished
 
@@ -227,7 +234,6 @@ The `Stats` struct provides the following information:
 ```go
 r := repeater.NewBackoff(3, time.Second)
 
-start := time.Now()
 err := r.Do(ctx, func() error {
     // Simulate work that takes time
     time.Sleep(200 * time.Millisecond)
@@ -256,4 +262,28 @@ if err != nil {
 
 ### Thread Safety
 
-Note that the `Repeater` is not thread-safe. Each `Repeater` instance should not be used concurrently for different functions. Create separate `Repeater` instances for concurrent operations.
+Note that the `Repeater` is not thread-safe: `Do` records statistics on every call. A `Repeater` must not be used from several goroutines at once, even with the same function; create one per concurrent call.
+
+## Migrating from v1
+
+v2 is a separate module, `github.com/go-pkgz/repeater/v2`, and replaces the whole v1 API, including the `strategy` package:
+
+| v1 | v2 |
+|---|---|
+| `repeater.NewDefault(n, d)` | `repeater.NewFixed(n, d)` |
+| `repeater.New(&strategy.FixedDelay{Repeats: n, Delay: d})` | `repeater.NewFixed(n, d)` |
+| `repeater.New(&strategy.Backoff{Duration: d, Repeats: n, Factor: 2})` | `repeater.NewBackoff(n, d)` |
+| `strategy.Backoff` with `Factor` 1, 0 or below, or unset | `repeater.NewBackoff(n, d, repeater.WithBackoffType(repeater.BackoffConstant))` |
+| `strategy.Backoff` with any other `Factor` | a custom `Strategy`, as in [Custom Strategies](#custom-strategies) |
+| `repeater.New(&strategy.Once{})` | `repeater.NewFixed(1, 0)` |
+| `repeater.New(nil)` (10 attempts, 5s apart) | `repeater.NewFixed(10, 5*time.Second)` |
+| a custom strategy with `Start(ctx) <-chan struct{}` | a type with `NextDelay(attempt int) time.Duration`, passed to `repeater.NewWithStrategy` |
+
+Behavior that changed:
+
+- v1 `Backoff` had no maximum delay, and its `Jitter` option was off by default and spread each delay by plus or minus the initial `Duration`. `NewBackoff` caps delays at 30s and adds proportional jitter of 0.1 by default; `WithMaxDelay(0)` and `WithJitter(0)` turn both off.
+- v1 `Backoff` started from 100ms when `Duration` was unset; v2 uses the initial delay as given.
+- `NewWithStrategy(n, nil)` uses a fixed 1s delay with the n attempts passed, where v1 `New(nil)` meant 10 attempts 5s apart.
+- In v1 each delay started with the attempt and ran while the function ran, and when the last attempt failed with a retryable error, `Do` waited out what was left of its delay before returning. In v2 each delay starts after a failed attempt returns, and `Do` returns right after the last attempt.
+- A v1 custom strategy decided when the first attempt ran, since `Do` waited for its first tick, and it stopped retries by closing the channel. In v2 the first attempt runs at once and `NextDelay` only returns a delay, so a v2 strategy can do neither: hold back the first call before calling `Do`, and stop retries with the attempts count, `ctx`, the errors passed to `Do` or an error classifier.
+- A v1 `Repeater` kept no state of its own and could be shared between goroutines. A v2 `Repeater` records statistics on every `Do`, so it must not be shared; create one per concurrent call.

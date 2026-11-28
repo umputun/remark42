@@ -26,10 +26,19 @@ type CustomHandlerOpt struct {
 	InfoURL  string
 	// MapUserFn converts the response from InfoURL to a user. It has to return an empty ID when the response
 	// has no user id, such a login is refused. Check the id before hashing it: a prefix plus a hash of
-	// an empty value is not an empty ID and maps every such login to the same user.
+	// an empty value is not an empty ID and maps every such login to the same user. An empty ID is also
+	// the way to refuse a user the app does not accept; the callback answers 503 and issues no session.
 	MapUserFn         func(UserData, []byte) token.User
 	BearerTokenHookFn BearerTokenHook
 	Scopes            []string
+	// AvatarSaver, when set, saves the user's picture in place of Params.AvatarSaver, which for
+	// Service.AddCustomProvider is the service's avatar proxy. The saver gets a client that sends the user's
+	// access token only with requests to the scheme, host and port of InfoURL, and the proxy fetches the
+	// picture URL of the user info with it. A picture on any other host is fetched without the token. When
+	// users can set that URL, pass a saver that fetches with a client of its own. A host with non-ASCII
+	// characters never gets the token, so when the picture needs it, write InfoURL and the picture URL
+	// with the host in its xn-- form.
+	AvatarSaver AvatarSaver
 }
 
 // CustomServerOpt are options to initialize a custom go-oauth2/oauth2 server
@@ -220,6 +229,9 @@ func (c *CustomServer) Shutdown() {
 
 // NewCustom creates a handler for go-oauth2/oauth2 server
 func NewCustom(name string, p Params, copts CustomHandlerOpt) Oauth2Handler {
+	if copts.AvatarSaver != nil {
+		p.AvatarSaver = copts.AvatarSaver
+	}
 	return initOauth2Handler(p, Oauth2Handler{
 		name:            name,
 		endpoint:        copts.Endpoint,

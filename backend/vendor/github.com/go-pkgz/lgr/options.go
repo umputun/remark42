@@ -40,7 +40,7 @@ func CallerDepth(n int) Option {
 	}
 }
 
-// Format sets output layout, overwrites all options for individual parts, i.e. Caller*, Msec and LevelBraces
+// Format sets output layout, overwrites all options for individual parts, i.e. Caller*, Msec, LevelBraces and Map
 func Format(f string) Option {
 	return func(l *Logger) {
 		l.format = f
@@ -98,7 +98,8 @@ func StackTraceOnError(l *Logger) {
 
 // SlogHandler sets slog.Handler to delegate logging to. When using this option,
 // the output format will be controlled by the slog.Handler provided, not by lgr's
-// format options.
+// format options. lgr's Debug and Trace filter runs first, then the handler drops
+// the messages below its own level.
 //
 // IMPORTANT: When using lgr.SlogHandler:
 //

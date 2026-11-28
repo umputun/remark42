@@ -10,7 +10,17 @@ import (
 func Escape(input string) string {
 	b := &bytes.Buffer{}
 	for _, r := range input {
-		escape(b, r, false)
+		switch r {
+		case ' ':
+			// Hex escapes for space and '#' are valid in every mode,
+			// including IgnorePatternWhitespace and ECMAScript|Unicode,
+			// where "\ " and "\#" are compile errors.
+			b.WriteString(`\x20`)
+		case '#':
+			b.WriteString(`\x23`)
+		default:
+			escape(b, r, false)
+		}
 	}
 	return b.String()
 }

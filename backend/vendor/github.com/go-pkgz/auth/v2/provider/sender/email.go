@@ -30,7 +30,7 @@ type EmailParams struct {
 	StartTLS           bool          // startTLS auth
 	InsecureSkipVerify bool          // skip certificate verification
 	Charset            string        // character set
-	LoginAuth          bool          // LOGIN auth method instead of default PLAIN, needed for Office 365 and outlook.com
+	LoginAuth          bool          // LOGIN auth instead of PLAIN, for servers offering only LOGIN, e.g. Office 365 allowing basic auth
 	SMTPUserName       string        // username
 	SMTPPassword       string        // password
 	TimeOut            time.Duration // TCP connection timeout
