@@ -127,7 +127,9 @@ const getCommentsAround = (comment: Element): Set<string> => {
 export class Root extends Component<Props, State> {
   state = {
     isUserLoading: true,
-    commentsShown: maxShownComments,
+    // without max_shown_comments a phone starts with the first MAX_SHOWN_ROOT_COMMENTS and a desktop
+    // with every comment loaded, as before the setting applied to desktop
+    commentsShown: maxShownComments ?? (IS_MOBILE ? MAX_SHOWN_ROOT_COMMENTS : Infinity),
     isLoadingMore: false,
     wasSomeoneUnblocked: false,
     isSettingsVisible: false,
@@ -274,7 +276,7 @@ export class Root extends Component<Props, State> {
     const { commentsShown } = this.state;
     const loaded = this.props.topComments.length;
 
-    if (IS_MOBILE && commentsShown < loaded) {
+    if (commentsShown < loaded) {
       this.setState({ commentsShown: commentsShown + MAX_SHOWN_ROOT_COMMENTS });
       return;
     }
@@ -389,7 +391,7 @@ interface CommentsProps {
   showMore(): void;
 }
 function Comments({ isLoading, isLoadingMore, topComments, countLeft, commentsShown, showMore }: CommentsProps) {
-  const hasHiddenComments = IS_MOBILE && commentsShown < topComments.length;
+  const hasHiddenComments = commentsShown < topComments.length;
   const renderComments = hasHiddenComments ? topComments.slice(0, commentsShown) : topComments;
   const isShowMoreButtonVisible = hasHiddenComments || countLeft > 0;
 

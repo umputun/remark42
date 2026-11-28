@@ -1,5 +1,5 @@
 import { parseQuery } from 'utils/parse-query';
-import { THEMES, MAX_SHOWN_ROOT_COMMENTS, DEFAULT_SORT, IS_MOBILE } from './constants';
+import { THEMES, DEFAULT_SORT } from './constants';
 import { parseMaxShownComments } from './max-shown-comments';
 import { parseSorting } from './sorting';
 import { parseCommentsPageSize } from './comments-page-size';
@@ -11,12 +11,10 @@ function includes<T extends U, U>(coll: ReadonlyArray<T>, el: U): el is T {
 export const rawParams = parseQuery();
 export const defaultSort = parseSorting(rawParams.default_sort) ?? DEFAULT_SORT;
 /**
- * How many top-level comments are shown before the Show more button. A site that sets
- * max_shown_comments gets it on every device; without it, mobile shows the first
- * MAX_SHOWN_ROOT_COMMENTS and desktop shows every comment, as before the setting reached desktop.
+ * How many top-level comments the site set to show before the Show more button, on every device;
+ * undefined when it set none, and the root then picks a default for the device
  */
-export const maxShownComments =
-  parseMaxShownComments(rawParams.max_shown_comments) ?? (IS_MOBILE ? MAX_SHOWN_ROOT_COMMENTS : Infinity);
+export const maxShownComments = parseMaxShownComments(rawParams.max_shown_comments);
 /** comments loaded at a time, whole top-level threads only; 0 loads the thread in one request */
 export const commentsPageSize = parseCommentsPageSize(rawParams.comments_page_size);
 export const isEmailSubscription = rawParams.show_email_subscription !== 'false';

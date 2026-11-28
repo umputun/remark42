@@ -267,6 +267,54 @@ describe('<ConnectedRoot />', () => {
     expect(container).not.toHaveTextContent('Show more');
   });
 
+  /** how many top-level threads the widget renders: the items of the list of threads */
+  function shownThreads(container: Element) {
+    return container.querySelector('[role="list"]')?.children.length ?? 0;
+  }
+
+  it.each([
+    ['a desktop', false],
+    ['a phone', true],
+  ])('limits the top-level comments to max_shown_comments on %s and shows ten more on demand', async (_, mobile) => {
+    mockMobile = mobile;
+    mockMaxShown = 2;
+    try {
+      // the two threads of the fixture and 13 more, the whole thread loaded
+      const container = await renderThreads(null, { more: 13 });
+
+      expect(shownThreads(container)).toBe(2);
+      fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+      expect(shownThreads(container)).toBe(12);
+      fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+      expect(shownThreads(container)).toBe(15);
+      expect(screen.queryByRole('button', { name: 'Show more' })).not.toBeInTheDocument();
+      // every thread was loaded, so the button revealed them and asked the server for nothing
+      expect(api.getPostComments).toHaveBeenCalledTimes(1);
+    } finally {
+      mockMobile = false;
+      mockMaxShown = undefined;
+    }
+  });
+
+  it('shows the first ten top-level comments on a phone when the site sets no max_shown_comments', async () => {
+    mockMobile = true;
+    try {
+      const container = await renderThreads(null, { more: 12 });
+
+      expect(shownThreads(container)).toBe(10);
+      expect(screen.getByRole('button', { name: 'Show more' })).toBeInTheDocument();
+    } finally {
+      mockMobile = false;
+    }
+  });
+
+  it('shows every top-level comment on a desktop when the site sets no max_shown_comments', async () => {
+    const container = await renderThreads(null, { more: 12 });
+
+    expect(shownThreads(container)).toBe(14);
+    expect(screen.queryByRole('button', { name: 'Show more' })).not.toBeInTheDocument();
+  });
+
   it('leaves no empty list behind a thread whose only reply is hidden', async () => {
     const container = await renderThreads(null, { hideReply: true });
 
@@ -276,23 +324,18 @@ describe('<ConnectedRoot />', () => {
     }
   });
 
-  it('shows no empty list on a phone set to show no comments until asked', async () => {
+  // max_shown_comments is at least 1, so the list is empty only when a loaded page held no thread to
+  // show, every one by a user the reader hid, and the server has more
+  it('shows no empty list when a loaded page left no thread to show and the server has more', async () => {
     jest.spyOn(api, 'getUser').mockResolvedValue(null);
     jest.spyOn(api, 'getPostComments').mockImplementation(() => new Promise(() => undefined));
-    mockMobile = true;
-    mockMaxShown = 0;
-    try {
-      const { container } = render(<ConnectedRoot />, {
-        ...stateStub,
-        comments: { ...stateStub.comments!, topComments: ['c1'], allComments: {} },
-      });
+    const { container } = render(<ConnectedRoot />, {
+      ...stateStub,
+      comments: { ...stateStub.comments!, page: { countLeft: 3, lastComment: 'hidden', loaded: 2, undeleted: 2 } },
+    });
 
-      await waitFor(() => expect(container).toHaveTextContent('Show more'));
-      expect(container.querySelector('[role="list"]')).toBeNull();
-    } finally {
-      mockMobile = false;
-      mockMaxShown = undefined;
-    }
+    await waitFor(() => expect(container).toHaveTextContent('Show more'));
+    expect(container.querySelector('[role="list"]')).toBeNull();
   });
 
   it('nests every thread as an item of a list, with a named control that expands it', async () => {
