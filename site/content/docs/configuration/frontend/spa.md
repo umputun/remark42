@@ -16,11 +16,9 @@ Load the widget script once, in your `index.html`, after a global `remark_config
 
 The examples below are written as Vue class components (`vue-property-decorator`); the same calls work in any framework.
 
-Create the instance when the element with `id="remark42"` has appeared, usually in `mounted` or `componentDidMount` of the SPA lifecycle: `createInstance` always puts the widget into that element and throws if the page has none. Always destroy the previous instance first: a second `createInstance` reuses the widget it finds in the page, so the previous page's comments stay until `destroy()` is called. Set `url` to the current route on every call: `createInstance` writes the resolved `url` into the object it is given, the global `remark_config` included when the script creates the first instance, so a copied or reused configuration keeps the first page's address.
+Create the instance when the element for the widget has appeared, usually in `mounted` or `componentDidMount` of the SPA lifecycle: `createInstance` puts the widget into the element passed as `node` or, without it, into the element with `id="remark42"`. Always destroy the previous instance first: a second `createInstance` into the same element reuses the widget it finds there, so the previous page's comments stay until `destroy()` is called. Set `url` to the current route on every call: `createInstance` writes the resolved `url` into the object it is given, the global `remark_config` included when the script creates the first instance, so a copied or reused configuration keeps the first page's address.
 
-`createInstance` returns an object with `destroy()`, which removes the widget, and `changeTheme(theme)`, which works as `window.REMARK42.changeTheme` does. It throws when the page has no `remark42` element, or when the global `remark_config` or its `site_id` is missing.
-
-The widget is mounted into the element passed as `node`. Without it, the element with the id `remark42` is used, so `node` can be left out when your page has one.
+`createInstance` returns an object with `destroy()`, which removes the widget, and `changeTheme(theme)`, which works as `window.REMARK42.changeTheme` does. It throws when `node` is given but is not a DOM element, when neither `node` nor a `remark42` element is there to mount into, or when the global `remark_config` or its `site_id` is missing. `node` is read from the object passed to `createInstance`, while `host` and the `site_id` check use the global `window.remark_config`.
 
 ```ts
   initRemark42() {
@@ -31,6 +29,7 @@ The widget is mounted into the element passed as `node`. Without it, the element
 
       this.remark42Instance = window.REMARK42.createInstance({
         ...window.remark_config, // see https://remark42.com/docs/configuration/frontend/
+        node: this.$refs.remark42 as HTMLElement,
         url: window.location.origin + window.location.pathname,
       })
     }
@@ -67,12 +66,3 @@ The script dispatches `REMARK42::ready` when it initialises, even on a page with
     }
   }
 ```
-
-## Things to know about `createInstance`
-
-- `createInstance` returns `{ changeTheme, destroy }` and throws an `Error` instead of returning a failure, in three cases:
-  - there is no element to mount into: neither `node` nor an element with the id `remark42`
-  - `window.remark_config` is not defined
-  - `site_id` is not set in `window.remark_config`
-- `node`, when given, must be a DOM element, otherwise `createInstance` throws as well.
-- The checks above and the server address (`host`) are read from the **global** `window.remark_config`, while the other options come from the object passed to `createInstance`. Passing a configuration does not remove the need to define a valid global one with at least `host` and `site_id`.
