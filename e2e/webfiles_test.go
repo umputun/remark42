@@ -48,9 +48,10 @@ const (
 
 // the /web paths the documentation publishes, plus the legacy names of the same files. each is
 // held by somebody outside this repository: an operator pastes privacy.html into an OAuth
-// application, an nginx config proxies index.html, the integration guides start from the embed
-// script, and the comment form links markdown-help.html. written out and not derived, because
-// the documentation decides the list, so a name joining or leaving is an edit made on purpose
+// application, nginx configs copied from an earlier manuals/nginx proxy index.html, the
+// integration guides start from the embed script, and the comment form links markdown-help.html.
+// written out and not derived, because the documentation decides the list, so a name joining or
+// leaving is an edit made on purpose
 var documentedWebPaths = []struct {
 	path string
 	// what publishes it, so a failure names who is holding the URL
@@ -64,7 +65,7 @@ var documentedWebPaths = []struct {
 }{
 	{"/web", "getting-started/installation, the first URL an operator opens", "text/html", `id="remark42"`},
 	{"/web/", "linked from most documentation pages", "text/html", `id="remark42"`},
-	{"/web/index.html", "manuals/nginx proxies this exact URL", "text/html", `id="remark42"`},
+	{"/web/index.html", "nginx configs from an earlier manuals/nginx proxy this exact URL", "text/html", `id="remark42"`},
 	{"/web/embed.mjs", "configuration/frontend/spa.md, manuals/subdomain, contributing/frontend", "text/javascript", "remark_config"},
 	{"/web/embed.js", "the legacy name integrations still hold", "text/javascript", "remark_config"},
 	{"/web/counter.mjs", "built from remark_config.components by the loader in configuration/frontend", "text/javascript", "remark42__counter"},
