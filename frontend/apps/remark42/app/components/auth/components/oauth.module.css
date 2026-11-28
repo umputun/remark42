@@ -22,7 +22,7 @@
   cursor: pointer;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--line-color);
+  border: 1px solid rgb(var(--line-color));
   border-radius: 50%;
 
   &::after {
@@ -32,7 +32,7 @@
 
   &:hover {
     transform: scale(1.05);
-    border-color: var(--line-brighter-color);
+    border-color: rgb(var(--line-brighter-color));
   }
 
   &:active {
@@ -40,8 +40,8 @@
   }
 
   &:focus {
-    border-color: var(--line-brighter-color);
-    box-shadow: 0 0 0 2px var(--line-color);
+    border-color: rgb(var(--line-brighter-color));
+    box-shadow: 0 0 0 2px rgb(var(--line-color));
   }
 }
 

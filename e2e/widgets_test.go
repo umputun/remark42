@@ -44,6 +44,17 @@ func TestWidgets_LastCommentsRendersIntoTheHostPage(t *testing.T) {
 	require.NoError(t, err, "the page never asked for its stylesheet")
 	assert.Equal(t, 200, css.Status(), "the last-comments stylesheet did not load")
 
+	// the stylesheet lands in the host page, so it declares its palette on the widget's node and
+	// nothing on the page's root, and every variable it reads is one it declares there
+	sheet, err := css.Text()
+	require.NoError(t, err)
+	assert.NotContains(t, sheet, ":root", "last-comments.css sets variables on the host page's root")
+	palette := regexp.MustCompile(`^\.remark42__last-comments\{([^}]*)\}`).FindStringSubmatch(sheet)
+	require.Len(t, palette, 2, "last-comments.css does not start with the widget's palette")
+	for _, m := range regexp.MustCompile(`var\((--[\w-]+)`).FindAllStringSubmatch(sheet, -1) {
+		assert.Contains(t, palette[1], m[1]+":", "last-comments.css reads %s, which its palette does not declare", m[1])
+	}
+
 	list := page.Locator(".remark42__last-comments")
 	waitVisible(t, list)
 	waitVisible(t, list.Locator("text="+text))
@@ -144,6 +155,52 @@ func TestWidgets_LastCommentsShowsACommentAsItsText(t *testing.T) {
 	dir, err = enList.Locator("> div").GetAttribute("dir")
 	require.NoError(t, err)
 	assert.Equal(t, "ltr", dir)
+}
+
+// TestWidgets_LastCommentsLeavesTheHostPageItsVariables covers a host page that declares variables
+// under the names the widget reads, as blog themes do with --link-color. The widget's stylesheet
+// lands in that page, so the page keeps its own values and the widget keeps its own colors.
+func TestWidgets_LastCommentsLeavesTheHostPageItsVariables(t *testing.T) {
+	// serial for the reason the cases above are: the feed is site-wide
+	marker := "palette " + runID
+	poster := newPage(t)
+	frame := openThread(t, poster)
+	signInAnon(t, poster, frame, "lastpalette")
+	postComment(t, frame, marker)
+
+	for _, tt := range []struct{ theme, host, name string }{
+		{theme: "light", host: "rgb(1, 2, 3)", name: "rgb(100, 116, 139)"},
+		{theme: "dark", host: "rgb(4, 5, 6)", name: "rgb(209, 213, 219)"},
+	} {
+		t.Run(tt.theme, func(t *testing.T) {
+			page := newPage(t)
+			_, err := page.ExpectResponse("**/last-comments.css", func() error {
+				_, gerr := page.Goto(hostSiteURL + "/last-comments-palette.html?theme=" + tt.theme)
+				return gerr
+			}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
+			require.NoError(t, err, "the page never asked for the last-comments stylesheet")
+
+			item := page.Locator(".remark42__last-comments").Locator("article", playwright.LocatorLocatorOptions{HasText: marker})
+			waitVisible(t, item)
+			// a response is not yet an applied stylesheet, so read the color once the sheet is in
+			color := func(loc playwright.Locator) string {
+				var res string
+				eventually(t, waitTimeout, "the last-comments stylesheet never applied", func() bool {
+					v, verr := loc.Evaluate(`(el) => document.querySelector('link[href$="/web/last-comments.css"]')?.sheet ? getComputedStyle(el).color : ''`, nil,
+						playwright.LocatorEvaluateOptions{Timeout: new(float64(pollTimeout.Milliseconds()))})
+					res, _ = v.(string)
+					return verr == nil && res != ""
+				})
+				return res
+			}
+
+			assert.Equal(t, tt.host, color(page.Locator(".host-link")), "the site's own link lost the site's color")
+			assert.Equal(t, "rgb(0, 170, 170)", color(item.Locator("a").First()), "the comment's link lost the widget's color")
+			// the commenter's name, which a titled entry shows as plain text, is gray enough to read
+			// on the page's own background: the widget's light-theme darkening never reaches it
+			assert.Equal(t, tt.name, color(item.Locator("[data-nosnippet]")), "the commenter's name is not in the secondary text color")
+		})
+	}
 }
 
 // TestWidgets_DeleteMePageServesAndRuns covers the GDPR delete page, which nothing else opens. It

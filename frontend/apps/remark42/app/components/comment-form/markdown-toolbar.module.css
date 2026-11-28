@@ -14,7 +14,7 @@
 .item {
   background: none;
   border: 0;
-  color: var(--color37);
+  color: rgb(var(--secondary-text-color));
   display: flex;
   height: 24px;
   width: 24px;
@@ -23,7 +23,7 @@
   cursor: pointer;
 
   &:hover {
-    color: var(--color9);
+    color: rgb(var(--link-color));
   }
 }
 
@@ -43,9 +43,9 @@
 }
 
 :global(.dark) .item {
-  color: var(--color20);
+  color: rgb(var(--secondary-text-color));
 
   &:hover {
-    color: var(--color9);
+    color: rgb(var(--link-color));
   }
 }

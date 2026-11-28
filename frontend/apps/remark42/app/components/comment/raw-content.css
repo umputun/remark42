@@ -10,7 +10,7 @@
   }
 
   & a {
-    color: var(--color9);
+    color: rgb(var(--link-color));
     text-decoration: underline;
 
     &:hover {
@@ -35,7 +35,7 @@
     padding-block: 12px;
     padding-inline: 16px 8px;
     border-inline-start: 2px solid;
-    border-inline-start-color: var(--color45);
+    border-inline-start-color: rgb(var(--shadow-color));
   }
 
   & p,
@@ -52,20 +52,22 @@
     & th {
       text-align: start;
       font-weight: 600;
+      background-color: rgb(var(--primary-color));
+      color: rgb(var(--inverse-text-color));
     }
 
     & th,
     & td {
       padding: 6px 13px;
-      border: 1px solid var(--color16);
+      border: 1px solid rgb(var(--line-brighter-color));
     }
 
     & tr {
-      border-top: 1px solid var(--color43);
-      background-color: var(--color6);
+      border-top: 1px solid rgb(var(--line-color));
+      background-color: rgb(var(--primary-background-color));
 
       &:nth-child(2n) {
-        background-color: var(--color21);
+        background-color: rgb(var(--highlight-color));
       }
     }
   }
@@ -80,7 +82,7 @@
 
   & hr {
     border-width: 0 0 1px 0;
-    border-color: var(--color21);
+    border-color: rgb(var(--line-brighter-color));
   }
 
   & code {
@@ -214,6 +216,13 @@
       color: var(--chroma-06);
     }
   }
+
+  /* a table header is filled with the primary color, which links and inline code would otherwise
+     be drawn in or close to; here they take the header's own text color */
+  & table th a,
+  & table th code {
+    color: inherit;
+  }
 }
 
 .dark .raw-content {
@@ -228,25 +237,32 @@
   --chroma-07: #a1e6fb;
 
   & blockquote {
-    border-inline-start-color: var(--color44);
+    border-inline-start-color: rgb(var(--lighter-text-color));
   }
 
   & table {
+    /* white on the dark theme's teal would be 3.5:1, too little for text */
+    & th {
+      background-color: rgb(var(--highlight-color));
+      color: rgb(var(--primary-text-color));
+    }
+
     & th,
     & td {
-      border: 1px solid var(--color24);
+      border: 1px solid rgb(var(--line-brighter-color));
     }
 
     & tr {
-      background-color: var(--color8);
+      background-color: rgb(var(--primary-background-color));
 
+      /* the base stripe, --highlight-color, would put links at 3.6:1 here; this keeps them at 4.4:1 */
       &:nth-child(2n) {
-        background-color: var(--color23);
+        background-color: rgb(var(--secondary-background-color));
       }
     }
   }
 
   & hr {
-    border-color: var(--color22);
+    border-color: rgb(var(--line-brighter-color));
   }
 }

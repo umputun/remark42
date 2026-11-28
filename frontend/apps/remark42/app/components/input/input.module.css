@@ -2,34 +2,34 @@
 .input {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid var(--line-color);
+  border: 1px solid rgb(var(--line-color));
   border-radius: 4px;
   margin: 0;
   padding: 0 8px;
   height: 36px;
   font-size: 16px;
   font-family: inherit;
-  background-color: rgb(var(--white-color));
-  color: var(--color7);
+  background-color: rgb(var(--primary-background-color));
+  color: rgb(var(--primary-text-color));
 
   &:hover {
-    border-color: var(--line-brighter-color);
+    border-color: rgb(var(--line-brighter-color));
   }
 
   &:focus {
-    box-shadow: 0 0 0 2px var(--color47);
-    border-color: var(--color15);
+    box-shadow: 0 0 0 2px rgb(var(--primary-color), 0.4);
+    border-color: rgb(var(--primary-color));
     outline: none;
   }
 
   &:disabled {
-    background-color: var(--color21);
-    border-color: var(--line-color);
+    background-color: rgb(var(--highlight-color));
+    border-color: rgb(var(--line-color));
   }
 
   &::placeholder {
-    color: var(--color11);
-    -webkit-text-fill-color: var(--color11);
+    color: rgb(var(--lighter-text-color));
+    -webkit-text-fill-color: rgb(var(--lighter-text-color));
   }
 
   /* dir="auto" only sniffs the field's own value, never the placeholder, so an
@@ -43,48 +43,49 @@
 }
 
 .input:-webkit-autofill {
-  box-shadow: 0 0 0 1000px rgb(var(--white-color)) inset;
-  -webkit-text-fill-color: var(--color7);
+  box-shadow: 0 0 0 1000px rgb(var(--primary-background-color)) inset;
+  -webkit-text-fill-color: rgb(var(--primary-text-color));
 
   &:focus {
     box-shadow:
-      0 0 0 1000px rgb(var(--white-color)) inset,
-      0 0 0 2px var(--color47);
+      0 0 0 1000px rgb(var(--primary-background-color)) inset,
+      0 0 0 2px rgb(var(--primary-color), 0.4);
   }
 
   &::placeholder {
-    -webkit-text-fill-color: var(--color11);
+    -webkit-text-fill-color: rgb(var(--lighter-text-color));
   }
 }
 
 :global(.dark) {
   & .input {
-    background-color: var(--color22);
-    color: rgb(var(--white-color), 0.8);
+    background-color: rgb(var(--secondary-background-color));
+    color: rgb(var(--primary-text-color), 0.8);
 
     &:focus {
-      border-color: var(--color15);
-      box-shadow: 0 0 0 2px var(--color47);
+      border-color: rgb(var(--primary-color));
+      box-shadow: 0 0 0 2px rgb(var(--primary-color), 0.4);
     }
 
     &::placeholder {
-      color: rgb(var(--white-color), 0.2);
+      color: rgb(var(--primary-text-color), 0.6);
+      -webkit-text-fill-color: rgb(var(--primary-text-color), 0.6);
     }
   }
 
   & .input:-webkit-autofill {
-    box-shadow: 0 0 0 1000px var(--color22) inset;
-    -webkit-text-fill-color: rgb(var(--white-color), 0.8);
+    box-shadow: 0 0 0 1000px rgb(var(--secondary-background-color)) inset;
+    -webkit-text-fill-color: rgb(var(--primary-text-color), 0.8);
 
     &:focus {
       box-shadow:
-        0 0 0 1000px var(--color22) inset,
-        0 0 0 2px var(--color47);
-      -webkit-text-fill-color: rgb(var(--white-color), 0.8);
+        0 0 0 1000px rgb(var(--secondary-background-color)) inset,
+        0 0 0 2px rgb(var(--primary-color), 0.4);
+      -webkit-text-fill-color: rgb(var(--primary-text-color), 0.8);
     }
 
     &::placeholder {
-      -webkit-text-fill-color: rgb(var(--white-color), 0.4);
+      -webkit-text-fill-color: rgb(var(--primary-text-color), 0.4);
     }
   }
 }
@@ -93,7 +94,7 @@
   &,
   &:hover,
   &:focus {
-    border-color: var(--error-color);
-    box-shadow: 0 0 0 2px var(--error-background);
+    border-color: rgb(var(--error-color));
+    box-shadow: 0 0 0 2px rgb(var(--error-background));
   }
 }

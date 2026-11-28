@@ -28,7 +28,7 @@ aliases:
 - **`show_rss_subscription`**`: boolean` (optional, `true` by default) – enables RSS subscription feature in interface
 - **`simple_view`**`: boolean` (optional, `false` by default) – simplifies the comment form, hiding the formatting toolbar and the preview button; `false` does not disable `SIMPLE_VIEW` enabled on the backend
 - **`no_footer`**`: boolean` (optional, `false` by default) – hides footer with signature and links to Remark42
-- **`custom_properties`**`: object` (optional) – CSS custom properties for the widget, see [Matching your site's font](#matching-your-sites-font)
+- **`custom_properties`**`: object` (optional) – CSS custom properties for the widget, see [Matching your site's font](#matching-your-sites-font) and [Changing the widget's colors](#changing-the-widgets-colors)
 
 Configuration example:
 
@@ -36,15 +36,23 @@ Configuration example:
 <script>
 	var remark_config = {
 		host: 'https://remark42.example.com',
+		url: '/blog/my-first-blog-post/',
 		site_id: 'my_site',
 		components: ['embed', 'last-comments'],
 		max_shown_comments: 100,
-		theme: 'dark',
+		max_last_comments: 100,
+		theme: 'light',
 		page_title: 'My custom title for a page',
 		locale: 'es',
 		show_email_subscription: false,
+		show_telegram_subscription: false,
+		show_rss_subscription: false,
 		simple_view: true,
-		no_footer: false
+		no_footer: false,
+		custom_properties: {
+			'--font-family': 'Georgia, serif',
+			'--primary-color': '0, 100, 200'
+		}
 	}
 </script>
 ```
@@ -119,6 +127,54 @@ though — `--font-size`, for example, isn't wired to anything: most components 
 font-size instead of reading a variable, so setting it has no visible effect. Even a property that
 does work today isn't guaranteed to keep working, or keep meaning the same thing, in a future
 version. Treat anything beyond `--font-family` as unsupported and best-effort, not a documented API.
+
+#### Changing the widget's colors
+
+`custom_properties` also takes the color variables the widget's stylesheets read. Each value is a
+comma-separated `r, g, b` triplet without `rgb()` around it; `--shadow-color` takes a fourth
+component, the opacity:
+
+```js
+var remark_config = {
+	host: "REMARK_URL",
+	site_id: "YOUR_SITE_ID",
+	custom_properties: {
+		"--primary-color": "0, 100, 200",
+		"--primary-brighter-color": "0, 120, 230",
+		"--shadow-color": "0, 0, 0, 0.2",
+	},
+}
+```
+
+The variables are `--primary-color`, `--primary-brighter-color`, `--link-color`,
+`--link-hover-color`, `--primary-text-color`, `--secondary-text-color`, `--inverse-text-color`,
+`--lighter-text-color`, `--deactivated-color`, `--primary-background-color`,
+`--secondary-background-color`, `--highlight-color`, `--selection-color`, `--shadow-color`,
+`--line-color`, `--line-brighter-color`, `--upvote-color`, `--downvote-color`, `--verified-color`,
+`--ghost-color`, `--error-color`, `--error-background` and `--white-color`. Their default values are
+in
+[`custom-properties.css`](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/app/styles/custom-properties.css).
+A variable left out keeps its default. In the light theme six of them start from darker values, set
+on `:root.light` in
+[`global.css`](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/app/styles/global.css)
+so text reads on white: `--primary-color`, `--primary-brighter-color`, `--link-color`,
+`--link-hover-color`, `--lighter-text-color` and `--deactivated-color`. A value passed here replaces
+those too, so check its contrast on white.
+
+`custom_properties` reaches the comments widget only. The last comments widget renders into your
+page and keeps the defaults, and the counter takes its styling from your page.
+
+The dark theme sets eleven of them again: `--primary-color`, `--primary-brighter-color`,
+`--primary-text-color`, `--secondary-text-color`, `--primary-background-color`,
+`--secondary-background-color`, `--highlight-color`, `--line-color`, `--line-brighter-color`,
+`--error-color` and `--error-background`. A value passed for one of these applies in the light theme
+only; the other variables apply in both themes. Links read `--link-color` and `--link-hover-color`,
+which the dark theme does not set again, so a link color applies in both themes. Button fills read
+`--primary-color`.
+
+The note above covers the colors too: which element reads which variable can change between
+versions. The numbered variables, `--color0` to `--color48`, were replaced by the named ones and
+have no effect.
 
 
 ### Locales

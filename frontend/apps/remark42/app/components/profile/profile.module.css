@@ -92,7 +92,7 @@
 
 .editAvatarHint {
   display: block;
-  color: var(--color13);
+  color: rgb(var(--lighter-text-color));
 }
 
 .content {
@@ -167,7 +167,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 12px;
-  color: var(--color13);
+  color: rgb(var(--lighter-text-color));
 }
 
 .signout {
@@ -230,12 +230,12 @@
 
 .preloader {
   margin: auto;
-  color: var(--color13);
+  color: rgb(var(--deactivated-color));
 }
 
 .emptyState {
   margin: auto;
-  color: var(--color13);
+  color: rgb(var(--deactivated-color));
 }
 
 .loadMoreWrapper {

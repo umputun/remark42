@@ -20,13 +20,13 @@
     position: absolute;
     inset-inline-start: 5px;
     top: 0;
-    border-inline-start: 1px dotted var(--color35);
+    border-inline-start: 1px dotted rgb(var(--line-brighter-color));
     height: 100%;
   }
 
   &:hover::after {
     transform: translateX(-1px);
-    border-inline-start: 3px solid var(--color10);
+    border-inline-start: 3px solid rgb(var(--lighter-text-color));
     z-index: 10;
   }
 }
@@ -83,11 +83,11 @@
 .themeDark {
   & .collapse {
     &::after {
-      border-color: var(--color36);
+      border-color: rgb(var(--line-color));
     }
 
     &:hover::after {
-      border-color: var(--color6);
+      border-color: rgb(var(--lighter-text-color));
     }
   }
 }
