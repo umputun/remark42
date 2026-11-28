@@ -244,7 +244,7 @@
       display: inline;
       padding-inline-end: 0;
       font-weight: 700;
-      color: rgb(var(--lighter-text-color));
+      color: rgb(var(--secondary-text-color));
 
       &::after {
         content: ' ';

@@ -168,9 +168,9 @@ func TestWidgets_LastCommentsLeavesTheHostPageItsVariables(t *testing.T) {
 	signInAnon(t, poster, frame, "lastpalette")
 	postComment(t, frame, marker)
 
-	for _, tt := range []struct{ theme, host string }{
-		{theme: "light", host: "rgb(1, 2, 3)"},
-		{theme: "dark", host: "rgb(4, 5, 6)"},
+	for _, tt := range []struct{ theme, host, name string }{
+		{theme: "light", host: "rgb(1, 2, 3)", name: "rgb(100, 116, 139)"},
+		{theme: "dark", host: "rgb(4, 5, 6)", name: "rgb(209, 213, 219)"},
 	} {
 		t.Run(tt.theme, func(t *testing.T) {
 			page := newPage(t)
@@ -196,6 +196,9 @@ func TestWidgets_LastCommentsLeavesTheHostPageItsVariables(t *testing.T) {
 
 			assert.Equal(t, tt.host, color(page.Locator(".host-link")), "the site's own link lost the site's color")
 			assert.Equal(t, "rgb(0, 170, 170)", color(item.Locator("a").First()), "the comment's link lost the widget's color")
+			// the commenter's name, which a titled entry shows as plain text, is gray enough to read
+			// on the page's own background: the widget's light-theme darkening never reaches it
+			assert.Equal(t, tt.name, color(item.Locator("[data-nosnippet]")), "the commenter's name is not in the secondary text color")
 		})
 	}
 }

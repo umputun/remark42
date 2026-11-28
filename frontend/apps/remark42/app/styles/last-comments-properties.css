@@ -19,6 +19,7 @@
   --link-color: 0, 170, 170;
   --link-hover-color: 0, 197, 197;
   --primary-text-color: 38, 38, 38;
+  --secondary-text-color: 100, 116, 139;
   --inverse-text-color: 255, 255, 255;
   --lighter-text-color: 150, 150, 150;
   --deactivated-color: 136, 136, 136;
@@ -39,5 +40,6 @@
   --primary-background-color: 38, 38, 38;
   --secondary-background-color: 51, 51, 51;
   --highlight-color: 64, 64, 64;
+  --secondary-text-color: 209, 213, 219;
   --line-brighter-color: 136, 136, 136;
 }
