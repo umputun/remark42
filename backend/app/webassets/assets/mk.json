@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Неуспешен контакт. Ве молиме проверете ја интернет конекцијата или обидете се повторно.",
   "errors.forbidden": "Немате дозвола за оваа акција.",
   "errors.not-authorized": "Ве молиме најавете се за да ја извршите оваа акција.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Премногу барања. Ве молиме почекајте малку и обидете се повторно.",
   "errors.unexpected-error": "Се случи грешка.",
   "profile.close": "Затвори профил",

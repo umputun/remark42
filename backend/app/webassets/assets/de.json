@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Abruf fehlgeschlagen. Bitte prüfen Sie Ihre Internetverbindung oder versuchen Sie es etwas später erneut",
   "errors.forbidden": "Sie haben keine Berechtigung für diesen Vorgang.",
   "errors.not-authorized": "Bitte melden Sie sich an, um diesen Vorgang auszuführen.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Zu viele Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
   "errors.unexpected-error": "Leider ist etwas schiefgegangen.",
   "profile.close": "Profil schließen",

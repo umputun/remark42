@@ -114,6 +114,7 @@
   "errors.failed-fetch": "데이터를 가져오지 못했습니다. 인터넷 연결을 확인하거나 나중에 다시 시도하세요",
   "errors.forbidden": "이 작업을 수행할 권한이 없습니다.",
   "errors.not-authorized": "이 작업을 수행하려면 로그인해 주세요.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "요청이 너무 많습니다. 잠시 기다린 후 다시 시도해 주세요.",
   "errors.unexpected-error": "문제가 발생했습니다.",
   "profile.close": "프로필 닫기",

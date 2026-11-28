@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Impossible de récupérer les donnés. Veuillez vérifier votre connexion Internet ou réessayez plus tard",
   "errors.forbidden": "Vous n'avez pas l'autorisation d'effectuer cette action.",
   "errors.not-authorized": "Connectez-vous pour effectuer cette action.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Trop de requêtes. Patientez un instant et réessayez.",
   "errors.unexpected-error": "Un problème est survenu.",
   "profile.close": "Fermer le profil",

@@ -114,6 +114,7 @@
   "errors.failed-fetch": "取得できませんでした。インターネット接続を確認するか、しばらくしてからもう一度お試しください。",
   "errors.forbidden": "この操作を実行する権限がありません。",
   "errors.not-authorized": "この操作を行うにはサインインしてください。",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "リクエストが多すぎます。少し待ってからもう一度お試しください。",
   "errors.unexpected-error": "不明なエラーが発生しました.",
   "profile.close": "プロファイルを閉じる",

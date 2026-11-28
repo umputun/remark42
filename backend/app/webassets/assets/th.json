@@ -114,6 +114,7 @@
   "errors.failed-fetch": "ดึงข้อมูลไม่สำเร็จ โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ตของคุณหรือลองอีกครั้งในภายหลัง",
   "errors.forbidden": "คุณไม่มีสิทธิ์ดำเนินการนี้",
   "errors.not-authorized": "โปรดเข้าสู่ระบบเพื่อดำเนินการนี้",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "มีคำขอมากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง",
   "errors.unexpected-error": "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ",
   "profile.close": "ปิดโปรไฟล์",

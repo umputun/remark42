@@ -13,6 +13,9 @@ import {
   XSRF_COOKIE,
   XSRF_HEADER,
   JWT_HEADER_MARGIN_MS,
+  EMBEDDED_MARKER_COOKIE,
+  EMBEDDED_XSRF_COOKIE,
+  dropSession,
 } from './fetcher';
 import * as cookies from './cookies';
 
@@ -297,7 +300,7 @@ describe('fetcher', () => {
     it('stops sending the token in memory shortly before it expires, when a cookie can carry the request', async () => {
       const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
       // the xsrf cookie is how the fetcher knows a cookie session exists
-      jest.spyOn(cookies, 'getCookie').mockImplementation(() => 'test-jti-id');
+      jest.spyOn(cookies, 'getCookie').mockImplementation((name) => (name === XSRF_COOKIE ? 'test-jti-id' : undefined));
       // five minutes, the backend's default: only the distance between the two claims counts
       jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', iat: 1000, exp: 1300 }));
       const now = jest.spyOn(Date, 'now').mockReturnValue(50_000_000);
@@ -342,7 +345,7 @@ describe('fetcher', () => {
 
     it("counts the token's lifetime from when its request was sent, not from when the answer arrived", async () => {
       const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
-      jest.spyOn(cookies, 'getCookie').mockImplementation(() => 'test-jti-id');
+      jest.spyOn(cookies, 'getCookie').mockImplementation((name) => (name === XSRF_COOKIE ? 'test-jti-id' : undefined));
       jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', iat: 1000, exp: 1300 }));
       const now = jest.spyOn(Date, 'now').mockReturnValue(50_000_000);
 
@@ -373,7 +376,7 @@ describe('fetcher', () => {
 
     it('never sends beside a cookie a token that had expired when it was issued', async () => {
       const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
-      jest.spyOn(cookies, 'getCookie').mockImplementation(() => 'test-jti-id');
+      jest.spyOn(cookies, 'getCookie').mockImplementation((name) => (name === XSRF_COOKIE ? 'test-jti-id' : undefined));
       // what the backend writes when it sets new claims on an expired token: the old expiry and a
       // new issue time
       jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', iat: 1300, exp: 1000 }));
@@ -589,6 +592,67 @@ describe('fetcher', () => {
       });
 
       await expectRequestError(apiFetcher.get(apiUri), { message: 'Something went wrong.', code: 0, status: 400 });
+    });
+  });
+
+  /**
+   * A frame on its embedded session reads that session's XSRF cookie and nothing of the ordinary
+   * pair, which belongs to remark42's own site and may be the site's other account
+   */
+  describe('embedded session', () => {
+    const jar: Record<string, string> = {};
+    const lastHeaders = () => {
+      const { calls } = (window.fetch as jest.Mock).mock;
+      return calls[calls.length - 1][1].headers;
+    };
+
+    beforeEach(() => {
+      Object.keys(jar).forEach((k) => delete jar[k]);
+      jest.spyOn(cookies, 'getCookie').mockImplementation((name) => jar[name]);
+    });
+
+    it.each([
+      ['the marker', { [EMBEDDED_MARKER_COOKIE]: '1', [EMBEDDED_XSRF_COOKIE]: 'embedded-id' }, 'embedded-id'],
+      ['its xsrf cookie alone', { [EMBEDDED_XSRF_COOKIE]: 'embedded-id' }, 'embedded-id'],
+      ['the marker alone', { [EMBEDDED_MARKER_COOKIE]: '1' }, undefined],
+    ])('sends the embedded xsrf token and no JWT header, told by %s', async (_, cookieSet, xsrf) => {
+      // a token in memory from before the frame moved over, and the site's own pair beside it
+      mockFetch({ headers: { [JWT_HEADER]: 'site.jwt.token' } });
+      await apiFetcher.get(apiUri);
+      Object.assign(jar, { [XSRF_COOKIE]: 'site-id' }, cookieSet);
+
+      mockFetch();
+      await apiFetcher.get(apiUri);
+      expect(lastHeaders()).not.toHaveProperty(JWT_HEADER);
+      if (xsrf) {
+        expect(lastHeaders()[XSRF_HEADER]).toBe(xsrf);
+      } else {
+        expect(lastHeaders()).not.toHaveProperty(XSRF_HEADER);
+      }
+      dropSession();
+    });
+
+    it('clears only its own xsrf cookie, and keeps the marker', () => {
+      const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
+      Object.assign(jar, {
+        [EMBEDDED_MARKER_COOKIE]: '1',
+        [EMBEDDED_XSRF_COOKIE]: 'embedded-id',
+        [XSRF_COOKIE]: 'site-id',
+      });
+
+      dropSession(true);
+      expect(clear.mock.calls).toEqual([[EMBEDDED_XSRF_COOKIE, true]]);
+    });
+
+    it('clears the ordinary pair as before without one', () => {
+      const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
+      Object.assign(jar, { [XSRF_COOKIE]: 'site-id' });
+
+      dropSession(true);
+      expect(clear.mock.calls).toEqual([
+        [JWT_COOKIE_NAME, true],
+        [XSRF_COOKIE, true],
+      ]);
     });
   });
 });

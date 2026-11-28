@@ -114,6 +114,7 @@
   "errors.failed-fetch": "No se ha podido obtener. Por favor revisa tu conexión a internet o vuelve a intentar más tarde",
   "errors.forbidden": "No tienes permiso para hacer esto.",
   "errors.not-authorized": "Inicia sesión para hacer esto.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Demasiadas peticiones. Por favor espera un momento y vuelve a intentar.",
   "errors.unexpected-error": "Algo salió mal.",
   "profile.close": "Cerrar perfil",

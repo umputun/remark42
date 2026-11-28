@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Falha ao buscar. Verifique sua conexão com a Internet ou tente novamente mais tarde",
   "errors.forbidden": "Você não tem permissão para fazer isso.",
   "errors.not-authorized": "Faça login para fazer isso.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Muitas solicitações. Aguarde um momento e tente novamente.",
   "errors.unexpected-error": "Algo deu errado.",
   "profile.close": "Fechar perfil",

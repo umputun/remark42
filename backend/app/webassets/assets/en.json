@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Failed to fetch. Please check your internet connection or try again a bit later",
   "errors.forbidden": "You don't have permission to do this.",
   "errors.not-authorized": "Please sign in to do this.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Too many requests. Please wait a moment and try again.",
   "errors.unexpected-error": "Something went wrong.",
   "profile.close": "Close profile",

@@ -114,6 +114,7 @@
   "errors.failed-fetch": "İçerik yüklenemedi. Lütfen internet bağlantınızı kontrol edin veya daha sonra tekrar deneyin.",
   "errors.forbidden": "Bu işlemi yapmak için yetkiniz yok.",
   "errors.not-authorized": "Bu işlemi yapmak için lütfen giriş yapın.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Çok fazla istek gönderildi. Lütfen biraz bekleyip tekrar deneyin.",
   "errors.unexpected-error": "Bir hata oluştu.",
   "profile.close": "Profili kapat",

@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Неуспешно извличане. Моля, проверете вашата интернет връзка или опитайте отново по-късно",
   "errors.forbidden": "Нямате разрешение за това действие.",
   "errors.not-authorized": "Моля, влезте, за да извършите това действие.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Твърде много заявки. Моля, изчакайте малко и опитайте отново.",
   "errors.unexpected-error": "Има някакъв проблем.",
   "profile.close": "Затвори профила",

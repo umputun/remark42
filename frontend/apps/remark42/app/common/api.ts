@@ -11,8 +11,7 @@ import type {
   Image,
   EmailSubVerificationStatus,
 } from './types';
-import { apiFetcher, adminFetcher, authFetcher, JWT_COOKIE_NAME, XSRF_COOKIE } from './fetcher';
-import { clearAuthCookie } from './cookies';
+import { apiFetcher, adminFetcher, authFetcher, clearSessionCookies } from './fetcher';
 
 /* API methods */
 
@@ -81,8 +80,7 @@ export async function getUser(): Promise<User | null> {
   }
   if (status.status !== 'logged in') {
     // explicit "not logged in" - clear stale cookies, preserving cleanup-on-probe behaviour previously triggered by /user 401
-    clearAuthCookie(JWT_COOKIE_NAME);
-    clearAuthCookie(XSRF_COOKIE);
+    clearSessionCookies();
     return null;
   }
   return getSignedInUser().catch(() => null);

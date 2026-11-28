@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Nhận dữ liệu thất bại. Vui lòng kiểm tra lại đường truyền hoặc thử lại sau.",
   "errors.forbidden": "Bạn không có quyền thực hiện thao tác này.",
   "errors.not-authorized": "Vui lòng đăng nhập để thực hiện thao tác này.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Có quá nhiều yêu cầu. Vui lòng đợi một lát rồi thử lại.",
   "errors.unexpected-error": "Có gì đó sai sai.",
   "profile.close": "Đóng hồ sơ",

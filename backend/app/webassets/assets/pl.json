@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Nie udało się pobrać. Sprawdź swoje połączenie internetowe i spróbuj ponownie później",
   "errors.forbidden": "Nie masz uprawnień do wykonania tej czynności.",
   "errors.not-authorized": "Zaloguj się, aby wykonać tę czynność.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Zbyt wiele żądań. Poczekaj chwilę i spróbuj ponownie.",
   "errors.unexpected-error": "Coś poszło nie tak.",
   "profile.close": "Zamknij profil",

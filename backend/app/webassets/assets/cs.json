@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Nepodařilo se načíst. Zkontrolujte prosím své internetové připojení nebo to zkuste později.",
   "errors.forbidden": "K této akci nemáte oprávnění.",
   "errors.not-authorized": "Pro provedení této akce se prosím přihlaste.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Příliš mnoho požadavků. Chvíli prosím počkejte a zkuste to znovu.",
   "errors.unexpected-error": "Něco se pokazilo.",
   "profile.close": "Zavřít profil",

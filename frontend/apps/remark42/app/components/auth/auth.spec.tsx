@@ -15,6 +15,7 @@ import { RequestError } from 'utils/errorUtils';
 import { Auth } from './auth';
 import * as utils from './auth.utils';
 import * as api from './auth.api';
+import * as handoff from './auth.handoff';
 import { getProviderData } from './components/oauth.utils';
 
 window.open = jest.fn();
@@ -933,6 +934,32 @@ describe('<Auth/>', () => {
           `${BASE_URL}/auth/customoidc/login?from=http%3A%2F%2Flocalhost%2F%3FselfClose&site=remark`
         )
       );
+    });
+    it('prepares the handoff when it shows the OAuth buttons, before any click', async () => {
+      StaticStore.config.auth_providers = ['google'] as typeof StaticStore.config.auth_providers;
+      const prepare = jest.spyOn(handoff, 'prepareHandoff');
+
+      render(<Auth />);
+      expect(prepare).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByText('Sign in'));
+
+      expect(await screen.findByTitle('Sign in with Google')).toBeInTheDocument();
+      expect(prepare).toHaveBeenCalled();
+    });
+    it.each([
+      ['alone', ['google']],
+      ['beside a form provider', ['google', 'anonymous']],
+    ])('says the sign-in window was blocked, with OAuth %s', async (_, providers) => {
+      StaticStore.config.auth_providers = providers as typeof StaticStore.config.auth_providers;
+      jest.spyOn(api, 'oauthSignin').mockRejectedValue(new RequestError('blocked', api.POPUP_BLOCKED));
+
+      render(<Auth />);
+      fireEvent.click(screen.getByText('Sign in'));
+      await waitFor(() => fireEvent.click(screen.getByTitle('Sign in with Google')));
+
+      expect(
+        await screen.findByText('Your browser blocked the sign-in window. Allow pop-ups for this site and try again.')
+      ).toBeInTheDocument();
     });
   });
 
