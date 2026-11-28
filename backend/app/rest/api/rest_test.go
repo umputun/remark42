@@ -724,6 +724,7 @@ func TestRest_parseError(t *testing.T) {
 	}{
 		{fmt.Errorf("can not vote for his own comment"), rest.ErrVoteSelf},
 		{fmt.Errorf("already voted for"), rest.ErrVoteDbl},
+		{fmt.Errorf("the same ip already voted for id-2"), rest.ErrActionRejected},
 		{fmt.Errorf("maximum number of votes exceeded for comment"), rest.ErrVoteMax},
 		{fmt.Errorf("minimal score reached for comment"), rest.ErrVoteMinScore},
 		{fmt.Errorf("too late to edit"), rest.ErrCommentEditExpired},

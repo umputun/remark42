@@ -630,6 +630,10 @@ func parseError(err error, defaultCode int) (code int) {
 	// voting errors
 	case strings.Contains(err.Error(), "can not vote for his own comment"):
 		code = rest.ErrVoteSelf
+	// another user voted from the same address within VOTES_IP_TIME, or at all when it is 0: this user
+	// has not voted, so it is a rejected action, not a repeated vote
+	case strings.HasPrefix(err.Error(), "the same ip already voted for"):
+		code = rest.ErrActionRejected
 	case strings.Contains(err.Error(), "already voted for"):
 		code = rest.ErrVoteDbl
 	case strings.Contains(err.Error(), "maximum number of votes exceeded for comment"):
