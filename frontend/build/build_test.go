@@ -19,16 +19,18 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
-// fixture is the smallest app the builder accepts: the four entries, the custom properties, a css
-// module written the way the widget's are, and a stand-in for preact/debug
+// fixture is the smallest app the builder accepts: the four entries, the custom properties of the
+// widget and of last comments, a css module written the way the widget's are, and a stand-in for
+// preact/debug
 var fixture = map[string]string{
-	"tsconfig.json":                    `{"compilerOptions": {"baseUrl": "app", "target": "es6", "strict": true}}`,
-	"app/embed.ts":                     `console.log('embed marker');`,
-	"app/deleteme.ts":                  `console.log('deleteme marker');`,
-	"app/last-comments.js":             `import { title } from 'shared'; console.log('last-comments marker', title);`,
-	"app/styles/custom-properties.css": `:root { --fixture-color: #123456; }`,
-	"node_modules/preact/package.json": `{"name": "preact", "exports": {"./debug": "./debug.js"}}`,
-	"node_modules/preact/debug.js":     `console.log('preact debug marker');`,
+	"tsconfig.json":                           `{"compilerOptions": {"baseUrl": "app", "target": "es6", "strict": true}}`,
+	"app/embed.ts":                            `console.log('embed marker');`,
+	"app/deleteme.ts":                         `console.log('deleteme marker');`,
+	"app/last-comments.js":                    `import { title } from 'shared'; console.log('last-comments marker', title);`,
+	"app/styles/custom-properties.css":        `:root { --fixture-color: #123456; }`,
+	"app/styles/last-comments-properties.css": `.remark42__last-comments { --fixture-color: #123456; }`,
+	"node_modules/preact/package.json":        `{"name": "preact", "exports": {"./debug": "./debug.js"}}`,
+	"node_modules/preact/debug.js":            `console.log('preact debug marker');`,
 	// imported through baseUrl, as the widget imports its own modules
 	"app/shared.ts": `import styles from './shared.module.css';
 import other from './other/shared.module.css';
@@ -218,6 +220,14 @@ func TestBuildProduction(t *testing.T) {
 		}
 	})
 
+	t.Run("last comments keeps its custom properties off the host page's root", func(t *testing.T) {
+		css := read(t, filepath.Join(out, "last-comments.css"))
+		if !strings.HasPrefix(css, ".remark42__last-comments{--fixture-color:") {
+			t.Errorf("last-comments.css does not start with its custom properties:\n%s", css)
+		}
+		mustNotContain(t, "last-comments.css", css, ":root")
+	})
+
 }
 
 func TestBuildClassNames(t *testing.T) {
@@ -235,7 +245,7 @@ func TestBuildClassNames(t *testing.T) {
 
 			for _, class := range classSelectors(css) {
 				switch {
-				case class == "dark" || class == "p":
+				case class == "dark" || class == "p" || class == "remark42__last-comments":
 					// written as global in the source and left alone
 				case !shippedClass.MatchString(class):
 					t.Errorf("%s.css ships the class %q: a module class has to be letters, an underscore and letters", name, class)

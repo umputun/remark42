@@ -1,0 +1,43 @@
+/* The last comments widget renders into the site's own page, where custom-properties.css on :root
+   would replace the page's variables of the same names. Its palette is declared on the widget's
+   node instead: the variables its stylesheets read, with the values custom-properties.css gives
+   them. custom-properties.unit.test.ts keeps the two files in step. */
+.remark42__last-comments {
+  /* code-highlight */
+  --chroma-bg: rgb(0, 0, 0, 0.05);
+  --chroma-base: #586e75;
+  --chroma-c: #7d7d7d;
+  --chroma-01: #589000;
+  --chroma-02: #cb4b16;
+  --chroma-03: #268bd2;
+  --chroma-04: #2aa198;
+  --chroma-06: #d33682;
+  --chroma-07: #00aee2;
+
+  /* Named variables */
+  --primary-color: 0, 170, 170;
+  --link-color: 0, 170, 170;
+  --link-hover-color: 0, 197, 197;
+  --primary-text-color: 38, 38, 38;
+  --inverse-text-color: 255, 255, 255;
+  --lighter-text-color: 150, 150, 150;
+  --deactivated-color: 136, 136, 136;
+  --primary-background-color: 255, 255, 255;
+  --secondary-background-color: 238, 238, 238;
+  --highlight-color: 241, 245, 249;
+  --shadow-color: 27, 31, 35, 0.15;
+  --verified-color: 14, 126, 157;
+  --line-color: 226, 239, 239;
+  --line-brighter-color: 203, 213, 225;
+}
+
+.dark .remark42__last-comments,
+.remark42__last-comments.dark {
+  --line-color: 87, 87, 87;
+  --primary-color: 0, 153, 153;
+  --primary-text-color: 241, 245, 249;
+  --primary-background-color: 38, 38, 38;
+  --secondary-background-color: 51, 51, 51;
+  --highlight-color: 64, 64, 64;
+  --line-brighter-color: 136, 136, 136;
+}

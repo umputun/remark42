@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Latest comments on a site with variables of its own</title>
+    <!-- what a blog theme declares: the names the widget reads, as full colors -->
+    <style>
+      :root {
+        --link-color: rgb(1, 2, 3);
+      }
+
+      body.dark {
+        --link-color: rgb(4, 5, 6);
+      }
+
+      .host-link {
+        color: var(--link-color);
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      if (new URLSearchParams(window.location.search).get('theme') === 'dark') {
+        document.body.classList.add('dark');
+      }
+    </script>
+    <h1>Latest comments on a site with variables of its own</h1>
+    <p><a class="host-link" href="#">A link of the site</a></p>
+    <div class="remark42__last-comments" data-max="50"></div>
+    <script>
+      var remark_config = {
+        host: 'http://remark42:8080',
+        site_id: 'remark',
+        components: ['last-comments'],
+      };
+    </script>
+    <script src="embed.js"></script>
+  </body>
+</html>

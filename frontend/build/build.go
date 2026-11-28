@@ -18,8 +18,10 @@ import (
 
 // entries are the files the widget is loaded as. Each is a list of imports, bundled in order into
 // one script named after the entry, with the styles they reach in a stylesheet of the same name.
-// remark and last-comments start with the custom properties, so those come first in their
-// stylesheets and every rule after them can read one.
+// remark and last-comments start with their custom properties, so those come first in their
+// stylesheets and every rule after them can read one. last-comments renders into the site's own
+// page, so its palette sits on the widget's node instead of :root, where it would replace the
+// page's variables of the same names.
 //
 // packages says an entry may bundle what is installed in node_modules. Only remark does: it renders
 // preact components, so a development build also loads preact/debug into it, ahead of everything
@@ -32,7 +34,7 @@ var entries = []struct {
 }{
 	{name: "embed", imports: []string{"./app/embed.ts"}},
 	{name: "deleteme", imports: []string{"./app/deleteme.ts"}},
-	{name: "last-comments", imports: []string{"./app/styles/custom-properties.css", "./app/last-comments.js"}},
+	{name: "last-comments", imports: []string{"./app/styles/last-comments-properties.css", "./app/last-comments.js"}},
 	{name: "remark", imports: []string{"./app/styles/custom-properties.css", "./app/remark.tsx"}, packages: true},
 }
 
