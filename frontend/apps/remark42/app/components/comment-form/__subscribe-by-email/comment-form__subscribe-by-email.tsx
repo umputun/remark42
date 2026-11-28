@@ -1,10 +1,10 @@
 import { h } from 'preact';
 import { useLayoutEffect, useRef } from 'preact/hooks';
 
-import { useIntl } from 'common/intl';
-import type { User } from 'common/types';
+import { useIntl, type IntlShape } from 'common/intl';
+import type { Theme, User } from 'common/types';
 import type { StoreState } from 'store';
-import { useDispatch, useSelector } from 'store/context';
+import { useDispatch, useSelector, type Dispatch } from 'store/context';
 import { setUserSubscribed } from 'store/user/actions';
 import { useTheme } from 'hooks/useTheme';
 import {
@@ -19,12 +19,8 @@ import { mountSubscribeByEmail } from './subscribe-by-email-element.js';
 
 export { CONFIRMATION_POLL_DURATION, CONFIRMATION_POLL_INTERVAL } from './subscribe-by-email-element.js';
 
-/** The props and deps of the plain email subscription, from the preact tree around it. */
-export function useSubscribeByEmailArgs() {
-  const theme = useTheme();
-  const intl = useIntl();
-  const dispatch = useDispatch();
-  const user = useSelector<StoreState, User | null>(({ user }) => user);
+/** The props and deps of the plain email subscription, for this reader, theme and locale. */
+export function subscribeByEmailArgs(user: User | null, theme: Theme, intl: IntlShape, dispatch: Dispatch) {
   const props: Parameters<typeof mountSubscribeByEmail>[1] = {
     subscribed: Boolean(user?.email_subscription),
     userId: user?.id,
@@ -41,6 +37,15 @@ export function useSubscribeByEmailArgs() {
   };
 
   return { props, deps };
+}
+
+/** The props and deps of the plain email subscription, from the preact tree around it. */
+export function useSubscribeByEmailArgs() {
+  const theme = useTheme();
+  const intl = useIntl();
+  const dispatch = useDispatch();
+  const user = useSelector<StoreState, User | null>(({ user }) => user);
+  return subscribeByEmailArgs(user, theme, intl, dispatch);
 }
 
 /**

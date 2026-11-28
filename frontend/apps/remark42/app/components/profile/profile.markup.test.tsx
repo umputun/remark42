@@ -9,7 +9,7 @@ import * as postMessage from 'utils/post-message';
 import * as reader from 'utils/reader';
 import * as email from 'utils/email';
 
-import { Counter } from './components/counter';
+import { counterElement } from './components/counter/counter-element.js';
 import { Profile } from './profile';
 
 const someone = { id: 'github_1', name: 'someone', picture: 'http://localhost/someone.png' };
@@ -183,6 +183,6 @@ describe('the profile draws the markup of the preact components it replaces', ()
   });
 
   it('the counter', () => {
-    expect(render(<Counter>{42}</Counter>).container.innerHTML).toMatchSnapshot();
+    expect(counterElement(42).outerHTML).toMatchSnapshot();
   });
 });

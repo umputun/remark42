@@ -1,35 +1,31 @@
-import type { JSX, ComponentType } from 'preact';
-import { h, Component, createRef } from 'preact';
-import clsx from 'clsx';
+import type { ComponentType } from 'preact';
+import { h } from 'preact';
+import { useLayoutEffect, useRef } from 'preact/hooks';
 
 import type { IntlShape } from 'common/intl';
-import { FormattedMessage, defineMessages } from 'common/intl';
-import { COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
-import { webAssetUrl } from 'common/web-asset';
-
-import { StaticStore } from 'common/static-store';
-import { debounce } from 'utils/debounce';
-import { copy } from 'common/copy';
-import type { Theme, BlockTTL, Comment as CommentType, PostInfo, User } from 'common/types';
-import { CommentMode } from 'common/types';
-import { isUserAnonymous } from 'utils/isUserAnonymous';
-
-import type { Props as CommentFormProps } from 'components/comment-form';
-import { Avatar } from 'components/avatar';
-import { VerificationIcon } from 'components/icons/verification';
+import { useIntl } from 'common/intl';
+import type { Theme, Comment as CommentType, CommentMode, PostInfo, User } from 'common/types';
 import type { getPreview, uploadImage } from 'common/api';
-import { postMessageToParent } from 'utils/post-message';
-import { issueReaderToken } from 'utils/reader';
-import { getBlockingDurations } from './getBlockingDurations';
-import type { boundActions } from './connected-comment';
-import { CommentVotes } from './comment-votes';
-import { CommentActions } from './comment-actions';
+import { putCommentVote } from 'common/api';
+import { StaticStore } from 'common/static-store';
+import type { StoreState } from 'store';
+import { useStore } from 'store/context';
+import { patchComment } from 'store/comments/actions';
+import { signInDeps } from 'components/auth/auth';
+import type { Props as CommentFormProps } from 'components/comment-form';
+import { CommentForm as CommentFormWrapper } from 'components/comment-form';
+import { loadEmoji } from 'components/comment-form/emoji-data';
+import { subscribeByEmailArgs } from 'components/comment-form/__subscribe-by-email/comment-form__subscribe-by-email';
+import { subscribeByTelegramArgs } from 'components/comment-form/__subscribe-by-telegram/comment-form__subscribe-by-telegram';
 
-import styles from './comment.module.css';
+import type { boundActions } from './connected-comment';
+import { mountComment } from './comment-element.js';
+
 import './styles';
 
 export type CommentProps = {
   user: User | null;
+  /** given, the comment draws its reply and edit forms */
   CommentForm?: ComponentType<CommentFormProps>;
   data: CommentType;
   repliesCount?: number;
@@ -57,574 +53,96 @@ export type CommentProps = {
   intl: IntlShape;
 } & Partial<typeof boundActions>;
 
-export interface State {
-  renderDummy: boolean;
-  isCopied: boolean;
-  editDeadline?: number;
-  initial: boolean;
-}
+type Deps = Parameters<typeof mountComment>[2];
 
-export class Comment extends Component<CommentProps, State> {
-  /** comment text node. Used in comment text copying */
-  textNode = createRef<HTMLDivElement>();
+/**
+ * Mounts the plain comment into an article preact renders without props or children, so a
+ * re-render of the thread leaves the article's attributes and content to the plain component.
+ */
+export function Comment(props: CommentProps) {
+  const contextIntl = useIntl();
+  const store = useStore<StoreState, never>();
+  const root = useRef<HTMLElement>(null);
+  const comment = useRef<ReturnType<typeof mountComment> | null>(null);
 
-  /**
-   * Defines whether current client is admin
-   */
-  isAdmin = (): boolean => {
-    return Boolean(this.props.user?.admin);
+  const commentProps: Parameters<typeof mountComment>[1] = {
+    data: props.data,
+    user: props.user,
+    repliesCount: props.repliesCount,
+    post_info: props.post_info,
+    isUserBanned: props.isUserBanned,
+    editMode: props.editMode,
+    view: props.view,
+    disabled: props.disabled,
+    collapsed: props.collapsed,
+    theme: props.theme,
+    inView: props.inView,
+    level: props.level,
+    mix: props.mix,
+  };
+  const deps: Deps = {
+    intl: props.intl,
+    partsIntl: contextIntl,
+    votes: {
+      intl: contextIntl,
+      putVote: (id, vote) => putCommentVote({ id, vote }),
+      patch: (patch) => store.dispatch(patchComment(patch) as never),
+      positiveScore: () => Boolean(StaticStore.config.positive_score),
+    },
+    actions: {
+      addComment: props.addComment,
+      updateComment: props.updateComment,
+      removeComment: props.removeComment,
+      setReplyEditState: props.setReplyEditState,
+      setPinState: props.setPinState,
+      blockUser: props.blockUser,
+      unblockUser: props.unblockUser,
+      hideUser: props.hideUser,
+      setVerifiedStatus: props.setVerifiedStatus,
+    },
+    getPreview: props.getPreview,
+    uploadImage: props.uploadImage,
+    // read from the store as the comment draws, without a subscription of its own in every
+    // comment: the connected comment draws again whenever the reader or the theme changes
+    form: props.CommentForm && formBase(store.getState(), store.dispatch as never, contextIntl),
   };
 
-  /**
-   * Defines whether current client is not logged in
-   */
-  isGuest = (): boolean => {
-    return this.props.user === null;
-  };
+  useLayoutEffect(() => {
+    comment.current = mountComment(root.current!, commentProps, deps);
+    return () => comment.current?.destroy();
+    // mounted once; the props and deps of every later render reach it through update below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  /**
-   * Defines whether current client is logged in via `Anonymous provider`
-   */
-  isAnonymous = (): boolean => {
-    return isUserAnonymous(this.props.user);
-  };
-
-  /**
-   * Defines whether comment made by logged-in user
-   */
-  isCurrentUser = (): boolean => {
-    return !this.isGuest() && this.props.data.user.id === this.props.user?.id;
-  };
-
-  updateState = (props: CommentProps) => {
-    const newState: Partial<State> = {};
-
-    if (props.inView) {
-      newState.renderDummy = false;
+  const mounted = useRef(false);
+  useLayoutEffect(() => {
+    // the first render is the mount above; each one after it is a render of the thread
+    if (mounted.current) {
+      comment.current?.update(commentProps, deps);
     }
-
-    // set comment edit timer. The reader is taken from the props the state is computed for and
-    // not from the current ones: a comment stays mounted while the reader signs in or out, and
-    // that is exactly when the two differ. Whoever does not own the comment has no timer
-    const isOwn = props.user !== null && props.data.user.id === props.user?.id;
-
-    if (!isOwn) {
-      newState.editDeadline = undefined;
-    } else if (props.user?.admin && StaticStore.config.admin_edit) {
-      newState.editDeadline = Infinity;
-    } else {
-      const editDuration = StaticStore.config.edit_duration;
-      const timeDiff = StaticStore.serverClientTimeDiffMs || 0;
-      const editDeadline = new Date(props.data.time).getTime() + timeDiff + editDuration * 1000;
-
-      newState.editDeadline = editDeadline > Date.now() ? editDeadline : undefined;
-    }
-
-    return newState;
-  };
-
-  state = {
-    renderDummy: typeof this.props.inView === 'boolean' ? !this.props.inView : false,
-    isCopied: false,
-    editDeadline: undefined,
-    voteErrorMessage: null,
-    initial: true,
-    ...this.updateState(this.props),
-  };
-
-  componentWillReceiveProps(nextProps: CommentProps) {
-    this.setState(this.updateState(nextProps));
-  }
-
-  componentDidMount() {
-    // eslint-disable-next-line react/no-did-mount-set-state
-    this.setState({ initial: false });
-    this.watchEditDeadline();
-  }
-
-  componentDidUpdate(_prevProps: CommentProps, prevState: State) {
-    if (prevState.editDeadline !== this.state.editDeadline) {
-      this.watchEditDeadline();
-    }
-  }
-
-  componentWillUnmount() {
-    window.clearTimeout(this.editDeadlineTimer);
-  }
-
-  editDeadlineTimer?: number;
-
-  /**
-   * Clears the edit deadline when it passes. The countdown next to Edit does the same, but it is
-   * not shown wherever Edit is not, and the author's Delete must still go when the window ends
-   */
-  watchEditDeadline = () => {
-    window.clearTimeout(this.editDeadlineTimer);
-    const deadline: number | undefined = this.state.editDeadline;
-    if (deadline === undefined || !Number.isFinite(deadline)) return;
-
-    // a delay past 2^31-1 ms fires at once, so a longer window is waited out in steps
-    this.editDeadlineTimer = window.setTimeout(
-      () => (Date.now() < deadline ? this.watchEditDeadline() : this.setState({ editDeadline: undefined })),
-      Math.min(deadline - Date.now(), 2 ** 31 - 1)
-    );
-  };
-
-  toggleReplying = () => {
-    const { editMode, setReplyEditState, data } = this.props;
-
-    setReplyEditState?.({ id: data.id, state: editMode === CommentMode.Reply ? CommentMode.None : CommentMode.Reply });
-  };
-
-  toggleEditing = () => {
-    const { editMode, setReplyEditState, data } = this.props;
-
-    setReplyEditState?.({ id: data.id, state: editMode === CommentMode.Edit ? CommentMode.None : CommentMode.Edit });
-  };
-
-  toggleUserInfoVisibility = () => {
-    // the page embedding the widget receives this message, so it carries the fields the profile
-    // shows and nothing else of the record, which for an admin holds the commenter's IP hash. Nor
-    // does it say whether the author is the reader: the profile frame asks this frame that itself
-    const { id, name, picture } = this.props.data.user;
-
-    postMessageToParent({ profile: { id, name, picture, token: issueReaderToken() } });
-  };
-
-  togglePin = () => {
-    const value = !this.props.data.pin;
-    const intl = this.props.intl;
-    const promptMessage = value ? intl.formatMessage(messages.pinComment) : intl.formatMessage(messages.unpinComment);
-
-    if (window.confirm(promptMessage)) {
-      this.props.setPinState!(this.props.data.id, value);
-    }
-  };
-
-  toggleVerify = () => {
-    const value = !this.props.data.user.verified;
-    const userId = this.props.data.user.id;
-    const intl = this.props.intl;
-    const userName = this.props.data.user.name;
-    const promptMessage = intl.formatMessage(value ? messages.verifyUser : messages.unverifyUser, { userName });
-
-    if (window.confirm(promptMessage)) {
-      this.props.setVerifiedStatus!(userId, value);
-    }
-  };
-
-  blockUser = debounce((ttl: BlockTTL): void => {
-    const { user } = this.props.data;
-    const blockingDurations = getBlockingDurations(this.props.intl);
-    const blockDuration = blockingDurations.find((el) => el.value === ttl);
-    // blocking duration may be undefined if user hasn't selected anything
-    // and ttl is the select's placeholder option
-    if (!blockDuration) return;
-
-    // only the first letter is lowered, so the label reads mid-sentence while languages that
-    // capitalise nouns, such as German, keep them capitalised
-    const duration = blockDuration.label;
-    const blockUser = this.props.intl.formatMessage(messages.blockUser, {
-      userName: user.name,
-      duration: duration.charAt(0).toLowerCase() + duration.slice(1),
-    });
-    if (window.confirm(blockUser)) {
-      this.props.blockUser!(user.id, user.name, ttl);
-    }
-  }, 100);
-
-  unblockUser = () => {
-    const { user } = this.props.data;
-    const unblockUser = this.props.intl.formatMessage(messages.unblockUser, { userName: user.name });
-
-    if (window.confirm(unblockUser)) {
-      this.props.unblockUser!(user.id);
-    }
-  };
-
-  deleteComment = () => {
-    const deleteComment = this.props.intl.formatMessage(messages.deleteMessage);
-
-    if (window.confirm(deleteComment)) {
-      this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
-
-      this.props.removeComment!(this.props.data.id);
-    }
-  };
-
-  hideUser = () => {
-    const hideUserComment = this.props.intl.formatMessage(messages.hideUserComments, {
-      userName: this.props.data.user.name,
-    });
-    if (!window.confirm(hideUserComment)) return;
-    this.props.hideUser!(this.props.data.user);
-  };
-
-  addComment = async (text: string, title: string, pid?: CommentType['id']) => {
-    await this.props.addComment!(text, title, pid);
-
-    this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
-  };
-
-  updateComment = async (id: CommentType['id'], text: string) => {
-    await this.props.updateComment!(id, text);
-
-    this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
-  };
-
-  scrollToParent = (evt: Event) => {
-    const { pid } = this.props.data;
-    const parentCommentNode = document.getElementById(`${COMMENT_NODE_CLASSNAME_PREFIX}${pid}`);
-
-    evt.preventDefault();
-
-    if (!parentCommentNode) {
-      return;
-    }
-
-    const top = parentCommentNode.getBoundingClientRect().top;
-
-    if (postMessageToParent({ scrollTo: top })) {
-      return;
-    }
-
-    parentCommentNode.scrollIntoView();
-  };
-
-  get isVotesDisabled(): boolean {
-    return (
-      this.props.view !== 'main' ||
-      this.props.post_info?.read_only ||
-      this.props.data.delete ||
-      this.isCurrentUser() ||
-      this.isGuest() ||
-      (!StaticStore.config.anon_vote && this.isAnonymous())
-    );
-  }
-
-  copyComment = async () => {
-    const { name } = this.props.data.user;
-    const time = getLocalDatetime(this.props.intl, new Date(this.props.data.time));
-    const text = this.textNode.current?.textContent ?? '';
-
-    try {
-      await copy(`${name} ${time}\n${text}`);
-    } catch (e) {
-      console.log(e);
-    }
-
-    this.setState({ isCopied: true }, () => {
-      setTimeout(() => this.setState({ isCopied: false }), 3000);
-    });
-  };
-
-  render(props: CommentProps, state: State): JSX.Element {
-    const isAdmin = this.isAdmin();
-    const isCurrentUser = this.isCurrentUser();
-
-    const isReplying = props.editMode === CommentMode.Reply;
-    const isEditing = props.editMode === CommentMode.Edit;
-    const uploadImageHandler = this.isAnonymous() ? undefined : this.props.uploadImage;
-    const intl = props.intl;
-    const CommentForm = this.props.CommentForm || null;
-
-    /**
-     * CommentType adapted for rendering
-     */
-
-    const o = {
-      ...props.data,
-      text: props.data.delete ? intl.formatMessage(messages.deletedComment) : props.data.text,
-      time: new Date(props.data.time),
-      orig: props.data.orig,
-      user: props.data.user,
-    };
-
-    // TODO: we also have critical_score, so we need to collapse comments with it in future
-    const isUseless =
-      !!props.isUserBanned ||
-      !!props.data.delete ||
-      (props.data.score < StaticStore.config.low_score && !props.data.pin && !props.disabled);
-
-    let viewClass: string | undefined;
-    if (props.view === 'main' || props.view === 'pinned') {
-      viewClass = props.data.user.admin ? styles.viewAdmin : undefined;
-    } else if (props.view === 'user') {
-      viewClass = styles.viewUser;
-    }
-
-    const rootClassName = clsx(
-      styles.root,
-      props.theme === 'dark' ? styles.themeDark : styles.themeLight,
-      viewClass,
-      isUseless && styles.useless,
-      props.view === 'main' && isReplying && styles.replying,
-      props.view === 'main' && isEditing && styles.editing,
-      props.level === 6 && styles.level6,
-      props.collapsed && styles.collapsed,
-      props.mix
-    );
-
-    if (this.state.renderDummy && !props.editMode) {
-      const [width, height] = this.base
-        ? [(this.base as Element).scrollWidth, (this.base as Element).scrollHeight]
-        : [100, 100];
-      return (
-        <article
-          id={props.disabled ? undefined : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}
-          style={{
-            width: `${width}px`,
-            height: `${height}px`,
-          }}
-        />
-      );
-    }
-    const goToParentMessage = intl.formatMessage(messages.goToParent);
-
-    return (
-      <article className={rootClassName} id={props.disabled ? undefined : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
-        {props.view === 'user' && o.title && (
-          <div className={styles.title}>
-            <a className={styles.titleLink} href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
-              {o.title}
-            </a>
-          </div>
-        )}
-        <div className={styles.info} data-nosnippet>
-          {props.view !== 'user' && !props.collapsed && (
-            <div className={styles.avatar}>
-              <Avatar url={o.user.picture} size={24} identicon={isUserAnonymous(o.user)} />
-            </div>
-          )}
-
-          <div className={styles.user}>
-            {props.view !== 'user' && (
-              <button onClick={() => this.toggleUserInfoVisibility()} className={styles.username}>
-                {o.user.name}
-              </button>
-            )}
-            {isAdmin && props.view !== 'user' && (
-              <button
-                className={styles.verificationButton}
-                onClick={this.toggleVerify}
-                title={intl.formatMessage(messages.toggleVerification)}
-              >
-                <VerificationIcon
-                  title={intl.formatMessage(o.user.verified ? messages.verifiedUser : messages.unverifiedUser)}
-                  className={clsx(styles.verificationIcon, !o.user.verified && styles.verificationIconInactive)}
-                />
-              </button>
-            )}
-            {!isAdmin && o.user.verified && props.view !== 'user' && (
-              <VerificationIcon className={styles.verificationIcon} title={intl.formatMessage(messages.verifiedUser)} />
-            )}
-            {o.user.paid_sub && (
-              <img
-                width={12}
-                height={12}
-                src={webAssetUrl('patreon.svg')}
-                alt={intl.formatMessage(messages.paidPatreon)}
-              />
-            )}
-          </div>
-
-          <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className={styles.time}>
-            <time dateTime={Number.isNaN(o.time.getTime()) ? undefined : o.time.toISOString()}>
-              {getLocalDatetime(this.props.intl, o.time)}
-            </time>
-          </a>
-
-          {!!props.level && props.level > 0 && props.view === 'main' && (
-            <a
-              className={styles.threadStarterAnchor}
-              href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
-              title={goToParentMessage}
-              onClick={(e) => this.scrollToParent(e)}
-            >
-              <svg width="7" height="11" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 7 11" aria-hidden>
-                <path
-                  fill="currentColor"
-                  d="M.815 5.905L2.915 4v7H4.08V4l2.105 1.905.815-.74-3.5-3.17L0 5.165l.815.74zM0 1.045h7V0H0v1.045z"
-                />
-              </svg>
-            </a>
-          )}
-
-          {props.isUserBanned && props.view !== 'user' && (
-            <span className={styles.status}>
-              <FormattedMessage id="comment.blocked-user" defaultMessage="Blocked" />
-            </span>
-          )}
-
-          {isAdmin && !props.isUserBanned && props.data.delete && (
-            <span className={styles.status}>
-              <FormattedMessage id="comment.deleted-badge" defaultMessage="Deleted" />
-            </span>
-          )}
-          {this.props.view !== 'pinned' && (
-            <CommentVotes
-              id={this.props.data.id}
-              vote={props.data.vote}
-              votes={props.data.score}
-              controversy={props.data.controversy}
-              disabled={this.isVotesDisabled}
-            />
-          )}
-        </div>
-        <div className={styles.body}>
-          {(!props.collapsed || props.view === 'pinned') && (
-            <div
-              className={clsx(styles.text, 'raw-content')}
-              ref={this.textNode}
-              // eslint-disable-next-line react/no-danger
-              dangerouslySetInnerHTML={{ __html: o.text }}
-              dir="auto"
-              // a deleted comment shows the widget's own sentence in place of its text
-              data-nosnippet={props.data.delete || undefined}
-            />
-          )}
-
-          {(!props.collapsed || !this.props.data.delete) && props.view !== 'pinned' && (
-            <CommentActions
-              admin={isAdmin}
-              pinned={props.data.pin}
-              copied={state.isCopied}
-              editing={isEditing}
-              replying={isReplying}
-              editable={
-                state.editDeadline !== undefined &&
-                (props.repliesCount === 0 || (isAdmin && StaticStore.config.admin_edit)) &&
-                // the server refuses a commenter's edit on a read-only post; an admin's still goes through.
-                // An editor already open keeps its Cancel
-                (!props.post_info?.read_only || isAdmin || isEditing)
-              }
-              editDeadline={state.editDeadline}
-              readOnly={props.post_info?.read_only}
-              onToggleReplying={this.toggleReplying}
-              onDisableEditing={() => this.setState({ editDeadline: undefined })}
-              currentUser={isCurrentUser}
-              bannedUser={props.isUserBanned}
-              onCopy={this.copyComment}
-              onTogglePin={this.togglePin}
-              onToggleEditing={this.toggleEditing}
-              onDelete={this.deleteComment}
-              onHideUser={this.hideUser}
-              onBlockUser={this.blockUser}
-              onUnblockUser={this.unblockUser}
-            />
-          )}
-        </div>
-
-        {CommentForm && isReplying && props.view === 'main' && (
-          <CommentForm
-            id={o.id}
-            intl={this.props.intl}
-            user={props.user}
-            theme={props.theme}
-            mode="reply"
-            mix={styles.input}
-            onSubmit={(text: string, title: string) => this.addComment(text, title, o.id)}
-            onCancel={this.toggleReplying}
-            getPreview={this.props.getPreview!}
-            autofocus={true}
-            uploadImage={uploadImageHandler}
-          />
-        )}
-
-        {CommentForm && isEditing && props.view === 'main' && (
-          <CommentForm
-            id={o.id}
-            intl={this.props.intl}
-            user={props.user}
-            theme={props.theme}
-            value={o.orig}
-            mode="edit"
-            isReply={!!o.pid}
-            mix={styles.input}
-            onSubmit={(text: string) => this.updateComment(props.data.id, text)}
-            onCancel={this.toggleEditing}
-            getPreview={this.props.getPreview!}
-            errorMessage={state.editDeadline === undefined ? intl.formatMessage(messages.expiredTime) : undefined}
-            autofocus={true}
-            uploadImage={uploadImageHandler}
-          />
-        )}
-      </article>
-    );
-  }
-}
-
-function getLocalDatetime(intl: IntlShape, date: Date) {
-  return intl.formatMessage(messages.commentTime, {
-    day: intl.formatDate(date),
-    time: intl.formatTime(date),
+    mounted.current = true;
   });
+
+  return <article ref={root} />;
 }
 
-const messages = defineMessages({
-  deleteMessage: {
-    id: 'comment.delete-message',
-    defaultMessage: 'Do you really want to delete this comment?',
-  },
-  hideUserComments: {
-    id: 'comment.hide-user-comment',
-    defaultMessage: 'Do you want to hide all comments by {userName}?',
-  },
-  pinComment: {
-    id: 'comment.pin-comment',
-    defaultMessage: 'Do you want to pin this comment?',
-  },
-  unpinComment: {
-    id: 'comment.unpin-comment',
-    defaultMessage: 'Do you want to unpin this comment?',
-  },
-  verifyUser: {
-    id: 'comment.verify-user',
-    defaultMessage: 'Do you want to verify {userName}?',
-  },
-  unverifyUser: {
-    id: 'comment.unverify-user',
-    defaultMessage: 'Do you want to unverify {userName}?',
-  },
-  blockUser: {
-    id: 'comment.block-user',
-    defaultMessage: 'Do you want to block {userName} {duration}?',
-  },
-  unblockUser: {
-    id: 'comment.unblock-user',
-    defaultMessage: 'Do you want to unblock {userName}?',
-  },
-  deletedComment: {
-    id: 'comment.deleted-comment',
-    defaultMessage: 'This comment was deleted',
-  },
-
-  toggleVerification: {
-    id: 'comment.toggle-verification',
-    defaultMessage: 'Toggle verification',
-  },
-  verifiedUser: {
-    id: 'comment.verified-user',
-    defaultMessage: 'Verified user',
-  },
-  unverifiedUser: {
-    id: 'comment.unverified-user',
-    defaultMessage: 'Unverified user',
-  },
-  goToParent: {
-    id: 'comment.go-to-parent',
-    defaultMessage: 'Go to parent comment',
-  },
-  expiredTime: {
-    id: 'comment.expired-time',
-    defaultMessage: 'Editing time has expired.',
-  },
-  commentTime: {
-    id: 'comment.time',
-    defaultMessage: '{day} at {time}',
-  },
-  paidPatreon: {
-    id: 'comment.paid-patreon',
-    defaultMessage: 'Patreon Paid Subscriber',
-  },
-});
+/** what the forms under a comment take from the store and the locale, as the preact form took it */
+function formBase(
+  state: StoreState,
+  dispatch: Parameters<typeof subscribeByEmailArgs>[3] & Parameters<typeof signInDeps>[2],
+  intl: IntlShape
+): NonNullable<Deps['form']> {
+  const { user, theme } = state;
+  return {
+    nextTextareaId: () => {
+      CommentFormWrapper.textareaCounter += 1;
+      return `textarea_${CommentFormWrapper.textareaCounter}`;
+    },
+    loadEmoji: () => loadEmoji(),
+    theme,
+    signIn: signInDeps(intl, theme, dispatch),
+    rssIntl: intl,
+    email: subscribeByEmailArgs(user, theme, intl, dispatch),
+    telegram: subscribeByTelegramArgs(user, theme, intl),
+  };
+}

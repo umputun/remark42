@@ -1,11 +1,6 @@
-import { h } from 'preact';
-import { fireEvent } from '@testing-library/preact';
-
 import { createIntl } from 'common/intl';
 import en from 'locales/en.json';
-import { render } from 'tests/utils';
 
-import { CommentActions } from './comment-actions';
 import type { ActionsProps } from './actions.js';
 import { mountActions } from './actions.js';
 
@@ -177,22 +172,6 @@ describe('the edit countdown', () => {
     actions.update(props({ ...editable, editDeadline: NOW + 60_000 }));
     expect(jest.getTimerCount()).toBe(1);
     actions.destroy();
-    expect(jest.getTimerCount()).toBe(0);
-  });
-});
-
-describe('<CommentActions /> in the preact tree', () => {
-  it('keeps the plain nodes when the comment renders again, and stops the countdown when it leaves', () => {
-    const view = render(<CommentActions {...props({ ...editable, editDeadline: NOW + 60_000 })} />);
-    const before = Array.from(view.container.querySelectorAll('*'));
-    const onDelete = jest.fn();
-
-    view.rerender(<CommentActions {...props({ ...editable, editDeadline: NOW + 60_000, onDelete })} />);
-    expectSameNodes(Array.from(view.container.querySelectorAll('*')), before);
-    fireEvent.click(view.getByText('Delete'));
-    expect(onDelete).toHaveBeenCalledTimes(1);
-
-    view.unmount();
     expect(jest.getTimerCount()).toBe(0);
   });
 });

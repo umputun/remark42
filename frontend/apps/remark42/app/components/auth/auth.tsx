@@ -1,10 +1,10 @@
 import { h } from 'preact';
 import { useLayoutEffect, useRef } from 'preact/hooks';
 
-import { useAppDispatch } from 'store';
-import { useIntl } from 'common/intl';
+import { useAppDispatch, type StoreDispatch } from 'store';
+import { useIntl, type IntlShape } from 'common/intl';
 import * as commonApi from 'common/api';
-import type { User } from 'common/types';
+import type { Theme, User } from 'common/types';
 import { signin } from 'store/user/actions';
 import { useTheme } from 'hooks/useTheme';
 
@@ -25,13 +25,14 @@ const api: SignInApi = {
   getUser: () => commonApi.getUser(),
 };
 
+/** What the plain sign-in form needs, from the locale, the theme and the store's dispatch. */
+export function signInDeps(intl: IntlShape, theme: Theme, dispatch: StoreDispatch): SignInDeps {
+  return { intl, theme, signin: (user: User) => dispatch(signin(user)), api };
+}
+
 /** What the plain sign-in form needs from the preact tree around it. */
 export function useSignInDeps(): SignInDeps {
-  const intl = useIntl();
-  const theme = useTheme();
-  const dispatch = useAppDispatch();
-
-  return { intl, theme, signin: (user: User) => dispatch(signin(user)), api };
+  return signInDeps(useIntl(), useTheme(), useAppDispatch());
 }
 
 /**

@@ -1,32 +1,12 @@
-import { h } from 'preact';
-import { act, fireEvent, render } from '@testing-library/preact';
-
-import * as api from 'common/api';
-import { createIntl, IntlProvider } from 'common/intl';
+import { createIntl } from 'common/intl';
 import en from 'locales/en.json';
-import { Provider } from 'store/context';
-import { combineReducers, createStore } from 'store/create-store';
-import { allComments } from 'store/comments/reducers';
 
-import { CommentVotes } from './comment-votes';
 import { mountVotes } from './votes.js';
 
-type Props = Parameters<typeof CommentVotes>[0];
+type Props = Parameters<typeof mountVotes>[1];
 type Voted = { id: string; score: number };
 
 const base: Props = { id: 'c1', vote: 0, votes: 3, controversy: undefined };
-
-function newStore() {
-  return createStore(combineReducers({ allComments }));
-}
-
-function inWidget(node: preact.ComponentChild, store = newStore()) {
-  return (
-    <IntlProvider locale="en" messages={en}>
-      <Provider store={store}>{node}</Provider>
-    </IntlProvider>
-  );
-}
 
 function deps(putVote: (id: string, vote: -1 | 1) => Promise<Voted> = () => new Promise<Voted>(() => {})) {
   return { intl: createIntl('en', en), putVote, patch: jest.fn(), positiveScore: () => false };
@@ -123,35 +103,6 @@ describe('mountVotes', () => {
     expect(jest.getTimerCount()).toBe(1);
 
     votes.destroy();
-
-    expect(jest.getTimerCount()).toBe(0);
-  });
-});
-
-describe('<CommentVotes /> in the preact tree', () => {
-  it('keeps the plain nodes and the vote in flight when the parent renders again', () => {
-    jest.spyOn(api, 'putCommentVote').mockImplementation(() => new Promise(() => {}));
-    const store = newStore();
-    const view = render(inWidget(<CommentVotes {...base} />, store));
-    const before = Array.from(view.container.querySelectorAll('*'));
-
-    fireEvent.click(view.container.querySelector('[title="Vote up"]')!);
-    view.rerender(inWidget(<CommentVotes {...base} />, store));
-
-    expectSameNodes(Array.from(view.container.querySelectorAll('*')), before);
-    expect(view.container.querySelector('[title="Score"]')!.textContent).toBe('4');
-    expect(view.container.querySelector<HTMLButtonElement>('[title="Vote up"]')!.disabled).toBe(true);
-  });
-
-  it('stops its timers when the comment leaves the page', async () => {
-    jest.useFakeTimers();
-    let answer = (_: Voted) => {};
-    jest.spyOn(api, 'putCommentVote').mockImplementation(() => new Promise((resolve) => (answer = resolve)));
-    const view = render(inWidget(<CommentVotes {...base} />));
-
-    fireEvent.click(view.container.querySelector('[title="Vote up"]')!);
-    view.unmount();
-    await act(async () => answer({ id: 'c1', score: 4 }));
 
     expect(jest.getTimerCount()).toBe(0);
   });

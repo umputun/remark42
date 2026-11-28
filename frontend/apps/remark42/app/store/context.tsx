@@ -31,7 +31,8 @@ export function Provider<S, A extends Action>({
   return <StoreContext.Provider value={store as unknown as Store}>{children}</StoreContext.Provider>;
 }
 
-function useStore<S, A extends Action>(): Store<S, A> {
+/** the store of the nearest Provider, for reading its state without subscribing to it */
+export function useStore<S, A extends Action>(): Store<S, A> {
   const store = useContext(StoreContext);
   if (!store) {
     throw new Error('store accessed outside of a Provider');

@@ -1,10 +1,15 @@
-import { h } from 'preact';
 import { act } from '@testing-library/preact';
 
-import { render } from 'tests/utils';
+import { createIntl } from 'common/intl';
+import en from 'locales/en.json';
+import { draw } from 'tests/plain';
 
-import type { Props } from './comment-actions';
-import { CommentActions } from './comment-actions';
+import type { ActionsProps as Props } from './actions.js';
+import { mountActions } from './actions.js';
+
+function drawActions(props: Props) {
+  return draw('div', (root) => mountActions(root, props, createIntl('en', en)));
+}
 
 const NOW = new Date('2026-11-27T12:00:00Z').getTime();
 
@@ -56,13 +61,13 @@ describe('the comment actions draw the markup of the preact component they repla
     ['admin, the author blocked', { admin: true, bannedUser: true }],
     ['admin, own comment', { admin: true, currentUser: true, editable: true, editDeadline: NOW + 300_000 }],
   ])('%s', (_, change) => {
-    expect(render(<CommentActions {...props(change)} />).container.innerHTML).toMatchSnapshot();
+    expect(drawActions(props(change)).container.innerHTML).toMatchSnapshot();
   });
 
   it('as the edit countdown runs out', () => {
     const onDisableEditing = jest.fn();
-    const { container } = render(
-      <CommentActions {...props({ currentUser: true, editable: true, editDeadline: NOW + 3_000, onDisableEditing })} />
+    const { container } = drawActions(
+      props({ currentUser: true, editable: true, editDeadline: NOW + 3_000, onDisableEditing })
     );
 
     act(() => {

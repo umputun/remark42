@@ -1,8 +1,8 @@
 import { h } from 'preact';
 import { useLayoutEffect, useRef } from 'preact/hooks';
 
-import { useIntl } from 'common/intl';
-import type { User } from 'common/types';
+import { useIntl, type IntlShape } from 'common/intl';
+import type { Theme, User } from 'common/types';
 import type { StoreState } from 'store';
 import { useSelector } from 'store/context';
 import { useTheme } from 'hooks/useTheme';
@@ -11,11 +11,8 @@ import { isUserAnonymous } from 'utils/isUserAnonymous';
 
 import { mountSubscribeByTelegram } from './subscribe-by-telegram-element.js';
 
-/** The props and deps of the plain Telegram subscription, from the preact tree around it. */
-export function useSubscribeByTelegramArgs() {
-  const theme = useTheme();
-  const intl = useIntl();
-  const user = useSelector<StoreState, User | null>(({ user }) => user);
+/** The props and deps of the plain Telegram subscription, for this reader, theme and locale. */
+export function subscribeByTelegramArgs(user: User | null, theme: Theme, intl: IntlShape) {
   const props: Parameters<typeof mountSubscribeByTelegram>[1] = {
     userId: user?.id ?? '',
     anonymous: isUserAnonymous(user),
@@ -34,6 +31,14 @@ export function useSubscribeByTelegramArgs() {
   };
 
   return { props, deps };
+}
+
+/** The props and deps of the plain Telegram subscription, from the preact tree around it. */
+export function useSubscribeByTelegramArgs() {
+  const theme = useTheme();
+  const intl = useIntl();
+  const user = useSelector<StoreState, User | null>(({ user }) => user);
+  return subscribeByTelegramArgs(user, theme, intl);
 }
 
 /**
