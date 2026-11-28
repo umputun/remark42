@@ -158,7 +158,7 @@ Four settings exist for the tests and not for realism, and each is there for a r
 
 - `REMARK_URL` uses a **hostname**, not `127.0.0.1`. The dev oauth2 server binds whatever host it reads out of `REMARK_URL` (`localBindAddr` in go-pkgz/auth), and a loopback bind inside a container cannot be published. The browser maps the names back with `--host-resolver-rules`.
 - `UPDATE_LIMIT=100`, because the default of 0.5 updates a second rejects any test that posts twice in a row.
-- Each browser context has its own forwarded client IP. Fresh contexts use the limiter's initial allowance; later auth actions wait one token-refill interval through `pauseForAuthLimit`. The limit is the bare literal in `rateLimiter(2)` on the `/auth/` route group in `backend/app/rest/api/rest.go`, not a setting.
+- Each browser context has its own forwarded client IP. Fresh contexts use the limiter's initial allowance; later auth actions wait one token-refill interval through `pauseForAuthLimit`. The limit is the bare literal `rateLimiter(2)` in `authRateLimiter` in `backend/app/rest/api/middleware.go`, which the `/auth/` route group uses, not a setting; the session probe at `/auth/status` has its own 20 a second.
 - `TRUSTED_PROXY` stays unset. The stack is loopback-only, and the harness verifies that its per-context `X-Real-IP` reaches the backend and separates auth limiter buckets.
 
 `VOTES_IP` follows the same reader model: one browser context is one voter IP. A vote-deduplication case that needs repeated actions from one reader must perform them in the same context.

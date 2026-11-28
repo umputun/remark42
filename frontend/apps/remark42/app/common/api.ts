@@ -31,6 +31,10 @@ export const getPostComments = (sort: Sorting, { limit, offsetId }: { limit?: nu
     offset_id: offsetId || undefined,
   });
 
+/** Requests one comment of this thread; the server answers 400 for an id this thread does not hold */
+export const getComment = (id: Comment['id']): Promise<Comment> =>
+  apiFetcher.get(`/id/${encodeURIComponent(id)}`, { url });
+
 export const getUserComments = (
   userId: User['id'],
   config: { limit: number; skip?: number } = { limit: 10, skip: 0 }

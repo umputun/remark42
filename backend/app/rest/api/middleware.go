@@ -576,6 +576,24 @@ func rateLimiter(maxReq float64) func(http.Handler) http.Handler {
 	}
 }
 
+// authRateLimiter throttles the auth routes: sign-in, sign-out and the providers to 2 requests a
+// second per client and path, and the session probe at /auth/status to 20. Every comment widget
+// on a page asks for the session as it loads, and a page can hold several widgets; a refused probe
+// shows a signed-in reader as signed out
+func authRateLimiter() func(http.Handler) http.Handler {
+	strict, status := rateLimiter(2), rateLimiter(20)
+	return func(next http.Handler) http.Handler {
+		strictNext, statusNext := strict(next), status(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == authRoutePrefix+"status" {
+				statusNext.ServeHTTP(w, r)
+				return
+			}
+			strictNext.ServeHTTP(w, r)
+		})
+	}
+}
+
 // recoverer is the panic recovery middleware. Its first line carries the request URL, which holds the address
 // during email sign-in, so that line is masked
 func recoverer(l log.L) func(http.Handler) http.Handler {

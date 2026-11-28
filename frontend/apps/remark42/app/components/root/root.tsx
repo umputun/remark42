@@ -31,7 +31,7 @@ import { SortPicker } from 'components/sort-picker';
 import { CommentForm } from 'components/comment-form';
 import { Thread } from 'components/thread';
 import { ConnectedComment as Comment } from 'components/comment/connected-comment';
-import { uploadImage, getPreview } from 'common/api';
+import { uploadImage, getPreview, getComment } from 'common/api';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { bindActions } from 'utils/actionBinder';
 import { postMessageToParent, parseMessage, isFromParent, updateIframeHeight } from 'utils/post-message';
@@ -190,10 +190,16 @@ export class Root extends Component<Props, State> {
         const id = getCollapsedParent(hash, this.props.childToParentComments);
         if (!restLoaded && this.props.topComments.indexOf(id) === -1 && this.props.countLeft > 0) {
           // the comment is on a page not loaded yet: the rest of the thread comes first, and then the
-          // link is followed again from the location, which holds the same hash
-          this.props.loadMoreComments({ rest: true }).then(
-            () => this.checkUrlHash(undefined, true),
-            (err: unknown) => console.error('Remark42: failed to load the linked comment', err)
+          // link is followed again from the location, which holds the same hash. Only for a comment
+          // of this thread: with several widgets on the page the link reaches all of them, and the
+          // others would load their whole threads for a comment none of them holds
+          getComment(hash.slice(COMMENT_NODE_CLASSNAME_PREFIX.length + 1)).then(
+            () =>
+              this.props.loadMoreComments({ rest: true }).then(
+                () => this.checkUrlHash(undefined, true),
+                (err: unknown) => console.error('Remark42: failed to load the linked comment', err)
+              ),
+            () => undefined
           );
           return;
         }

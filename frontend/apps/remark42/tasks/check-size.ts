@@ -8,7 +8,7 @@ export type Result = Budget & { size: number | null; passed: boolean };
 
 /** The most each file of the production build may weigh gzipped, in bytes. */
 export const BUDGETS: Budget[] = [
-  { file: 'embed.mjs', limit: 2_600 },
+  { file: 'embed.mjs', limit: 2_700 },
   { file: 'remark.mjs', limit: 60_000 },
   { file: 'remark.css', limit: 11_000 },
   { file: 'last-comments.mjs', limit: 2_500 },

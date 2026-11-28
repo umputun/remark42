@@ -484,4 +484,190 @@ describe('embed', () => {
       });
     });
   });
+
+  describe('several widgets', () => {
+    // a widget for the thread at `url`, in an element of its own
+    function widget(url: string) {
+      const node = document.createElement('div');
+      document.body.appendChild(node);
+      const handle = window.REMARK42.createInstance({ ...window.remark_config, node, url })!;
+
+      return { node, handle, iframe: node.querySelector<HTMLIFrameElement>(`:scope > ${MARKED}`)! };
+    }
+
+    function resize(iframe: HTMLIFrameElement, height: number) {
+      window.dispatchEvent(new MessageEvent('message', { data: { height }, source: iframe.contentWindow }));
+    }
+
+    afterEach(() => {
+      window.REMARK42.destroy?.();
+    });
+
+    it('adds a widget for another element and keeps the first one working', async () => {
+      await mount();
+      const first = widget('https://example.com/first');
+      const second = widget('https://example.com/second');
+
+      expect(document.querySelectorAll(MARKED)).toHaveLength(2);
+      resize(first.iframe, 300);
+      resize(second.iframe, 500);
+      expect(first.iframe.style.height).toBe('300px');
+      expect(second.iframe.style.height).toBe('500px');
+    });
+
+    // a single-page site that mounts into the same element on each route without destroy()
+    it('takes over the widget of an element given again, for another url too', async () => {
+      await mount();
+      const first = widget('https://example.com/first');
+      window.REMARK42.createInstance({ ...window.remark_config, node: first.node, url: 'https://example.com/next' });
+
+      expect(first.node.querySelectorAll('iframe')).toHaveLength(1);
+      let resizes = 0;
+      Object.defineProperty(first.iframe.style, 'height', {
+        set() {
+          resizes += 1;
+        },
+        get: () => '',
+        configurable: true,
+      });
+      resize(first.iframe, 500);
+      expect(resizes).toBe(1);
+    });
+
+    it('leaves the others working when one is destroyed', async () => {
+      await mount();
+      const first = widget('https://example.com/first');
+      const second = widget('https://example.com/second');
+
+      first.handle.destroy();
+
+      expect(first.node.querySelectorAll('iframe')).toHaveLength(0);
+      resize(second.iframe, 500);
+      expect(second.iframe.style.height).toBe('500px');
+    });
+
+    // the script mounts into the element with the default id as it loads, and a site that then
+    // mounts into its own element has no instance of that first mount to destroy
+    it('replaces the widget the script mounted by itself, whatever its url', async () => {
+      const root = await mount();
+
+      widget('https://example.com/elsewhere');
+
+      expect(root.querySelectorAll(MARKED)).toHaveLength(0);
+      expect(document.querySelectorAll(MARKED)).toHaveLength(1);
+    });
+
+    it('replaces a widget for the same url in another element', async () => {
+      await mount();
+      const first = widget('https://example.com/post');
+      const second = widget('https://example.com/post');
+
+      expect(first.node.querySelectorAll('iframe')).toHaveLength(0);
+      expect(document.querySelectorAll(MARKED)).toHaveLength(1);
+      resize(second.iframe, 500);
+      expect(second.iframe.style.height).toBe('500px');
+    });
+
+    // a single-page site that mounts into a new element on each route without destroy()
+    it('detaches a widget whose element has left the page', async () => {
+      await mount();
+      const first = widget('https://example.com/first');
+      first.node.remove();
+      const removed = jest.spyOn(window, 'removeEventListener');
+
+      widget('https://example.com/second');
+
+      expect(removed).toHaveBeenCalledWith('message', expect.any(Function));
+      removed.mockRestore();
+    });
+
+    it('keeps the profile another widget opened when one is destroyed, and closes it with its own', async () => {
+      await mount();
+      const first = widget('https://example.com/first');
+      const second = widget('https://example.com/second');
+      window.dispatchEvent(
+        new MessageEvent('message', { data: { profile: { token: 'token' } }, source: second.iframe.contentWindow })
+      );
+      const profile = document.querySelector<HTMLIFrameElement>('iframe[src*="page=profile"]')!;
+
+      first.handle.destroy();
+      expect(profile.isConnected).toBe(true);
+
+      second.handle.destroy();
+      expect(profile.isConnected).toBe(false);
+    });
+
+    it('leaves the messages of the profile to the widget that opened it', async () => {
+      await mount();
+      const first = widget('https://example.com/first');
+      const second = widget('https://example.com/second');
+      window.dispatchEvent(
+        new MessageEvent('message', { data: { profile: { token: 'token' } }, source: second.iframe.contentWindow })
+      );
+      const profile = document.querySelector<HTMLIFrameElement>('iframe[src*="page=profile"]')!;
+      const toFirst = jest.spyOn(first.iframe.contentWindow!, 'postMessage');
+      const toSecond = jest.spyOn(second.iframe.contentWindow!, 'postMessage');
+
+      // the sign-out in the profile, which the widget it belongs to carries out
+      window.dispatchEvent(
+        new MessageEvent('message', { data: { profile: null, signout: true }, source: profile.contentWindow })
+      );
+
+      expect(toSecond).toHaveBeenCalledWith({ signout: true }, '*');
+      expect(toFirst).not.toHaveBeenCalled();
+    });
+
+    it('hands the profile over to the widget that replaces the one that opened it', async () => {
+      await mount();
+      const first = widget('https://example.com/post');
+      window.dispatchEvent(
+        new MessageEvent('message', { data: { profile: { token: 'token' } }, source: first.iframe.contentWindow })
+      );
+      const profile = document.querySelector<HTMLIFrameElement>('iframe[src*="page=profile"]')!;
+
+      const second = widget('https://example.com/post');
+      second.handle.destroy();
+
+      expect(profile.isConnected).toBe(false);
+    });
+
+    // a call into an element that holds a widget keeps its iframe, which shows the thread it was
+    // built for; another element asking for that thread has to replace it
+    it('goes by the thread a reused iframe shows, not the one the call asked for', async () => {
+      await mount();
+      const first = widget('https://example.com/first');
+      window.REMARK42.createInstance({ ...window.remark_config, node: first.node, url: 'https://example.com/next' });
+
+      widget('https://example.com/first');
+
+      expect(first.node.querySelectorAll('iframe')).toHaveLength(0);
+      expect(document.querySelectorAll(MARKED)).toHaveLength(1);
+    });
+
+    it('leaves the widget for the asked url in place when a reused iframe keeps another thread', async () => {
+      await mount();
+      const first = widget('https://example.com/first');
+      const second = widget('https://example.com/second');
+
+      window.REMARK42.createInstance({ ...window.remark_config, node: first.node, url: 'https://example.com/second' });
+
+      expect(second.node.querySelectorAll(`:scope > ${MARKED}`)).toHaveLength(1);
+      expect(document.querySelectorAll(MARKED)).toHaveLength(2);
+    });
+
+    it('leaves the first widget working after the profile opened from the second one closes', async () => {
+      await mount();
+      const first = widget('https://example.com/first');
+      const second = widget('https://example.com/second');
+      window.dispatchEvent(
+        new MessageEvent('message', { data: { profile: { token: 'token' } }, source: second.iframe.contentWindow })
+      );
+      const profile = document.querySelector<HTMLIFrameElement>('iframe[src*="page=profile"]')!;
+
+      window.dispatchEvent(new MessageEvent('message', { data: { profile: null }, source: profile.contentWindow }));
+
+      resize(first.iframe, 300);
+      expect(first.iframe.style.height).toBe('300px');
+    });
+  });
 });

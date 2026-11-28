@@ -66,3 +66,31 @@ The script dispatches `REMARK42::ready` when it initialises, even on a page with
     }
   }
 ```
+
+## Several widgets on one page
+
+A page can hold several comment widgets, each for a thread of its own, for example an index page that shows a few posts with their comments. Mount every widget with `createInstance`, each into an element of its own and with a `url` of its own:
+
+```html
+<div class="comments" data-url="https://example.com/posts/first/"></div>
+<div class="comments" data-url="https://example.com/posts/second/"></div>
+<script>
+  function mountComments() {
+    document.querySelectorAll('.comments').forEach(function (node) {
+      window.REMARK42.createInstance(Object.assign({}, window.remark_config, { node: node, url: node.dataset.url }))
+    })
+  }
+
+  if (window.REMARK42) {
+    mountComments()
+  } else {
+    window.addEventListener('REMARK42::ready', mountComments)
+  }
+</script>
+```
+
+- Every widget needs its own `url`: a `createInstance` for a `url` another widget already shows replaces that widget.
+- Mount each element once. A call into an element that already holds a widget keeps the thread that widget shows and loads it again, so a page that adds widgets later, such as one that loads more posts, mounts only the new elements.
+- Leave out the element with the id `remark42`, and keep `node` out of the global `remark_config`, as the example does. The script mounts a widget by itself as it loads, into `remark_config.node` or that element, for `remark_config.url` or the page's address, and a later `createInstance` into that element keeps the script's thread. Without the element, the script's own first attempt logs `Remark42: Can't find root node.`, as described above.
+- Each call returns the `destroy()` and `changeTheme(theme)` of its own widget. `window.REMARK42.destroy` and `window.REMARK42.changeTheme` act on the widget created last.
+- Signing out in one widget signs the others out without a reload, and a sign-in shows in the others wherever they share the session cookie. A link to a comment (`#remark42__comment-<id>`) is followed by the widget whose thread holds that comment.
