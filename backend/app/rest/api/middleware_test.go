@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -1244,6 +1245,43 @@ func testKeepsMovingResponse(t *testing.T, h2 bool) {
 	}
 	require.NoError(t, <-written)
 	assert.Equal(t, 2*len("chunk")+len(big), total)
+}
+
+// a client reading steadily but slowly keeps its response. Without limitUnsent a blocked write waits for a large
+// part of an autotuned send buffer to drain, which at this rate takes longer than the timeout. limitUnsent is Linux
+// only; macOS wakes a blocked write every few hundred kilobytes either way, which at this rate comes close to the
+// timeout, so there the test would pass or fail by chance and check nothing
+func TestStalledWriteLimit_KeepsSlowReader(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("limitUnsent is Linux only")
+	}
+	const timeout, rate = 600 * time.Millisecond, 1024 * 1024 // a 128 KiB step takes a fifth of the timeout
+	big := bytes.Repeat([]byte("x"), 6*1024*1024)
+	written := make(chan error, 1)
+	handler := stalledWriteLimit(timeout)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write(big) // one write, as R.Timeout sends a buffered response
+		written <- err
+	}))
+	ts := httptest.NewUnstartedServer(handler)
+	ts.Config = (&Rest{writeStallTimeout: timeout}).makeHTTPServer("127.0.0.1", 0, handler)
+	ts.Start()
+	defer ts.Close()
+
+	resp, err := ts.Client().Get(ts.URL)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	start, total, buf := time.Now(), 0, make([]byte, 16*1024)
+	for {
+		n, err := resp.Body.Read(buf)
+		total += n
+		if err != nil {
+			require.ErrorIs(t, err, io.EOF, "the response ends cleanly")
+			break
+		}
+		time.Sleep(time.Until(start.Add(time.Duration(total) * time.Second / rate))) // read at rate bytes a second
+	}
+	require.NoError(t, <-written)
+	assert.Equal(t, len(big), total)
 }
 
 // over HTTP/2 the stream deadline alone can't free a handler whose client stops reading the connection, as the

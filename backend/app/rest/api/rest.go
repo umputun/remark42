@@ -214,6 +214,11 @@ func (s *Rest) makeHTTPServer(address string, port int, router http.Handler) *ht
 		// written to the connection; a client that stops reading the connection blocks that write, so the
 		// connection itself is closed once a write to it makes no progress for that long
 		HTTP2: &http.HTTP2Config{WriteByteTimeout: s.stallTimeout()},
+		// a write blocked on a slow client returns as the client reads, so the timeouts above see its progress
+		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
+			limitUnsent(c)
+			return ctx
+		},
 	}
 }
 

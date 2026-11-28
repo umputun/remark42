@@ -676,8 +676,9 @@ func (p *partitioningWriter) addCopies() {
 }
 
 // writeStallTimeout is how long one chunk of a response may take to leave: a client that reads nothing for that
-// long loses the connection, while a response that keeps moving at writeStallChunk per writeStallTimeout or more,
-// about 540 bytes a second, is written for as long as it takes, as an export is
+// long loses the connection, while a response the client keeps reading is written for as long as it takes, as an
+// export is. On Linux, unsentLimit lets a blocked write return as the client reads: over loopback, at 8 KB a second,
+// a write blocked for about 16 seconds, one per 128 KiB
 const writeStallTimeout = 30 * time.Second
 
 // writeStallChunk is the most a single write sends under one deadline, so a large write is timed by its progress
