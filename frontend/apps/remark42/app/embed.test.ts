@@ -248,6 +248,83 @@ describe('embed', () => {
     scrollTo.mockRestore();
   });
 
+  describe('node', () => {
+    afterEach(() => {
+      delete window.remark_config.node;
+    });
+
+    it('mounts into the given element instead of the one with the default id', async () => {
+      await mount();
+      const node = document.createElement('div');
+      document.body.appendChild(node);
+
+      window.REMARK42.createInstance({ ...window.remark_config, node });
+
+      expect(node.querySelectorAll(`:scope > ${MARKED}`)).toHaveLength(1);
+    });
+
+    it('does not need the element with the default id', async () => {
+      document.body.innerHTML = '<section id="spa"></section>';
+      const node = document.getElementById('spa')!;
+      window.remark_config.node = node;
+      jest.resetModules();
+      await import('./embed');
+
+      expect(node.querySelectorAll(`:scope > ${MARKED}`)).toHaveLength(1);
+    });
+
+    it('keeps the element out of the iframe URL', async () => {
+      const root = await mount();
+      const node = document.createElement('div');
+      document.body.appendChild(node);
+
+      window.REMARK42.createInstance({ ...window.remark_config, node });
+
+      const src = new URL(node.querySelector(MARKED)!.getAttribute('src')!);
+
+      expect(src.searchParams.get('site_id')).toBe('remark');
+      expect(src.searchParams.has('node')).toBe(false);
+      expect(root.querySelectorAll(MARKED)).toHaveLength(0);
+    });
+
+    // the script mounts into the element with the default id as it loads, and an application then
+    // mounting into its own element has no instance of that first mount to destroy
+    it('moves the widget out of the element it was in when given another one', async () => {
+      const root = await mount();
+      const node = document.createElement('div');
+      document.body.appendChild(node);
+
+      window.REMARK42.createInstance({ ...window.remark_config, node });
+
+      expect(root.querySelectorAll(MARKED)).toHaveLength(0);
+      expect(document.querySelectorAll(MARKED)).toHaveLength(1);
+      expect(node.querySelectorAll(`:scope > ${MARKED}`)).toHaveLength(1);
+
+      // and back: the element with the default id gets a widget again once node is left out
+      window.REMARK42.destroy!();
+      window.REMARK42.createInstance({ ...window.remark_config });
+      expect(document.querySelectorAll(MARKED)).toHaveLength(1);
+      expect(root.querySelectorAll(`:scope > ${MARKED}`)).toHaveLength(1);
+    });
+
+    it('rejects a value that is not an element', async () => {
+      await mount();
+
+      expect(() =>
+        window.REMARK42.createInstance({ ...window.remark_config, node: '#remark42' as unknown as HTMLElement })
+      ).toThrow('Remark42: `node` must be a DOM element.');
+    });
+
+    it('falls back to the default id when no element is given', async () => {
+      const root = await mount();
+      root.querySelector(MARKED)!.remove();
+
+      window.REMARK42.createInstance({ ...window.remark_config, node: undefined });
+
+      expect(root.querySelectorAll(`:scope > ${MARKED}`)).toHaveLength(1);
+    });
+  });
+
   describe('theme', () => {
     afterEach(() => {
       delete window.remark_config.theme;

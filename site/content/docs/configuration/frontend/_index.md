@@ -15,6 +15,7 @@ aliases:
   - `'embed'` – basic comments widget
   - `'last-comments'` – last comments widget, see [Last Comments](#last-comments-widget) section below
   - `'counter'` – counter widget, see [Counter](#counter-widget) section below
+- **`node`**`: HTMLElement` (optional, the element with the id `remark42` by default) – the DOM element to mount the comments widget into. Mostly useful for [single-page applications](/docs/configuration/frontend/spa/), where the element is available as a component reference. Pass it in the configuration object given to `REMARK42.createInstance`
 - **`max_shown_comments`**`: number` (optional, `10` by default) – initial number of top-level comments shown on mobile
 - **`comments_page_size`**`: number` (optional, `100` by default) – how many comments the widget loads at a time. A top-level comment always comes with all its replies, so a page can hold more; "Show more" at the bottom loads the next page, and a link to a comment on a page not loaded yet loads the rest of the thread. `0` loads the whole thread at once
 - **`max_last_comments`**`: number` (optional, `15` by default) – maximum number of comments in the last comments widget

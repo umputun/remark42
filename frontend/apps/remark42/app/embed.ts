@@ -16,8 +16,10 @@ const DARK_SCHEME_QUERY = '(prefers-color-scheme: dark)';
 // detaches the listeners of whichever instance is current. every createInstance installs four of
 // them plus a title observer, all closing over that call's iframe, while the call reuses an
 // existing iframe rather than building one. Without this a second call leaves the first set
-// attached for good, since destroy() can only reach the newest closure
-let detachCurrentInstance: (() => void) | null = null;
+// attached for good, since destroy() can only reach the newest closure. Given the iframe the new
+// instance uses, it also removes its own when that is another one, as when `node` names an element
+// other than the one the widget was in: nothing would update or remove that iframe any more
+let detachCurrentInstance: ((next?: HTMLIFrameElement) => void) | null = null;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -55,7 +57,15 @@ function withResolvedTheme(config: typeof window.remark_config) {
 }
 
 function createInstance(config: typeof window.remark_config) {
-  const root = document.getElementById(NODE_ID);
+  // `node` lets a single-page application mount the widget into an element it owns instead of
+  // the one carrying the default id. config may be undefined here, the check below reports it
+  const node = config?.node;
+
+  if (node != null && !(node instanceof Element)) {
+    throw new Error('Remark42: `node` must be a DOM element.');
+  }
+
+  const root = node ?? document.getElementById(NODE_ID);
 
   if (!root) {
     throw new Error("Remark42: Can't find root node.");
@@ -73,15 +83,13 @@ function createInstance(config: typeof window.remark_config) {
 
   config.url = (config.url || `${window.location.origin}${window.location.pathname}`).split('#')[0];
 
-  const iframe =
-    root.querySelector<HTMLIFrameElement>(`:scope > iframe[${IFRAME_MARKER}]`) ??
-    createIframe(withResolvedTheme(config));
+  const iframe = root.querySelector<HTMLIFrameElement>(`:scope > iframe[${IFRAME_MARKER}]`) ?? createIframe(params());
   iframe.setAttribute(IFRAME_MARKER, '');
 
   root.appendChild(iframe);
 
   // after the throwing validation above, so a rejected call leaves a working instance alone
-  detachCurrentInstance?.();
+  detachCurrentInstance?.(iframe);
   detachCurrentInstance = detach;
 
   window.addEventListener('message', handleReceiveMessage);
@@ -98,6 +106,14 @@ function createInstance(config: typeof window.remark_config) {
       characterData: true,
       childList: true,
     });
+  }
+
+  // the configuration as it goes into an iframe URL, which cannot carry a DOM element, with the
+  // theme resolved
+  function params() {
+    const { node: _node, ...rest } = config;
+
+    return withResolvedTheme(rest);
   }
 
   function handleReceiveMessage(event: MessageEvent): void {
@@ -141,7 +157,7 @@ function createInstance(config: typeof window.remark_config) {
       if (data.profile === null) {
         closeProfile();
       } else {
-        openProfile({ ...withResolvedTheme(config), ...data.profile });
+        openProfile({ ...params(), ...data.profile });
       }
     }
 
@@ -213,7 +229,11 @@ function createInstance(config: typeof window.remark_config) {
     applyTheme();
   }
 
-  function detach() {
+  function detach(next?: HTMLIFrameElement) {
+    if (next && next !== iframe) {
+      iframe.remove();
+    }
+
     window.removeEventListener('message', handleReceiveMessage);
     window.removeEventListener('hashchange', handleHashChange);
     document.removeEventListener('click', postClickOutsideToIframe);
