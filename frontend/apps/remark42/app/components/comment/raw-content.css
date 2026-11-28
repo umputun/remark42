@@ -216,6 +216,13 @@
       color: var(--chroma-06);
     }
   }
+
+  /* a table header is filled with the primary color, which links and inline code would otherwise
+     be drawn in or close to; here they take the header's own text color */
+  & table th a,
+  & table th code {
+    color: inherit;
+  }
 }
 
 .dark .raw-content {
