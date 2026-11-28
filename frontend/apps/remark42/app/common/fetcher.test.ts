@@ -55,10 +55,15 @@ async function expectRequestError(
     },
     (e: unknown) => e
   );
-  const fields =
-    err instanceof RequestError ? { message: err.message, code: err.code, status: err.status, body: err.body } : err;
+  // the class is compared too: extractErrorMessageFromResponse reads a plain object differently
+  const { message, code, status, body } = err as RequestError;
 
-  expect(fields).toStrictEqual({ status: undefined, body: undefined, ...expected });
+  expect({ isRequestError: err instanceof RequestError, message, code, status, body }).toStrictEqual({
+    isRequestError: true,
+    status: undefined,
+    body: undefined,
+    ...expected,
+  });
 }
 
 describe('fetcher', () => {
