@@ -19,7 +19,7 @@ import { persistEmail } from 'components/auth/auth.utils';
 
 import type { StoreState } from 'store';
 
-import { SubscribeByEmail, SubscribeByEmailForm } from '.';
+import { SubscribeByEmail } from '.';
 import { CONFIRMATION_POLL_DURATION, CONFIRMATION_POLL_INTERVAL } from './comment-form__subscribe-by-email';
 import { RequestError } from '../../../utils/errorUtils';
 import styles from './subscribe-by-email.module.css';
@@ -58,6 +58,13 @@ beforeEach(() => {
   getEmailSubscriptionMock.mockImplementation(() => Promise.resolve({ user, address: '' }));
 });
 
+// the form exists only inside the open dropdown, so it is opened and its panel taken as the container
+function openForm(state: Partial<StoreState> = initialStore) {
+  const view = render(<SubscribeByEmail />, state);
+  fireEvent.click(view.container.querySelector('[aria-haspopup]') as HTMLButtonElement);
+  return { ...view, container: document.querySelector('div[role="listbox"]') as HTMLElement };
+}
+
 describe('<SubscribeByEmail/>', () => {
   const createWrapper = (state: Partial<StoreState> = initialStore) => render(<SubscribeByEmail />, state);
 
@@ -80,8 +87,8 @@ describe('<SubscribeByEmail/>', () => {
   });
 });
 
-describe('<SubscribeByEmailForm/>', () => {
-  const createWrapper = (state: Partial<StoreState> = initialStore) => render(<SubscribeByEmailForm />, state);
+describe('<SubscribeByEmail/> form', () => {
+  const createWrapper = (state: Partial<StoreState> = initialStore) => openForm(state);
 
   it('should render email form by default', () => {
     const { container } = createWrapper(initialStore);
@@ -245,12 +252,12 @@ describe('<SubscribeByEmailForm/>', () => {
   });
 });
 
-describe('<SubscribeByEmailForm/> confirmed by the link in the email', () => {
+describe('<SubscribeByEmail/> form confirmed by the link in the email', () => {
   // the address the tests below submit on the email step
   const subscribed = { user, address: 'some@email.com' };
 
   async function openTokenStep() {
-    const result = render(<SubscribeByEmailForm />, initialStore);
+    const result = openForm(initialStore);
 
     fireEvent.input(result.container.querySelector('input') as HTMLInputElement, {
       target: { value: 'some@email.com' },
@@ -309,7 +316,7 @@ describe('<SubscribeByEmailForm/> confirmed by the link in the email', () => {
 
   it('stops the timer once the token in the email has expired, but still checks on return', async () => {
     jest.useFakeTimers();
-    const { container } = render(<SubscribeByEmailForm />, initialStore);
+    const { container } = openForm(initialStore);
 
     fireEvent.input(container.querySelector('input') as HTMLInputElement, { target: { value: 'some@email.com' } });
     fireEvent.submit(container.querySelector('form') as HTMLFormElement);
@@ -343,7 +350,7 @@ describe('<SubscribeByEmailForm/> confirmed by the link in the email', () => {
 
   it('notices a confirmation from another device without any page event', async () => {
     jest.useFakeTimers();
-    const { container } = render(<SubscribeByEmailForm />, initialStore);
+    const { container } = openForm(initialStore);
 
     fireEvent.input(container.querySelector('input') as HTMLInputElement, { target: { value: 'some@email.com' } });
     fireEvent.submit(container.querySelector('form') as HTMLFormElement);
@@ -364,7 +371,7 @@ describe('<SubscribeByEmailForm/> confirmed by the link in the email', () => {
 
   it('shows the subscription when the form opens after the link was used', async () => {
     getEmailSubscriptionMock.mockImplementation(() => Promise.resolve(subscribed));
-    const { container } = render(<SubscribeByEmailForm />, initialStore);
+    const { container } = openForm(initialStore);
 
     await act(() => sleep(0));
 
@@ -372,9 +379,9 @@ describe('<SubscribeByEmailForm/> confirmed by the link in the email', () => {
   });
 });
 
-describe('<SubscribeByEmailForm/> other addresses and steps', () => {
+describe('<SubscribeByEmail/> form other addresses and steps', () => {
   it('keeps waiting when an address other than the requested one was confirmed', async () => {
-    const { container } = render(<SubscribeByEmailForm />, initialStore);
+    const { container } = openForm(initialStore);
     fireEvent.input(container.querySelector('input') as HTMLInputElement, { target: { value: 'some@email.com' } });
     fireEvent.submit(container.querySelector('form') as HTMLFormElement);
     await act(() => sleep(0));
@@ -404,7 +411,7 @@ describe('<SubscribeByEmailForm/> other addresses and steps', () => {
   });
 
   it('says what the subscription covers', () => {
-    const { container } = render(<SubscribeByEmailForm />, initialStore);
+    const { container } = openForm(initialStore);
 
     expect(container.textContent).toContain(
       'Get an email about every reply to your comments and to the discussions under them.'

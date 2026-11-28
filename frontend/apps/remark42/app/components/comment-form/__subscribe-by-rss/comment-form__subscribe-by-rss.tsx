@@ -1,67 +1,33 @@
-import type { FunctionComponent } from 'preact';
 import { h } from 'preact';
-import { useMemo } from 'preact/hooks';
+import { useLayoutEffect, useRef } from 'preact/hooks';
 
-import { useIntl, defineMessages } from 'common/intl';
+import { useIntl } from 'common/intl';
 import { useTheme } from 'hooks/useTheme';
-import { siteId, url } from 'common/settings';
-import { BASE_URL, API_BASE } from 'common/constants';
-import { Dropdown, DropdownItem } from 'components/dropdown';
 
-import styles from './subscribe-by-rss.module.css';
+import { mountSubscribeByRss } from './subscribe-by-rss-element.js';
 
-export const createSubscribeUrl = (type: 'post' | 'site' | 'reply', urlParams = '') =>
-  `${BASE_URL}${API_BASE}/rss/${type}?site=${siteId}${urlParams}`;
+export { createSubscribeUrl } from './subscribe-by-rss-element.js';
 
-const messages = defineMessages({
-  thread: {
-    id: 'subscribeByRSS.thread',
-    defaultMessage: 'This page',
-  },
-  site: {
-    id: 'subscribeByRSS.site',
-    defaultMessage: 'All pages',
-  },
-  replies: {
-    id: 'subscribeByRSS.replies',
-    defaultMessage: 'Replies',
-  },
-  buttonTitle: {
-    id: 'subscribeByRSS.button-title',
-    defaultMessage: 'Subscribe by RSS',
-  },
-  title: {
-    id: 'subscribeByRSS.title',
-    defaultMessage: 'RSS',
-  },
-});
-
-export const SubscribeByRSS: FunctionComponent<{ userId: string | null }> = ({ userId }) => {
+/**
+ * Mounts the plain RSS dropdown into a div preact renders without props or children, so a
+ * re-render of the form leaves the div's attributes and content to the plain component.
+ */
+export function SubscribeByRSS({ userId }: { userId: string | null }) {
   const theme = useTheme();
   const intl = useIntl();
-  const items: Array<[string, string]> = useMemo(
-    () => [
-      [createSubscribeUrl('post', `&url=${url}`), intl.formatMessage(messages.thread)],
-      [createSubscribeUrl('site'), intl.formatMessage(messages.site)],
-      [createSubscribeUrl('reply', `&user=${userId}`), intl.formatMessage(messages.replies)],
-    ],
-    [userId, intl]
-  );
+  const root = useRef<HTMLDivElement>(null);
+  const rss = useRef<ReturnType<typeof mountSubscribeByRss> | null>(null);
 
-  return (
-    <Dropdown
-      title={intl.formatMessage(messages.title)}
-      buttonTitle={intl.formatMessage(messages.buttonTitle)}
-      mix={styles.rssDropdown}
-      theme={theme}
-    >
-      {items.map(([href, label]) => (
-        <DropdownItem key={label}>
-          <a href={href} className={styles.link} target="_blank" rel="noreferrer">
-            {label}
-          </a>
-        </DropdownItem>
-      ))}
-    </Dropdown>
-  );
-};
+  useLayoutEffect(() => {
+    rss.current = mountSubscribeByRss(root.current!, { userId, theme }, intl);
+    return () => rss.current?.destroy();
+    // mounted once; the props of every later render reach it through update below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useLayoutEffect(() => {
+    rss.current?.update({ userId, theme }, intl);
+  });
+
+  return <div ref={root} />;
+}
