@@ -361,3 +361,28 @@ func TestVote_BothButtonsAreDisabledWhileTheVoteIsInFlight(t *testing.T) {
 		})
 	}
 }
+
+// TestVote_ArrowsAreDrawn covers the arrow icons, which no other case looks at: an svg element
+// made outside the SVG namespace is laid out as an unknown element and draws nothing, while every
+// click in the other vote cases still lands on the button around it. It also reads the class the
+// real build gives each arrow, which the unit tests cannot: there a CSS module answers any name
+func TestVote_ArrowsAreDrawn(t *testing.T) {
+	t.Parallel()
+
+	text := "vote arrows " + runID
+	_, _, target := voteScenario(t, "votearrows", text)
+
+	for _, title := range []string{"Vote up", "Vote down"} {
+		button := target.Locator(`button[title="` + title + `"]`)
+		waitVisible(t, button)
+		got, err := button.Locator("svg").Evaluate(`svg => {
+			const box = svg.getBoundingClientRect();
+			const drawn = svg.querySelector('path').getBBox();
+			const named = !(svg.getAttribute('class') ?? '').split(' ').includes('undefined');
+			return svg.namespaceURI + ' ' + (box.width === 14 && box.height === 14) + ' ' + (drawn.width > 0 && drawn.height > 0) + ' ' + named;
+		}`, nil)
+		require.NoError(t, err, title)
+		assert.Equal(t, "http://www.w3.org/2000/svg true true true", got,
+			"%s: namespace, a 14px box, a path with an area, no class named undefined", title)
+	}
+}

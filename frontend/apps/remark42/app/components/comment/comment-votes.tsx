@@ -1,17 +1,13 @@
-import clsx from 'clsx';
 import { h } from 'preact';
-import { useState } from 'preact/hooks';
+import { useLayoutEffect, useRef } from 'preact/hooks';
 
-import { defineMessages, useIntl } from 'common/intl';
+import { useIntl } from 'common/intl';
 import { useDispatch } from 'store/context';
 import { patchComment } from 'store/comments/actions';
 import { putCommentVote } from 'common/api';
 import { StaticStore } from 'common/static-store';
-import { ArrowIcon } from 'components/icons/arrow';
 
-import styles from './comment-votes.module.css';
-import { Tooltip } from 'components/tooltip';
-import { extractErrorMessageFromResponse } from 'utils/errorUtils';
+import { mountVotes } from './votes.js';
 
 type Props = {
   id: string;
@@ -21,100 +17,33 @@ type Props = {
   disabled?: boolean;
 };
 
-export function CommentVotes({ id, votes, vote, controversy, disabled }: Props) {
+/**
+ * Mounts the plain vote buttons into a span preact renders without props or children, so a
+ * re-render of the comment leaves the span's class and content to the plain component.
+ */
+export function CommentVotes(props: Props) {
   const intl = useIntl();
   const dispatch = useDispatch();
-  const [loadingState, setLoadingState] = useState<{ vote: number; votes: number } | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | void>(undefined);
+  const root = useRef<HTMLSpanElement>(null);
+  const votes = useRef<ReturnType<typeof mountVotes> | null>(null);
+  const deps: Parameters<typeof mountVotes>[2] = {
+    intl,
+    putVote: (id, vote) => putCommentVote({ id, vote }),
+    patch: (patch) => dispatch(patchComment(patch)),
+    positiveScore: () => Boolean(StaticStore.config.positive_score),
+  };
 
-  async function handleClick(evt: preact.JSX.TargetedEvent<HTMLButtonElement>) {
-    const { value } = evt.currentTarget.dataset;
-    const increment = Number(value) as -1 | 1;
+  useLayoutEffect(() => {
+    votes.current = mountVotes(root.current!, props, deps);
+    return () => votes.current?.destroy();
+    // mounted once; the props and deps of every later render reach it through update below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    setLoadingState({ vote: vote + increment, votes: votes + increment });
-    try {
-      const p = await putCommentVote({ id, vote: increment });
-      dispatch(patchComment({ ...p, vote: (vote + increment) as -1 | 0 | 1 }));
-      setErrorMessage(undefined);
-      setTimeout(() => setLoadingState(null), 200);
-    } catch (err) {
-      setErrorMessage(extractErrorMessageFromResponse(err, intl));
-      setLoadingState(null);
-    }
-  }
+  // every render, which costs a few property writes when nothing changed
+  useLayoutEffect(() => {
+    votes.current?.update(props, deps);
+  });
 
-  const isUpvoted = vote === 1;
-  const isDownvoted = vote === -1;
-  const value = loadingState?.votes ?? votes;
-  const isPositiveScore = StaticStore.config.positive_score && value > -1;
-
-  return (
-    <span className={clsx(styles.root, disabled && styles.rootDisabled)}>
-      {Boolean(!disabled) && (
-        <button
-          className={clsx(styles.voteButton, styles.downVoteButton, isDownvoted && styles.downVoteButtonActive)}
-          onClick={handleClick}
-          data-value={-1}
-          title={intl.formatMessage(messages.downvote)}
-          disabled={loadingState !== null || isDownvoted || isPositiveScore}
-        >
-          <ArrowIcon className={styles.downVoteIcon} />
-        </button>
-      )}
-      <Tooltip
-        content={errorMessage ? <div class={styles.errorMessage}>{errorMessage}</div> : undefined}
-        position="top-left"
-        hideBehavior="mouseleave"
-        hideTimeout={10000}
-        permanent
-        onHide={() => {
-          setErrorMessage(undefined);
-        }}
-      >
-        <div
-          title={
-            controversy
-              ? intl.formatMessage(messages.controversy, { value: controversy.toFixed(2) })
-              : intl.formatMessage(messages.score)
-          }
-          className={clsx(styles.votes, {
-            [styles.votesNegative]: votes < 0,
-            [styles.votesPositive]: votes > 0,
-          })}
-        >
-          {value}
-        </div>
-      </Tooltip>
-      {!disabled && (
-        <button
-          className={clsx(styles.voteButton, styles.upVoteButton, isUpvoted && styles.upVoteButtonActive)}
-          onClick={handleClick}
-          data-value={1}
-          title={intl.formatMessage(messages.upvote)}
-          disabled={loadingState !== null || isUpvoted}
-        >
-          <ArrowIcon className={styles.upVoteIcon} />
-        </button>
-      )}
-    </span>
-  );
+  return <span ref={root} />;
 }
-
-export const messages = defineMessages({
-  score: {
-    id: 'vote.score',
-    defaultMessage: 'Score',
-  },
-  upvote: {
-    id: 'vote.upvote',
-    defaultMessage: 'Vote up',
-  },
-  downvote: {
-    id: 'vote.downvote',
-    defaultMessage: 'Vote down',
-  },
-  controversy: {
-    id: 'vote.controversy',
-    defaultMessage: 'Controversy: {value}',
-  },
-});
