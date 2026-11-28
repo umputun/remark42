@@ -712,8 +712,11 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 
 	exporter := &migrator.Native{DataStore: dataService}
 	disqusImporter := &migrator.Disqus{DataStore: dataService}
+	commentoImporter := &migrator.Commento{DataStore: dataService, DisableFancyTextFormatting: s.DisableFancyTextFormatting}
 	if avatarProxy := authenticator.AvatarProxy(); avatarProxy != nil {
-		disqusImporter.Avatars = avatarProxy // imported avatars are stored and served the same way as the ones from login
+		// imported avatars are stored and served the same way as the ones from login
+		disqusImporter.Avatars = avatarProxy
+		commentoImporter.Avatars = avatarProxy
 	}
 
 	migr := &api.Migrator{
@@ -721,7 +724,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 		NativeImporter:    &migrator.Native{DataStore: dataService},
 		DisqusImporter:    disqusImporter,
 		WordPressImporter: &migrator.WordPress{DataStore: dataService, DisableFancyTextFormatting: s.DisableFancyTextFormatting},
-		CommentoImporter:  &migrator.Commento{DataStore: dataService, DisableFancyTextFormatting: s.DisableFancyTextFormatting},
+		CommentoImporter:  commentoImporter,
 		NativeExporter:    &migrator.Native{DataStore: dataService},
 		URLMapperMaker:    migrator.NewURLMapper,
 	}

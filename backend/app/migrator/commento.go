@@ -17,6 +17,7 @@ import (
 type Commento struct {
 	DataStore                  Store
 	DisableFancyTextFormatting bool
+	Avatars                    AvatarSaver // stores the photos of commenters; without it they are imported without avatars
 }
 
 // Credit: https://gitlab.com/commento/commento/-/blob/master/api/domain_import_commento.go#L11-L15
@@ -37,6 +38,18 @@ type commentoComment struct {
 	State        string    `json:"state,omitempty"`
 	CreationDate time.Time `json:"creationDate"`
 	Deleted      bool      `json:"deleted"`
+}
+
+// shown reports whether commento shows the comment to readers: only approved comments are, the others wait
+// for a moderator or were flagged as spam
+func (c commentoComment) shown() bool {
+	return c.State == "" || c.State == "approved"
+}
+
+// deleted reports whether the comment is deleted. Commento keeps a deleted comment as "[deleted]" by the
+// anonymous commenter, and its export leaves out the deleted flag.
+func (c commentoComment) deleted() bool {
+	return c.Deleted || (c.Markdown == "[deleted]" && c.CommenterHex == "anonymous")
 }
 
 // commentoCommenter holds the fields the import reads.
@@ -84,12 +97,9 @@ func (d *Commento) convert(r io.Reader, siteID string, emit func(store.Comment) 
 			Name: commenter.Name,
 			ID:   "commento_" + store.EncodeID(commenter.CommenterHex),
 		}
-		// commento writes "undefined" for a commenter without a photo
-		if pic, err := url.Parse(commenter.Photo); err == nil && (pic.Scheme == "http" || pic.Scheme == "https") && pic.Host != "" {
-			u.Picture = commenter.Photo
-		}
 		usersMap[commenter.CommenterHex] = u
 	}
+	d.setPictures(exportedData, usersMap)
 
 	usersMap["anonymous"] = store.User{
 		Name: "Anonymous",
@@ -103,8 +113,7 @@ func (d *Commento) convert(r io.Reader, siteID string, emit func(store.Comment) 
 			continue
 		}
 
-		// commento shows only approved comments to readers, the others wait for a moderator or were flagged as spam
-		if comment.State != "" && comment.State != "approved" {
+		if !comment.shown() {
 			continue
 		}
 
@@ -131,9 +140,8 @@ func (d *Commento) convert(r io.Reader, siteID string, emit func(store.Comment) 
 			ParentID:  parentID,
 			Imported:  true,
 		}
-		// commento keeps a deleted comment as "[deleted]" by the anonymous commenter, and its export
-		// leaves out the deleted flag; the comment stays as a placeholder for its replies
-		if comment.Deleted || (comment.Markdown == "[deleted]" && comment.CommenterHex == "anonymous") {
+		// a deleted comment stays as a placeholder for its replies
+		if comment.deleted() {
 			c.SetDeleted(store.HardDelete)
 		}
 
@@ -143,4 +151,48 @@ func (d *Commento) convert(r io.Reader, siteID string, emit func(store.Comment) 
 	}
 
 	return nil
+}
+
+// setPictures stores the photos of the commenters whose comments the import keeps and sets the users'
+// pictures to the stored avatars. The import reads the whole export before the site's comments are
+// replaced, so they stay available while the photos are fetched. Without an avatar saver, and for a
+// photo that can't be fetched or is not an image, the picture stays empty: the import never links
+// to the host of a photo.
+func (d *Commento) setPictures(export commentoExport, users map[string]store.User) {
+	if d.Avatars == nil {
+		return
+	}
+	kept := map[string]bool{} // hex ids of commenters with a comment the import keeps under their name
+	for _, c := range export.Comments {
+		if c.shown() && !c.deleted() {
+			kept[c.CommenterHex] = true
+		}
+	}
+	// a commenter listed twice takes the photo from the same row as the name, the last one
+	photoURLs := map[string]string{} // by commenter hex id
+	for _, commenter := range export.Commenters {
+		photoURLs[commenter.CommenterHex] = commenter.Photo
+	}
+	var photos []commentoPhoto
+	queued := map[string]bool{} // hex ids of commenters whose photo is fetched
+	for _, commenter := range export.Commenters {
+		hex := commenter.CommenterHex
+		u, ok := users[hex]
+		if !ok || !kept[hex] || queued[hex] || hex == "anonymous" { // anonymous comments get no picture
+			continue
+		}
+		// commento writes "undefined" for a commenter without a photo
+		pic, err := url.Parse(photoURLs[hex])
+		if err != nil || (pic.Scheme != "http" && pic.Scheme != "https") || pic.Host == "" {
+			continue
+		}
+		queued[hex] = true
+		photos = append(photos, commentoPhoto{userID: u.ID, url: photoURLs[hex]})
+	}
+	stored := newCommentoAvatars(d.Avatars).fetch(photos)
+	for hex := range queued {
+		u := users[hex]
+		u.Picture = stored[u.ID]
+		users[hex] = u
+	}
 }

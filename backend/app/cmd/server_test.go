@@ -47,6 +47,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/umputun/remark42/backend/app/migrator"
 	"github.com/umputun/remark42/backend/app/notify"
 	"github.com/umputun/remark42/backend/app/rest"
 	"github.com/umputun/remark42/backend/app/store"
@@ -139,6 +140,18 @@ func TestServerApp_CustomOAuthProvider(t *testing.T) {
 	providers := app.restSrv.Authenticator.Providers()
 	require.Equal(t, 10+1, len(providers), "extra auth provider")
 	assert.Equal(t, "oidc", providers[len(providers)-2].Name(), "custom auth provider")
+}
+
+func TestServerApp_ImportersStoreAvatars(t *testing.T) {
+	app := startServerApp(t, nil)
+	proxy := app.authenticator.AvatarProxy()
+	require.NotNil(t, proxy)
+	disqus, ok := app.restSrv.Migrator.DisqusImporter.(*migrator.Disqus)
+	require.True(t, ok)
+	assert.Same(t, proxy, disqus.Avatars, "disqus avatars are stored by the avatar proxy")
+	commento, ok := app.restSrv.Migrator.CommentoImporter.(*migrator.Commento)
+	require.True(t, ok)
+	assert.Same(t, proxy, commento.Avatars, "commento photos are stored by the avatar proxy")
 }
 
 func TestServerApp_AnonMode(t *testing.T) {

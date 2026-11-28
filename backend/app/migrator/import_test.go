@@ -340,7 +340,7 @@ func TestCommento_ImportFidelity(t *testing.T) {
 		return c
 	}
 	assert.Equal(t, `<p><strong>bold</strong> and <a href="https://example.com" rel="nofollow ugc">a link</a></p>`+"\n\n<p>second paragraph</p>\n", get("c1").Text)
-	assert.Equal(t, "https://example.com/u1.png", get("c1").User.Picture)
+	assert.Empty(t, get("c1").User.Picture, "without an avatar saver the photo is not linked")
 	assert.Empty(t, get("c3").User.Picture, `commento's "undefined" photo is not an avatar`)
 	assert.Empty(t, get("c2").Text)
 }
