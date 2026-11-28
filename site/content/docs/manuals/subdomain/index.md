@@ -48,6 +48,7 @@ The `nginx.conf` would then look something like:
 
 ```nginx
   location ^~ /remark42/ {
+    client_max_body_size 10m; # image uploads up to IMAGE_MAX_SIZE, 5 MB by default
     rewrite /remark42/(.*) /$1 break;
     proxy_pass http://remark42:8080/; # use internal docker name of remark42 container for proxy
     proxy_set_header Host $http_host;
