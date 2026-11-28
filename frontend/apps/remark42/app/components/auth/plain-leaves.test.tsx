@@ -3,20 +3,11 @@ import { render } from '@testing-library/preact';
 
 import { createIntl, IntlProvider } from 'common/intl';
 import en from 'locales/en.json';
-import { Avatar } from 'components/avatar';
 import { avatarElement } from 'components/avatar/avatar-element.js';
 import { Button, type ButtonProps } from 'components/button/button';
 import { buttonElement } from 'components/button/button-element.js';
-import { IconButton } from 'components/icon-button/icon-button';
-import { iconButtonElement } from 'components/icon-button/icon-button-element.js';
-import { CrossIcon } from 'components/icons/cross';
-import { crossIcon } from 'components/icons/cross-icon.js';
-import { SignOutIcon } from 'components/icons/signout';
-import { signOutIcon } from 'components/icons/signout-icon.js';
 import { Input } from 'components/input';
 import { inputElement } from 'components/input/input-element.js';
-import { Spinner } from 'components/spinner/spinner';
-import { spinnerElement } from 'components/spinner/spinner-element.js';
 import { TelegramLink } from 'components/telegram/telegram-link';
 import { telegramLink } from 'components/telegram/telegram-link-element.js';
 import { TextareaAutosize } from 'components/textarea-autosize';
@@ -52,39 +43,6 @@ function html(...nodes: Node[]) {
 
 describe('the plain leaves draw the markup of the preact ones', () => {
   it.each([
-    ['the cross', () => drawn(<CrossIcon />), () => crossIcon().outerHTML],
-    [
-      'the cross with a size and a class',
-      () => drawn(<CrossIcon size={20} class="x" />),
-      () => crossIcon(20, { class: 'x' }).outerHTML,
-    ],
-    ['the sign-out icon', () => drawn(<SignOutIcon />), () => signOutIcon().outerHTML],
-    ['the sign-out icon at 14', () => drawn(<SignOutIcon size="14" />), () => signOutIcon('14').outerHTML],
-    ['the spinner', () => drawn(<Spinner />), () => spinnerElement(createIntl('en', en)).outerHTML],
-    [
-      'the gray spinner',
-      () => drawn(<Spinner color="gray" />),
-      () => spinnerElement(createIntl('en', en), 'gray').outerHTML,
-    ],
-    [
-      'an icon button',
-      () => drawn(<IconButton title="Go" />),
-      () => {
-        const b = iconButtonElement();
-        b.title = 'Go';
-        return b.outerHTML;
-      },
-    ],
-    [
-      'an icon button with a class',
-      () => drawn(<IconButton className="extra" />),
-      () => iconButtonElement('extra').outerHTML,
-    ],
-  ])('%s', (_, was, now) => {
-    expect(now()).toBe(was());
-  });
-
-  it.each([
     ['a text field', {}, {}],
     [
       'an invalid email field with attributes',
@@ -104,14 +62,6 @@ describe('the plain leaves draw the markup of the preact ones', () => {
     expect(input.hasAttribute('value')).toBe(false);
   });
 
-  it.each([
-    ['a picture', { url: 'https://example.com/a.png', size: 20 }],
-    ['the ghost', { size: 24 }],
-    ['an identicon', { url: 'https://example.com/a.png', size: 20, identicon: true }],
-  ])('the avatar: %s', (_, props) => {
-    expect(avatarElement(props).img.outerHTML).toBe(drawn(<Avatar {...props} />));
-  });
-
   it('the avatar changes the same image', () => {
     const avatar = avatarElement({ size: 20 });
     const { img } = avatar;
@@ -119,7 +69,9 @@ describe('the plain leaves draw the markup of the preact ones', () => {
     avatar.update({ url: 'https://example.com/a.png', size: 20, identicon: true });
 
     expect(avatar.img).toBe(img);
-    expect(img.outerHTML).toBe(drawn(<Avatar url="https://example.com/a.png" size={20} identicon />));
+    expect(img.outerHTML).toBe(
+      avatarElement({ url: 'https://example.com/a.png', size: 20, identicon: true }).img.outerHTML
+    );
   });
 
   it.each<[string, ButtonProps]>([

@@ -1,1 +1,1 @@
-export { SubscribeByEmail, SubscribeByEmailForm } from './comment-form__subscribe-by-email';
+export { SubscribeByEmail } from './comment-form__subscribe-by-email';

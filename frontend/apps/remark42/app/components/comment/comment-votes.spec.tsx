@@ -1,15 +1,28 @@
-import { h } from 'preact';
 import '@testing-library/jest-dom';
 import { fireEvent, screen, waitFor } from '@testing-library/preact';
-import { render } from 'tests/utils';
 
 import * as api from 'common/api';
-import { CommentVotes } from './comment-votes';
+import { createIntl } from 'common/intl';
+import en from 'locales/en.json';
 import { StaticStore } from 'common/static-store';
+import { draw } from 'tests/plain';
+
+import { mountVotes } from './votes.js';
+
+function drawVotes(props: Parameters<typeof mountVotes>[1]) {
+  return draw('span', (root) =>
+    mountVotes(root, props, {
+      intl: createIntl('en', en),
+      putVote: (id, vote) => api.putCommentVote({ id, vote }),
+      patch: () => {},
+      positiveScore: () => Boolean(StaticStore.config.positive_score),
+    })
+  );
+}
 
 describe('<CommentVote />', () => {
   it('should disable downvote button when downvoted', () => {
-    render(<CommentVotes id="1" vote={-1} votes={10} controversy={0} />);
+    drawVotes({ id: '1', vote: -1, votes: 10, controversy: 0 });
     expect(screen.getByTitle('Vote down')).toBeDisabled();
   });
 
@@ -22,7 +35,7 @@ describe('<CommentVote />', () => {
       const putCommentVoteSpy = jest
         .spyOn(api, 'putCommentVote')
         .mockImplementationOnce(({ vote }) => Promise.resolve({ id: '1', score: 10 + vote }));
-      render(<CommentVotes id="1" vote={0} votes={10} controversy={0} />);
+      drawVotes({ id: '1', vote: 0, votes: 10, controversy: 0 });
       fireEvent(screen.getByTitle(activeButtonText), new Event('click'));
       expect(screen.getByTitle('Score')).toHaveTextContent(`${10 + increment}`);
       expect(screen.getByTitle(activeButtonText)).toBeDisabled();
@@ -40,7 +53,7 @@ describe('<CommentVote />', () => {
           }) as Promise<{ id: string; score: number }>
       )
     );
-    render(<CommentVotes id="1" vote={0} votes={10} controversy={0} />);
+    drawVotes({ id: '1', vote: 0, votes: 10, controversy: 0 });
     expect(screen.getByTitle('Score')).toHaveTextContent('10');
     fireEvent(screen.getByTitle('Vote down'), new Event('click'));
     await waitFor(() => expect(screen.getByTitle('Score')).toHaveTextContent('9'));
@@ -53,14 +66,14 @@ describe('<CommentVote />', () => {
   });
 
   it('should render without voting buttons', () => {
-    render(<CommentVotes id="1" vote={0} votes={10} controversy={0} disabled={true} />);
+    drawVotes({ id: '1', vote: 0, votes: 10, controversy: 0, disabled: true });
     expect(screen.queryByTitle('Vote down')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Vote up')).not.toBeInTheDocument();
   });
 
   it('should allow only upvote ability', () => {
     StaticStore.config.positive_score = true;
-    render(<CommentVotes id="1" vote={0} votes={10} controversy={0} />);
+    drawVotes({ id: '1', vote: 0, votes: 10, controversy: 0 });
     expect(screen.queryByTitle('Vote down')).toBeVisible();
     expect(screen.queryByTitle('Vote down')).toBeDisabled();
     expect(screen.getByTitle('Vote up')).toBeVisible();
@@ -68,7 +81,7 @@ describe('<CommentVote />', () => {
   });
 
   it('shows the vote count as the tooltip when there is no controversy', () => {
-    render(<CommentVotes id="1" vote={0} votes={3} controversy={0} />);
+    drawVotes({ id: '1', vote: 0, votes: 3, controversy: 0 });
 
     expect(screen.getByTitle('Score')).toHaveTextContent('3');
     expect(screen.queryByTitle(/Controversy/)).not.toBeInTheDocument();
@@ -77,14 +90,14 @@ describe('<CommentVote />', () => {
   // what actually arrives: the backend marks the field omitempty, so an uncontroversial
   // comment carries no controversy at all rather than a zero
   it('shows the vote count as the tooltip when controversy is absent', () => {
-    render(<CommentVotes id="1" vote={0} votes={3} controversy={undefined} />);
+    drawVotes({ id: '1', vote: 0, votes: 3, controversy: undefined });
 
     expect(screen.getByTitle('Score')).toHaveTextContent('3');
     expect(screen.queryByTitle(/Controversy/)).not.toBeInTheDocument();
   });
 
   it('shows the controversy as the tooltip when there is some', () => {
-    render(<CommentVotes id="1" vote={0} votes={3} controversy={1.234} />);
+    drawVotes({ id: '1', vote: 0, votes: 3, controversy: 1.234 });
 
     expect(screen.getByTitle('Controversy: 1.23')).toHaveTextContent('3');
     expect(screen.queryByTitle('Score')).not.toBeInTheDocument();

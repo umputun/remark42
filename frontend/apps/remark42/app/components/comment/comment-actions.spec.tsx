@@ -1,9 +1,16 @@
-import { h } from 'preact';
 import '@testing-library/jest-dom';
-import type { Props } from './comment-actions';
-import { CommentActions } from './comment-actions';
-import { render } from 'tests/utils';
 import { fireEvent, screen } from '@testing-library/preact';
+
+import { createIntl } from 'common/intl';
+import en from 'locales/en.json';
+import { draw } from 'tests/plain';
+
+import type { ActionsProps as Props } from './actions.js';
+import { mountActions } from './actions.js';
+
+function drawActions(props: Props) {
+  return draw('div', (root) => mountActions(root, props, createIntl('en', en)));
+}
 
 function getProps(): Props {
   return {
@@ -40,7 +47,7 @@ describe('<CommentActions/>', () => {
 
   it('should not render "Cancel" instead "Reply" in replying mode', () => {
     props.replying = true;
-    render(<CommentActions {...props} />);
+    drawActions(props);
     expect(screen.queryByText('Reply')).not.toBeInTheDocument();
     expect(screen.getByText('Cancel')).toBeInTheDocument();
   });
@@ -50,14 +57,14 @@ describe('<CommentActions/>', () => {
     [{ editable: true, editDeadline: undefined }],
   ] as Partial<Props>[][])('should not render "Edit" when editing is not available', (override) => {
     Object.assign(props, override);
-    render(<CommentActions {...props} />);
+    drawActions(props);
     expect(screen.getByText('Hide user')).toBeInTheDocument();
   });
 
   it('should not render "Delete" for current user comments when editDeadline is undefined', () => {
     props.currentUser = true;
     props.editDeadline = undefined; // set editDeadline to undefined
-    render(<CommentActions {...props} />);
+    drawActions(props);
     expect(screen.queryByText('Delete')).not.toBeInTheDocument();
   });
 
@@ -66,7 +73,7 @@ describe('<CommentActions/>', () => {
       'should render "Delete" on all comments for admin',
       (override) => {
         Object.assign(props, override);
-        render(<CommentActions {...props} />);
+        drawActions(props);
         expect(screen.getByText('Delete')).toBeInTheDocument();
       }
     );
@@ -74,7 +81,7 @@ describe('<CommentActions/>', () => {
     it('calls `onToggleEditing` when edit button is pressed', () => {
       props.editable = true;
       props.editDeadline = Date.now() + 300 * 1000;
-      render(<CommentActions {...props} />);
+      drawActions(props);
       fireEvent(screen.getByText('Edit'), new MouseEvent('click', { bubbles: true }));
       expect(props.onToggleEditing).toHaveBeenCalledTimes(1);
     });

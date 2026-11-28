@@ -26,8 +26,6 @@
   },
   "packageManager": "pnpm@10.10.0",
   "dependencies": {
-    "@github/markdown-toolbar-element": "^2.2.3",
-    "@github/text-expander-element": "^2.9.4",
     "clsx": "^2.1.1",
     "preact": "10.29.8"
   },

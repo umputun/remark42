@@ -1,13 +1,25 @@
-import { h } from 'preact';
 import { act, fireEvent } from '@testing-library/preact';
 
 import * as api from 'common/api';
+import { createIntl } from 'common/intl';
+import en from 'locales/en.json';
 import { StaticStore } from 'common/static-store';
-import { render } from 'tests/utils';
+import { draw } from 'tests/plain';
 
-import { CommentVotes } from './comment-votes';
+import { mountVotes } from './votes.js';
 
-type Props = Parameters<typeof CommentVotes>[0];
+type Props = Parameters<typeof mountVotes>[1];
+
+function drawVotes(props: Props) {
+  return draw('span', (root) =>
+    mountVotes(root, props, {
+      intl: createIntl('en', en),
+      putVote: (id, vote) => api.putCommentVote({ id, vote }),
+      patch: () => {},
+      positiveScore: () => Boolean(StaticStore.config.positive_score),
+    })
+  );
+}
 
 const base: Props = { id: 'c1', vote: 0, votes: 3, controversy: undefined };
 
@@ -35,14 +47,14 @@ describe('the vote buttons draw the markup of the preact component they replace'
     ],
   ])('%s', (_, change, setup) => {
     setup?.();
-    expect(render(<CommentVotes {...base} {...change} />).container.innerHTML).toMatchSnapshot();
+    expect(drawVotes({ ...base, ...change }).container.innerHTML).toMatchSnapshot();
   });
 
   it('while a vote is in flight, and once it failed', async () => {
     let fail = (_: unknown) => {};
     jest.spyOn(api, 'putCommentVote').mockImplementation(() => new Promise((_, reject) => (fail = reject)));
     // from zero, so the pending score differs in sign from the one the colour follows
-    const { container } = render(<CommentVotes {...base} votes={0} />);
+    const { container } = drawVotes({ ...base, votes: 0 });
 
     fireEvent.click(container.querySelector('[title="Vote up"]')!);
     expect(container.innerHTML).toMatchSnapshot('in flight');
