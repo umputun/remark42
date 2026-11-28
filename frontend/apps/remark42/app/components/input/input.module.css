@@ -48,7 +48,7 @@
 
   &:focus {
     box-shadow:
-      0 0 0 1000px rgb(var(--white-color)) inset,
+      0 0 0 1000px rgb(var(--primary-background-color)) inset,
       0 0 0 2px rgb(var(--primary-color), 0.4);
   }
 
@@ -68,7 +68,8 @@
     }
 
     &::placeholder {
-      color: rgb(var(--primary-text-color), 0.2);
+      color: rgb(var(--primary-text-color), 0.6);
+      -webkit-text-fill-color: rgb(var(--primary-text-color), 0.6);
     }
   }
 

@@ -20,7 +20,7 @@
     position: absolute;
     inset-inline-start: 5px;
     top: 0;
-    border-inline-start: 1px dotted rgb(var(--line-color));
+    border-inline-start: 1px dotted rgb(var(--line-brighter-color));
     height: 100%;
   }
 

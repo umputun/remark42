@@ -21,7 +21,7 @@
 }
 
 .verificationIconInactive {
-  color: rgb(var(--deactivated-color));
+  color: rgb(var(--lighter-text-color));
   transition: opacity 0.15s;
 
   &:hover {
@@ -298,7 +298,7 @@
   }
 
   & .time {
-    color: rgb(var(--lighter-text-color));
+    color: rgb(var(--secondary-text-color));
 
     &:hover {
       color: rgb(var(--primary-text-color));

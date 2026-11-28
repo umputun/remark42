@@ -67,7 +67,7 @@
       background-color: rgb(var(--primary-background-color));
 
       &:nth-child(2n) {
-        background-color: rgb(var(--line-color));
+        background-color: rgb(var(--highlight-color));
       }
     }
   }
@@ -237,10 +237,16 @@
   --chroma-07: #a1e6fb;
 
   & blockquote {
-    border-inline-start-color: rgb(var(--line-color));
+    border-inline-start-color: rgb(var(--line-brighter-color));
   }
 
   & table {
+    /* white on the dark theme's teal would be 3.5:1, too little for text */
+    & th {
+      background-color: rgb(var(--highlight-color));
+      color: rgb(var(--primary-text-color));
+    }
+
     & th,
     & td {
       border: 1px solid rgb(var(--line-brighter-color));
