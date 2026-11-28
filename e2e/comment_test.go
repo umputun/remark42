@@ -728,3 +728,62 @@ func TestComment_ActionsDependOnWhoseCommentItIs(t *testing.T) {
 	waitHidden(t, actions(readerFrame, foreign).Locator(`button:has-text("Delete")`),
 		"the widget offered an ordinary reader the delete action on someone else's comment")
 }
+
+// TestComment_ReplyKeepsItsTextWhileTheCommentDrawsAgain opens a reply under someone else's comment,
+// types into it and votes on the comment, in every engine. The vote draws the comment again with
+// its new score, and the reply under it has to be the same field still, with the text and the
+// selection the reader left in it. A form made again on every draw would bring the draft back from
+// storage, so the text alone would not tell: the field carries a mark only the original has.
+//
+// Every engine has to reach the instance and sign in, so the thread is on the instance that takes
+// anonymous votes, over its loopback address: only Chromium resolves the instances' names
+func TestComment_ReplyKeepsItsTextWhileTheCommentDrawsAgain(t *testing.T) {
+	t.Parallel()
+
+	thread := threadURLOn(t, "http://"+parseServices(anonVoteURL)[0].loopback())
+	text := "redraw target " + runID
+	authorPage := newPage(t)
+	authorFrame := openURL(t, authorPage, thread)
+	signInAnon(t, authorPage, authorFrame, anonName("redrawauthor"))
+	postComment(t, authorFrame, text)
+
+	forEachEngine(t, func(t *testing.T, page playwright.Page) {
+		engine := page.Context().Browser().BrowserType().Name()
+		frame := openURL(t, page, thread)
+		signInAnon(t, page, frame, anonName("redrawvoter"+engine))
+		target := comment(frame, text)
+		waitVisible(t, target)
+
+		require.NoError(t, actions(frame, text).Locator(`button:has-text("Reply")`).Click())
+		field := replyForm(t, frame).Locator("textarea")
+		require.NoError(t, field.PressSequentially("half a reply"))
+		_, err := field.Evaluate(`el => { el.setSelectionRange(5, 7); el.e2eKept = true; }`, nil)
+		require.NoError(t, err)
+
+		before, err := score(frame, text).InnerText()
+		require.NoError(t, err)
+		require.NoError(t, target.Locator(`button[title="Vote up"]`).Click())
+		want, err := strconv.Atoi(strings.TrimSpace(before))
+		require.NoError(t, err)
+		waitText(t, score(frame, text), strconv.Itoa(want+1), "the vote did not count")
+		// the score shows at once, before the answer; the comment draws again with the vote the
+		// store keeps once the answer is in, which is the only state with Vote up disabled and
+		// Vote down enabled: both are disabled while the vote is in flight. The two are read in one
+		// call, so a change between two reads cannot pass for that state
+		eventually(t, waitTimeout, "the stored vote did not draw the comment again", func() bool {
+			drawn, evalErr := target.Evaluate(`el => {
+				const up = el.querySelector('button[title="Vote up"]');
+				const down = el.querySelector('button[title="Vote down"]');
+				return Boolean(up && down && up.disabled && !down.disabled);
+			}`, nil)
+			return evalErr == nil && drawn == true
+		})
+
+		kept, err := field.Evaluate(`el => el.e2eKept === true`, nil)
+		require.NoError(t, err)
+		assert.Equal(t, true, kept, "the reply field was made again when its comment drew")
+		got := readField(t, field)
+		assert.Equal(t, "half a reply", got.Value, "the reply lost its text")
+		assert.Equal(t, []int{5, 7}, []int{got.Start, got.End}, "the reply lost its selection")
+	})
+}

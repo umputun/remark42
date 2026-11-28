@@ -3,8 +3,10 @@
 package e2e
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"testing"
@@ -267,4 +269,67 @@ func submitEmail(t *testing.T, page playwright.Page, frame playwright.FrameLocat
 	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err, "the panel asked the server for nothing")
 	require.Equal(t, http.StatusOK, resp.Status(), "the server refused to send a verification")
+}
+
+// TestSubscribe_RSSPanelOffersTheFeedsAndClosesOnAClickOutside covers the RSS panel, which no other
+// case opens: the three feeds it links to, this page and the reader's own id in them, and a click
+// elsewhere in the widget closing it.
+func TestSubscribe_RSSPanelOffersTheFeedsAndClosesOnAClickOutside(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	frame := openThread(t, page)
+	signInDev(t, page, frame)
+
+	rss := frame.Locator(`[title="Subscribe by RSS"]`)
+	panel := frame.Locator(`[data-dropdown]:has([title="Subscribe by RSS"]) div[role="listbox"]`)
+	require.NoError(t, rss.Click())
+	waitVisible(t, panel)
+
+	links := panel.Locator("a")
+	hrefs, err := links.EvaluateAll(`(nodes) => nodes.map((a) => a.getAttribute('href'))`)
+	require.NoError(t, err)
+	got, ok := hrefs.([]any)
+	require.True(t, ok, "the panel's links came back as %T", hrefs)
+	require.Len(t, got, 3, "the RSS panel links to the page, the site and the replies")
+	// the feeds are the instance's own, which serves the widget's document
+	sameOrigin, err := links.EvaluateAll(
+		`(nodes) => nodes.every((a) => new URL(a.href).origin === a.ownerDocument.location.origin)`)
+	require.NoError(t, err)
+	assert.Equal(t, true, sameOrigin, "a feed links to a server other than the instance's own")
+	status, body := pageFetch(t, page, http.MethodGet, baseURL+"/api/v1/user?site=remark", nil)
+	require.Equal(t, http.StatusOK, status, "the signed-in reader could not be read: %s", body)
+	var reader struct {
+		ID string `json:"id"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(body), &reader))
+	require.NotEmpty(t, reader.ID)
+
+	// each link taken apart: its path is compared whole, and so is each parameter that picks the feed
+	feeds := make([]*url.URL, len(got))
+	for i, href := range got {
+		text, isText := href.(string)
+		require.True(t, isText, "link %d has no address", i)
+		feed, perr := url.Parse(text)
+		require.NoError(t, perr)
+		feeds[i] = feed
+	}
+	for i, want := range []struct {
+		path, key, value, what string
+	}{
+		{"/api/v1/rss/post", "url", threadURL(t), "the feed of this page"},
+		{"/api/v1/rss/site", "", "", "the feed of the whole site"},
+		{"/api/v1/rss/reply", "user", reader.ID, "the feed of the replies to the signed-in reader, by id"},
+	} {
+		assert.Equal(t, want.path, feeds[i].Path, want.what)
+		assert.Equal(t, "remark", feeds[i].Query().Get("site"), want.what)
+		if want.key != "" {
+			// the page address is the key the server finds the comments by, so it has to be the whole of it
+			assert.Equal(t, want.value, feeds[i].Query().Get(want.key), want.what)
+		}
+	}
+
+	// a click in the widget outside the panel, on the comment box
+	require.NoError(t, frame.Locator("textarea").First().Click())
+	waitHidden(t, panel, "a click outside left the RSS panel open")
 }

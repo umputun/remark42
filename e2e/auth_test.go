@@ -437,3 +437,60 @@ func TestAuth_SessionSurvivesATransientStatusFailure(t *testing.T) {
 	frame = reload(t, page)
 	assertSignedIn(t, page, frame)
 }
+
+// TestAuth_TokenStepGoesBackAndCloses covers the two ways out of the token step, which no other
+// case takes. Back returns to the email form with what the reader typed still in it, and the step
+// it leads to again starts with an empty token field; the cross closes the dropdown, and the next
+// opening offers the email form as the reader left it. Each Confirm mails one code
+func TestAuth_TokenStepGoesBackAndCloses(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	frame := openThread(t, page)
+
+	var mu sync.Mutex
+	mailed := 0
+	page.OnRequest(func(r playwright.Request) {
+		if strings.Contains(r.URL(), "/auth/email/login") && !strings.Contains(r.URL(), "token=") {
+			mu.Lock()
+			mailed++
+			mu.Unlock()
+		}
+	})
+	sent := func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		return mailed
+	}
+
+	address := fmt.Sprintf("token-steps-%s@example.com", runID)
+	requestSignInEmail(t, frame, "token-steps", address)
+	require.NoError(t, frame.Locator(".auth-token-textarea").Fill("not a token yet"))
+
+	require.NoError(t, frame.Locator(".auth-back-button").Click())
+	waitVisible(t, frame.Locator(".auth-input-email"))
+	waitHidden(t, frame.Locator(".auth-token-textarea"), "the token step is still shown after Back")
+	typed, err := frame.Locator(".auth-input-email").InputValue()
+	require.NoError(t, err)
+	assert.Equal(t, address, typed, "the address typed before the token step")
+	name, err := frame.Locator(".auth-input-username").InputValue()
+	require.NoError(t, err)
+	assert.Equal(t, "token-steps", name, "the name typed before the token step")
+
+	pauseForAuthLimit()
+	require.NoError(t, frame.Locator(".auth-submit").Click())
+	waitVisible(t, frame.Locator(".auth-token-textarea"))
+	token, err := frame.Locator(".auth-token-textarea").InputValue()
+	require.NoError(t, err)
+	assert.Empty(t, token, "the token step came back with the text of the last visit")
+
+	require.NoError(t, frame.Locator(".auth-close-button").Click())
+	waitHidden(t, frame.Locator(".auth-dropdown"), "the cross did not close the dropdown")
+	require.NoError(t, frame.Locator(".auth-button").Click())
+	waitVisible(t, frame.Locator(".auth-input-email"))
+	typed, err = frame.Locator(".auth-input-email").InputValue()
+	require.NoError(t, err)
+	assert.Equal(t, address, typed, "the address after closing and opening again")
+
+	assert.Equal(t, 2, sent(), "one code mailed for each Confirm")
+}
