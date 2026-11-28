@@ -1,27 +1,18 @@
-import { h, Component, createRef, Fragment } from 'preact';
-import clsx from 'clsx';
+import { h } from 'preact';
+import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 
 import type { IntlShape } from 'common/intl';
-import { FormattedMessage, defineMessages } from 'common/intl';
+import { useIntl } from 'common/intl';
 import type { User, Theme, Image } from 'common/types';
-import { StaticStore } from 'common/static-store';
-import * as settings from 'common/settings';
-import { errorMessages, extractErrorMessageFromResponse } from 'utils/errorUtils';
-import { isUserAnonymous } from 'utils/isUserAnonymous';
-import { sleep } from 'utils/sleep';
-import { replaceSelection } from 'utils/replaceSelection';
-import { Button } from 'components/button';
-import { TextareaAutosize } from 'components/textarea-autosize';
-import { Auth } from 'components/auth';
+import { useTheme } from 'hooks/useTheme';
+import { useSignInDeps } from 'components/auth/auth';
 
-import { SubscribeByEmail } from './__subscribe-by-email';
-import { SubscribeByTelegram } from './__subscribe-by-telegram';
-import { SubscribeByRSS } from './__subscribe-by-rss';
+import { useSubscribeByEmailArgs } from './__subscribe-by-email/comment-form__subscribe-by-email';
+import { useSubscribeByTelegramArgs } from './__subscribe-by-telegram/comment-form__subscribe-by-telegram';
+import { mountCommentForm } from './comment-form-element.js';
+import { loadEmoji } from './emoji-data';
 
-import { MarkdownToolbar } from './markdown-toolbar';
-import { TextExpander } from './text-expander';
-import { updatePersistedComments, getPersistedComment, removePersistedComment } from './comment-form.persist';
-import styles from './comment-form.module.css';
+export { messages } from './comment-form.messages';
 
 export type Props = {
   id: string;
@@ -46,553 +37,68 @@ export type Props = {
   intl: IntlShape;
 };
 
-export type State = {
-  preview: string | null;
-  isErrorShown: boolean;
-  /** error message, if contains newlines, it will be split to multiple errors */
-  errorMessage: string | null;
-  /** prevents error hiding on input event */
-  errorLock: boolean;
-  isDisabled: boolean;
-  /** main input value */
-  text: string;
-  /** override main button text */
-  buttonText: null | string;
-};
-
-const ImageMimeRegex = /image\//i;
-
-export class CommentForm extends Component<Props, State> {
-  /** reference to textarea element */
-  textareaRef = createRef<HTMLTextAreaElement>();
-  /** global counter for generating unique textarea IDs across all instances */
-  static textareaCounter = 0;
-  /** unique textarea ID for this instance */
-  readonly textareaId: string;
-
-  state = {
-    preview: null,
-    isErrorShown: false,
-    errorMessage: null,
-    errorLock: false,
-    isDisabled: false,
-    text: '',
-    buttonText: null,
-  };
-
-  constructor(props: Props) {
-    super(props);
-
-    const savedComment = getPersistedComment(props.id);
-    this.state.text = props.value ?? savedComment ?? '';
+/**
+ * Mounts the plain comment form into a div preact renders without props or children, so a
+ * re-render of the parent leaves the div's attributes and content to the plain component.
+ */
+export function CommentForm(props: Props) {
+  // each form's field has an id of its own, taken once, when the form appears
+  const [textareaId] = useState(() => {
     CommentForm.textareaCounter += 1;
-    this.textareaId = `textarea_${CommentForm.textareaCounter}`;
-  }
+    return `textarea_${CommentForm.textareaCounter}`;
+  });
+  const theme = useTheme();
+  const contextIntl = useIntl();
+  const signIn = useSignInDeps();
+  const email = useSubscribeByEmailArgs();
+  const telegram = useSubscribeByTelegramArgs();
+  const root = useRef<HTMLDivElement>(null);
+  const form = useRef<ReturnType<typeof mountCommentForm> | null>(null);
 
-  componentWillReceiveProps(nextProps: Props) {
-    if (nextProps.value !== this.props.value) {
-      this.setState({ text: nextProps.value || '' });
-    }
-    if (nextProps.user && !this.props.value) {
-      this.setState({
-        isErrorShown: false,
-        errorMessage: null,
-      });
-    }
-  }
-
-  shouldComponentUpdate(nextProps: Props, nextState: State) {
-    const userId = this.props.user !== null && this.props.user.id;
-    const nextUserId = nextProps.user !== null && nextProps.user.id;
-
-    return (
-      nextUserId !== userId ||
-      nextProps.mode !== this.props.mode ||
-      nextProps.theme !== this.props.theme ||
-      nextProps.value !== this.props.value ||
-      nextProps.errorMessage !== this.props.errorMessage ||
-      nextState !== this.state
-    );
-  }
-
-  onKeyDown = (e: KeyboardEvent) => {
-    // send on cmd+enter / ctrl+enter
-    if (e.keyCode === 13 && (e.metaKey || e.ctrlKey)) {
-      this.send(e);
-    }
+  const formProps: Parameters<typeof mountCommentForm>[1] = {
+    id: props.id,
+    textareaId,
+    user: props.user,
+    errorMessage: props.errorMessage,
+    value: props.value,
+    mix: props.mix,
+    mode: props.mode,
+    isReply: props.isReply,
+    theme: props.theme,
+    autofocus: props.autofocus,
+  };
+  const deps: Parameters<typeof mountCommentForm>[2] = {
+    intl: props.intl,
+    onSubmit: (text, pageTitle) => props.onSubmit(text, pageTitle),
+    getPreview: (text) => props.getPreview(text),
+    onCancel: props.onCancel && (() => props.onCancel?.()),
+    uploadImage: props.uploadImage && ((image) => props.uploadImage!(image)),
+    loadEmoji: () => loadEmoji(),
+    theme,
+    signIn,
+    rss: { props: { userId: props.user?.id ?? null, theme }, intl: contextIntl },
+    email,
+    telegram,
   };
 
-  onInput = (e: Event) => {
-    const { value } = e.target as HTMLInputElement;
-    const text = value.substring(0, StaticStore.config.max_comment_size);
+  useLayoutEffect(() => {
+    form.current = mountCommentForm(root.current!, formProps, deps);
+    return () => form.current?.destroy();
+    // mounted once; the props and deps of every later render reach it through update below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    updatePersistedComments(this.props.id, value);
-
-    if (this.state.errorLock) {
-      this.setState({
-        preview: null,
-        text,
-      });
-      return;
+  const mounted = useRef(false);
+  useLayoutEffect(() => {
+    // the first render is the mount above; each one after it is a render of the parent
+    if (mounted.current) {
+      form.current?.update(formProps, deps);
     }
+    mounted.current = true;
+  });
 
-    this.setState({
-      isErrorShown: false,
-      errorMessage: null,
-      preview: null,
-      text,
-    });
-  };
-
-  onPaste = async (e: ClipboardEvent) => {
-    if (!(e.clipboardData && e.clipboardData.files.length > 0)) {
-      return;
-    }
-    e.preventDefault();
-    const files = Array.from(e.clipboardData.files);
-    await this.uploadImages(files);
-  };
-
-  send = async (e: Event) => {
-    const { text } = this.state;
-
-    if (e) e.preventDefault();
-
-    if (!text || !text.trim()) return;
-    // the Send button is rendered for a signed-in reader only, while the keyboard shortcut works
-    // in a guest's form too. The widget can show a guest while the browser still holds a session,
-    // and the server would then accept the comment
-    if (!this.props.user) {
-      this.setState({ isErrorShown: true, errorMessage: this.props.intl.formatMessage(errorMessages[401]) });
-      return;
-    }
-    if (text === this.props.value) {
-      this.props.onCancel && this.props.onCancel();
-      this.setState({ preview: null, text: '' });
-    }
-
-    this.setState({ isDisabled: true, isErrorShown: false, text });
-    try {
-      await this.props.onSubmit(text, settings.pageTitle || window.remark_config?.host_page_title || '');
-    } catch (err) {
-      this.setState({
-        isDisabled: false,
-        isErrorShown: true,
-        errorMessage: extractErrorMessageFromResponse(err, this.props.intl),
-      });
-      return;
-    }
-
-    removePersistedComment(this.props.id);
-    this.setState({ isDisabled: false, preview: null, text: '' });
-  };
-
-  getPreview = () => {
-    const text = this.textareaRef.current?.value ?? this.state.text;
-
-    if (!text || !text.trim()) return;
-
-    this.setState({ isErrorShown: false, errorMessage: null, text });
-
-    this.props
-      .getPreview(text)
-      .then((preview) => this.setState({ preview }))
-      .catch((err) => {
-        this.setState({ isErrorShown: true, errorMessage: extractErrorMessageFromResponse(err, this.props.intl) });
-      });
-  };
-
-  /** appends error to input's error block */
-  appendError = (...errors: string[]) => {
-    if (!this.state.errorMessage) {
-      this.setState({
-        errorMessage: errors.join('\n'),
-        isErrorShown: true,
-      });
-      return;
-    }
-    this.setState({
-      errorMessage: `${this.state.errorMessage}\n${errors.join('\n')}`,
-      isErrorShown: true,
-    });
-  };
-
-  onDragOver = (e: DragEvent) => {
-    if (!this.props.user) e.preventDefault();
-    if (!this.props.uploadImage) return;
-    if (StaticStore.config.max_image_size === 0) return;
-    if (!this.textareaRef.current) return;
-    if (!e.dataTransfer) return;
-    const items = Array.from(e.dataTransfer.items);
-    if (Array.from(items).filter((i) => i.kind === 'file' && ImageMimeRegex.test(i.type)).length === 0) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-  };
-
-  onDrop = (e: DragEvent) => {
-    const isAnonymous = this.props.user && isUserAnonymous(this.props.user);
-    if (!this.props.user || isAnonymous) {
-      const message = isAnonymous ? messages.anonymousUploadingDisabled : messages.unauthorizedUploadingDisabled;
-      this.setState({
-        isErrorShown: true,
-        errorMessage: this.props.intl.formatMessage(message),
-      });
-      e.preventDefault();
-      return;
-    }
-    if (!this.props.uploadImage) return;
-    if (StaticStore.config.max_image_size === 0) return;
-    if (!e.dataTransfer) return;
-
-    const data = Array.from(e.dataTransfer.files).filter((f) => ImageMimeRegex.test(f.type));
-    if (data.length === 0) return;
-
-    e.preventDefault();
-
-    this.uploadImages(data);
-  };
-
-  /** returns selection range of a textarea */
-  getSelection(): [number, number] {
-    const textarea = this.textareaRef.current;
-
-    if (textarea) {
-      return [textarea.selectionStart, textarea.selectionEnd];
-    }
-
-    throw new Error('No textarea element reference exists');
-  }
-
-  /** sets selection range of a textarea */
-  setSelection(selection: [number, number]) {
-    const textarea = this.textareaRef.current;
-
-    if (textarea) {
-      textarea.selectionStart = selection[0];
-      textarea.selectionEnd = selection[1];
-      return;
-    }
-
-    throw new Error('No textarea element reference exists');
-  }
-
-  /** wrapper with error handling for props.uploadImage */
-  uploadImage = async (file: File): Promise<Image | Error> => {
-    const intl = this.props.intl;
-    return this.props.uploadImage!(file).catch((err) => {
-      return new Error(
-        intl.formatMessage(messages.uploadFileFail, {
-          fileName: file.name,
-          errorMessage: extractErrorMessageFromResponse(err, this.props.intl),
-        })
-      );
-    });
-  };
-
-  /** performs upload process */
-  uploadImages = async (files: File[]) => {
-    const intl = this.props.intl;
-    if (!this.props.uploadImage) return;
-    if (!this.textareaRef.current) return;
-
-    /** Human readable image size limit, i.e 5MB */
-    const maxImageSizeString = `${(StaticStore.config.max_image_size / 1024 / 1024).toFixed(2)}MB`;
-    /** upload delay to avoid server rate limiter */
-    const uploadDelay = 5000;
-
-    this.setState({
-      errorLock: true,
-      errorMessage: null,
-      isErrorShown: false,
-      isDisabled: true,
-      buttonText: intl.formatMessage(messages.uploading),
-    });
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const isFirst = i === 0;
-      const placeholderStart = this.state.text.length === 0 ? '' : '\n';
-
-      const uploadPlaceholder = `${placeholderStart}![${intl.formatMessage(messages.uploadingFile, {
-        fileName: file.name,
-      })}]()`;
-      const uploadPlaceholderLength = uploadPlaceholder.length;
-      const selection = this.getSelection();
-      /** saved selection in case of error */
-      const originalText = this.state.text;
-      const restoreSelection = async () => {
-        this.setState({
-          text: originalText,
-        });
-        /** sleeping awhile so textarea catch state change and its selection */
-        await sleep(100);
-        this.setSelection(selection);
-      };
-
-      if (file.size > StaticStore.config.max_image_size) {
-        this.appendError(
-          intl.formatMessage(messages.exceededSize, {
-            fileName: file.name,
-            maxImageSize: maxImageSizeString,
-          })
-        );
-        continue;
-      }
-
-      this.setState({ text: replaceSelection(this.state.text, selection, uploadPlaceholder) }, () => {
-        updatePersistedComments(this.props.id, this.state.text);
-      });
-
-      !isFirst && (await sleep(uploadDelay));
-
-      const result = await this.uploadImage(file);
-
-      if (result instanceof Error) {
-        this.appendError(result.message);
-        await restoreSelection();
-        continue;
-      }
-
-      const markdownString = `${placeholderStart}![${result.name}](${result.url})`;
-      this.setState(
-        {
-          text: replaceSelection(
-            this.state.text,
-            [selection[0], selection[0] + uploadPlaceholderLength],
-            markdownString
-          ),
-        },
-        () => {
-          updatePersistedComments(this.props.id, this.state.text);
-        }
-      );
-      /** sleeping awhile so textarea catch state change and its selection */
-      await sleep(100);
-      const selectionPointer = selection[0] + markdownString.length;
-      this.setSelection([selectionPointer, selectionPointer]);
-    }
-
-    this.setState({ errorLock: false, isDisabled: false, buttonText: null });
-  };
-
-  renderMarkdownTip = () => (
-    <div className={styles.markdown}>
-      <FormattedMessage
-        id="commentForm.notice-about-styling"
-        defaultMessage="<a>Markdown</a> can be used for formatting"
-        values={{
-          a: (title: string) => (
-            <a class={styles.markdownLink} target="_blank" href="markdown-help.html">
-              {title}
-            </a>
-          ),
-        }}
-      />
-    </div>
-  );
-
-  renderSubscribeButtons = () => {
-    const isEmailNotifications = StaticStore.config.email_notifications;
-    const isEmailSubscription = isEmailNotifications && settings.isEmailSubscription;
-    const isTelegramNotificationsEnabledOnBackend = StaticStore.config.telegram_notifications;
-    const isTelegramSubscription = isTelegramNotificationsEnabledOnBackend && settings.isTelegramSubscription;
-
-    const { isRssSubscription } = settings;
-    if (!isRssSubscription && !isEmailSubscription && !isTelegramSubscription) {
-      return null;
-    }
-
-    return (
-      <>
-        <FormattedMessage id="commentForm.subscribe-by" defaultMessage="Subscribe by" />{' '}
-        {isRssSubscription && <SubscribeByRSS userId={this.props.user?.id ?? null} />}
-        {isRssSubscription && isEmailSubscription && (
-          <>
-            {' '}
-            <FormattedMessage id="commentForm.subscribe-or" defaultMessage="or" />{' '}
-          </>
-        )}
-        {isEmailSubscription && <SubscribeByEmail />}
-        {(isRssSubscription && isTelegramSubscription) || (isEmailSubscription && isTelegramSubscription) ? (
-          <>
-            {' '}
-            <FormattedMessage id="commentForm.subscribe-or" defaultMessage="or" />{' '}
-          </>
-        ) : null}
-        {isTelegramSubscription && <SubscribeByTelegram />}
-      </>
-    );
-  };
-
-  render() {
-    const { theme, mode, mix, uploadImage, autofocus, user, intl, isReply } = this.props;
-    const { isDisabled, isErrorShown, preview, text, buttonText } = this.state;
-    const charactersLeft = StaticStore.config.max_comment_size - text.length;
-    const errorMessage = this.props.errorMessage || this.state.errorMessage;
-    const Labels = {
-      main: <FormattedMessage id="commentForm.send" defaultMessage="Send" />,
-      edit: <FormattedMessage id="commentForm.save" defaultMessage="Save" />,
-      reply: <FormattedMessage id="commentForm.reply" defaultMessage="Reply" />,
-    };
-    const label = buttonText || Labels[mode || 'main'];
-    // in edit mode there is no separate placeholder: the comment being edited is itself either a
-    // top-level comment or a reply, so its placeholder matches whichever one it already is
-    const isReplyPlaceholder = mode === 'reply' || (mode === 'edit' && isReply);
-    const placeholderMessage = isReplyPlaceholder
-      ? intl.formatMessage(messages.replyPlaceholder)
-      : intl.formatMessage(messages.placeholder);
-    const isSimpleView = StaticStore.config.simple_view;
-
-    return (
-      // the form's labels, buttons and hints are the widget's words, which Google is not to show in
-      // a snippet of the host page. It reads data-nosnippet on a div, span or section only
-      <div data-nosnippet>
-        <form
-          className={clsx(
-            styles.root,
-            theme === 'dark' ? styles.themeDark : styles.themeLight,
-            (!mode || mode === 'reply') && styles.typeReply,
-            isSimpleView && styles.simple,
-            mix
-          )}
-          onSubmit={this.send}
-          aria-label={intl.formatMessage(messages.newComment)}
-          onDragOver={this.onDragOver}
-          onDrop={this.onDrop}
-          data-testid={`commentform_${this.props.id}`}
-        >
-          {!isSimpleView && (
-            <div className={styles.controlPanel} data-testid="markdown-toolbar">
-              <MarkdownToolbar
-                intl={intl}
-                allowUpload={Boolean(uploadImage)}
-                uploadImages={this.uploadImages}
-                textareaId={this.textareaId}
-              />
-            </div>
-          )}
-          <div className={styles.fieldWrapper}>
-            <TextExpander>
-              <TextareaAutosize
-                id={this.textareaId}
-                textareaRef={this.textareaRef}
-                onPaste={this.onPaste}
-                className={styles.field}
-                placeholder={placeholderMessage}
-                value={text}
-                onInput={this.onInput}
-                onKeyDown={this.onKeyDown}
-                disabled={isDisabled}
-                autofocus={!!autofocus}
-                spellcheck={true}
-                dir="auto"
-              />
-            </TextExpander>
-            {charactersLeft < 100 && <span className={styles.counter}>{charactersLeft}</span>}
-          </div>
-
-          {(isErrorShown || !!errorMessage) &&
-            (errorMessage || intl.formatMessage(messages.unexpectedError)).split('\n').map((e) => (
-              <p className={styles.error} role="alert" key={e}>
-                {e}
-              </p>
-            ))}
-
-          <div className={styles.actions}>
-            {user ? (
-              <>
-                <div>
-                  {!isSimpleView && (
-                    <Button
-                      kind="secondary"
-                      theme={theme}
-                      size="large"
-                      className={styles.button}
-                      disabled={isDisabled}
-                      onClick={this.getPreview}
-                    >
-                      <FormattedMessage id="commentForm.preview" defaultMessage="Preview" />
-                    </Button>
-                  )}
-                  <Button kind="primary" size="large" className={styles.button} type="submit" disabled={isDisabled}>
-                    {label}
-                  </Button>
-                </div>
-
-                {mode === 'main' && (
-                  <div className={styles.rss}>
-                    {this.renderMarkdownTip()}
-                    {this.renderSubscribeButtons()}
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <Auth />
-                {this.renderMarkdownTip()}
-              </>
-            )}
-          </div>
-
-          {
-            // TODO: it can be more elegant;
-            // for example it can render full comment component here (or above textarea on mobile)
-            !!preview && (
-              <div className={styles.previewWrapper}>
-                <div
-                  className={clsx(styles.preview, 'raw-content')}
-                  // eslint-disable-next-line react/no-danger
-                  dangerouslySetInnerHTML={{ __html: preview }}
-                  dir="auto"
-                />
-              </div>
-            )
-          }
-        </form>
-      </div>
-    );
-  }
+  return <div ref={root} />;
 }
 
-export const messages = defineMessages({
-  placeholder: {
-    id: 'commentForm.input-placeholder',
-    defaultMessage: 'Your comment here',
-  },
-  replyPlaceholder: {
-    id: 'commentForm.input-placeholder-reply',
-    defaultMessage: 'Your reply here',
-  },
-  uploadFileFail: {
-    id: 'commentForm.upload-file-fail',
-    defaultMessage: '{fileName} upload failed with "{errorMessage}"',
-  },
-  uploading: {
-    id: 'commentForm.uploading',
-    defaultMessage: 'Uploading...',
-  },
-  uploadingFile: {
-    id: 'commentForm.uploading-file',
-    defaultMessage: 'Uploading {fileName}...',
-  },
-  exceededSize: {
-    id: 'commentForm.exceeded-size',
-    defaultMessage: '{fileName} exceeds size limit of {maxImageSize}',
-  },
-  newComment: {
-    id: 'commentForm.new-comment',
-    defaultMessage: 'New comment',
-  },
-  unexpectedError: {
-    id: 'commentForm.unexpected-error',
-    defaultMessage: 'Something went wrong. Please try again a bit later.',
-  },
-  unauthorizedUploadingDisabled: {
-    id: 'commentForm.unauthorized-uploading-disabled',
-    defaultMessage: 'Sign in to upload images.',
-  },
-  anonymousUploadingDisabled: {
-    id: 'commentForm.anonymous-uploading-disabled',
-    defaultMessage: 'Anonymous users cannot upload images. Sign in with an account to attach images.',
-  },
-});
+/** the last textarea id given out, counted across every form on the page */
+CommentForm.textareaCounter = 0;

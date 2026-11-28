@@ -18,7 +18,7 @@ const config = {
   transform: {
     '^.+\\.(t|j|mj)sx?$': ['babel-jest', { configFile: path.join(import.meta.dirname, '.babelrc.js') }],
   },
-  transformIgnorePatterns: ['node_modules/.pnpm/(?!(@testing-library|preact|@github))'],
+  transformIgnorePatterns: ['node_modules/.pnpm/(?!(@testing-library|preact))'],
   moduleDirectories: ['node_modules', 'app'],
   moduleNameMapper: {
     '\\.css': 'identity-obj-proxy',

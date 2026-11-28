@@ -45,12 +45,6 @@ importers:
 
   .:
     dependencies:
-      '@github/markdown-toolbar-element':
-        specifier: ^2.2.3
-        version: 2.2.3
-      '@github/text-expander-element':
-        specifier: ^2.9.4
-        version: 2.9.4
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -985,15 +979,6 @@ packages:
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@github/combobox-nav@2.3.1':
-    resolution: {integrity: sha512-gwxPzLw8XKecy1nP63i9lOBritS3bWmxl02UX6G0TwMQZbMem1BCS1tEZgYd3mkrkiDrUMWaX+DbFCuDFo3K+A==}
-
-  '@github/markdown-toolbar-element@2.2.3':
-    resolution: {integrity: sha512-AlquKGee+IWiAMYVB0xyHFZRMnu4n3X4HTvJHu79GiVJ1ojTukCWyxMlF5NMsecoLcBKsuBhx3QPv2vkE/zQ0A==}
-
-  '@github/text-expander-element@2.9.4':
-    resolution: {integrity: sha512-+zxSlek2r0NrbFmRfymVtYhES9YU033acc/mouXUkN2bs8DaYScPucvBhwg/5d0hsEb2rIykKnkA/2xxWSqCTw==}
-
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
     engines: {node: '>=18.18.0'}
@@ -1835,9 +1820,6 @@ packages:
 
   dom-accessibility-api@0.6.3:
     resolution: {integrity: sha512-7ZgogeTnjuHbo+ct10G9Ffp0mif17idi0IyWNVA/wcwcm7NPOD/WEHVP3n7n3MhXqxoIYm8d6MuZohYWIZ4T3w==}
-
-  dom-input-range@2.0.1:
-    resolution: {integrity: sha512-UMGnuQlEepIPCju5NrPe+8y52B+pRvSjIaSPW92KpukoDGSEVkI2iaCR4HxK7K6C7zmVsWE8PEjCYZaJMr3vpg==}
 
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
@@ -4636,15 +4618,6 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
-  '@github/combobox-nav@2.3.1': {}
-
-  '@github/markdown-toolbar-element@2.2.3': {}
-
-  '@github/text-expander-element@2.9.4':
-    dependencies:
-      '@github/combobox-nav': 2.3.1
-      dom-input-range: 2.0.1
-
   '@humanfs/core@0.19.2':
     dependencies:
       '@humanfs/types': 0.15.0
@@ -5623,8 +5596,6 @@ snapshots:
   dom-accessibility-api@0.5.16: {}
 
   dom-accessibility-api@0.6.3: {}
-
-  dom-input-range@2.0.1: {}
 
   dunder-proto@1.0.1:
     dependencies:

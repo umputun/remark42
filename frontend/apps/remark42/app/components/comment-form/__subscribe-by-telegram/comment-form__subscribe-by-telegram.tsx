@@ -11,16 +11,11 @@ import { isUserAnonymous } from 'utils/isUserAnonymous';
 
 import { mountSubscribeByTelegram } from './subscribe-by-telegram-element.js';
 
-/**
- * Mounts the plain Telegram subscription into a div preact renders without props or children, so a
- * re-render of the form leaves the div's attributes and content to the plain component.
- */
-export function SubscribeByTelegram() {
+/** The props and deps of the plain Telegram subscription, from the preact tree around it. */
+export function useSubscribeByTelegramArgs() {
   const theme = useTheme();
   const intl = useIntl();
   const user = useSelector<StoreState, User | null>(({ user }) => user);
-  const root = useRef<HTMLDivElement>(null);
-  const subscription = useRef<ReturnType<typeof mountSubscribeByTelegram> | null>(null);
   const props: Parameters<typeof mountSubscribeByTelegram>[1] = {
     userId: user?.id ?? '',
     anonymous: isUserAnonymous(user),
@@ -37,6 +32,18 @@ export function SubscribeByTelegram() {
       return sessionStorage;
     },
   };
+
+  return { props, deps };
+}
+
+/**
+ * Mounts the plain Telegram subscription into a div preact renders without props or children, so a
+ * re-render of the form leaves the div's attributes and content to the plain component.
+ */
+export function SubscribeByTelegram() {
+  const { props, deps } = useSubscribeByTelegramArgs();
+  const root = useRef<HTMLDivElement>(null);
+  const subscription = useRef<ReturnType<typeof mountSubscribeByTelegram> | null>(null);
 
   useLayoutEffect(() => {
     subscription.current = mountSubscribeByTelegram(root.current!, props, deps);

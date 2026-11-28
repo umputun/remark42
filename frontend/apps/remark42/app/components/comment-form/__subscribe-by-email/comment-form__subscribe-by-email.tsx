@@ -19,17 +19,12 @@ import { mountSubscribeByEmail } from './subscribe-by-email-element.js';
 
 export { CONFIRMATION_POLL_DURATION, CONFIRMATION_POLL_INTERVAL } from './subscribe-by-email-element.js';
 
-/**
- * Mounts the plain email subscription into a div preact renders without props or children, so a
- * re-render of the form leaves the div's attributes and content to the plain component.
- */
-export function SubscribeByEmail() {
+/** The props and deps of the plain email subscription, from the preact tree around it. */
+export function useSubscribeByEmailArgs() {
   const theme = useTheme();
   const intl = useIntl();
   const dispatch = useDispatch();
   const user = useSelector<StoreState, User | null>(({ user }) => user);
-  const root = useRef<HTMLDivElement>(null);
-  const subscription = useRef<ReturnType<typeof mountSubscribeByEmail> | null>(null);
   const props: Parameters<typeof mountSubscribeByEmail>[1] = {
     subscribed: Boolean(user?.email_subscription),
     userId: user?.id,
@@ -44,6 +39,18 @@ export function SubscribeByEmail() {
     subscription: () => getEmailSubscription(),
     setSubscribed: (on) => dispatch(setUserSubscribed(on)),
   };
+
+  return { props, deps };
+}
+
+/**
+ * Mounts the plain email subscription into a div preact renders without props or children, so a
+ * re-render of the form leaves the div's attributes and content to the plain component.
+ */
+export function SubscribeByEmail() {
+  const { props, deps } = useSubscribeByEmailArgs();
+  const root = useRef<HTMLDivElement>(null);
+  const subscription = useRef<ReturnType<typeof mountSubscribeByEmail> | null>(null);
 
   useLayoutEffect(() => {
     subscription.current = mountSubscribeByEmail(root.current!, props, deps);
