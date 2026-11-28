@@ -1,0 +1,5 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`the auth panel warns about storage as the preact component did when cookies are blocked on the page itself 1`] = `"<div class="root" data-nosnippet="true"><div class="column"></div><div class="column">Allow cookies to log in and comment</div><div class="column columnSeparated"></div></div>"`;
+
+exports[`the auth panel warns about storage as the preact component did when third-party cookies are blocked 1`] = `"<div class="root" data-nosnippet="true"><div class="column"></div><div class="column">Enable third-party cookies to log in, or open comments in <a class="textLink" href="http://localhost/web/comments.html" target="_blank" rel="noreferrer">a new page</a></div><div class="column columnSeparated"></div></div>"`;

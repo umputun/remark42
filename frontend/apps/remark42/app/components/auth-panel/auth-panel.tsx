@@ -1,24 +1,12 @@
-import { h, Component } from 'preact';
-import clsx from 'clsx';
+import { h } from 'preact';
+import { useLayoutEffect, useRef } from 'preact/hooks';
 
 import type { IntlShape } from 'common/intl';
-import { FormattedMessage, useIntl } from 'common/intl';
 import type { User, Theme, PostInfo } from 'common/types';
-import { IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from 'common/constants';
-import { postMessageToParent } from 'utils/post-message';
-import { issueReaderToken } from 'utils/reader';
-import { isUserAnonymous } from 'utils/isUserAnonymous';
-import { getHandleClickProps } from 'common/accessibility';
 import type { StoreState } from 'store';
-import { useTheme } from 'hooks/useTheme';
-import { Button } from 'components/button';
-import { Auth } from 'components/auth';
-import { Avatar } from 'components/avatar';
-import { SignOutIcon } from 'components/icons/signout';
-import { IconButton } from 'components/icon-button/icon-button';
-import { messages } from 'components/auth/auth.messages';
+import { useSignInDeps } from 'components/auth/auth';
 
-import styles from './auth-panel.module.css';
+import { mountAuthPanel } from './panel.js';
 
 interface OwnProps {
   user: User | null;
@@ -37,146 +25,26 @@ export interface Props extends OwnProps {
   theme: Theme;
 }
 
-interface State {
-  isBlockedVisible: boolean;
-  anonymousUsernameInputValue: string;
-}
-
-class AuthPanelComponent extends Component<Props, State> {
-  state = {
-    isBlockedVisible: false,
-    anonymousUsernameInputValue: 'anon',
-  };
-
-  toggleBlockedVisibility = () => {
-    if (!this.state.isBlockedVisible) {
-      if (this.props.onBlockedUsersShow) this.props.onBlockedUsersShow();
-    } else if (this.props.onBlockedUsersHide) this.props.onBlockedUsersHide();
-
-    this.setState({ isBlockedVisible: !this.state.isBlockedVisible });
-  };
-
-  toggleCommentsAvailability = () => {
-    this.props.onCommentsChangeReadOnlyMode(!this.props.isCommentsDisabled);
-  };
-
-  renderAuthorized = (user: User) => {
-    return (
-      <div className={styles.user}>
-        <button
-          className={styles.userButton}
-          // the page embedding the widget receives this message, so it names nobody: the profile
-          // frame asks this frame who the reader is
-          onClick={() => postMessageToParent({ profile: { token: issueReaderToken() } })}
-          title={this.props.intl.formatMessage(messages.openProfile)}
-        >
-          <div className={styles.userAvatar}>
-            <Avatar url={user.picture} size={20} identicon={isUserAnonymous(user)} />
-          </div>
-          {user.name}
-        </button>{' '}
-        <div className={styles.userLogoutButton}>
-          <IconButton title={this.props.intl.formatMessage(messages.signout)} onClick={this.props.signout}>
-            <SignOutIcon size="14" />
-          </IconButton>
-        </div>
-      </div>
-    );
-  };
-
-  renderThirdPartyWarning = () => {
-    if (IS_STORAGE_AVAILABLE || !IS_THIRD_PARTY) return null;
-    return (
-      <div className={styles.column}>
-        <FormattedMessage
-          id="authPanel.disabled-cookies"
-          defaultMessage="Enable third-party cookies to log in, or open comments in"
-        />{' '}
-        <a
-          className={styles.textLink}
-          href={`${window.location.origin}/web/comments.html${window.location.search}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <FormattedMessage id="authPanel.new-page" defaultMessage="a new page" />
-        </a>
-      </div>
-    );
-  };
-
-  renderCookiesWarning = () => {
-    if (IS_STORAGE_AVAILABLE || IS_THIRD_PARTY) {
-      return null;
-    }
-    return (
-      <div className={styles.column}>
-        <FormattedMessage id="authPanel.enable-cookies" defaultMessage="Allow cookies to log in and comment" />
-      </div>
-    );
-  };
-
-  renderSettingsLabel = () => {
-    return (
-      <Button
-        kind="link"
-        className={styles.adminAction}
-        {...getHandleClickProps(this.toggleBlockedVisibility)}
-        role="link"
-      >
-        {this.state.isBlockedVisible ? (
-          <FormattedMessage id="authPanel.hide-settings" defaultMessage="Hide settings" />
-        ) : (
-          <FormattedMessage id="authPanel.show-settings" defaultMessage="Show settings" />
-        )}
-      </Button>
-    );
-  };
-
-  renderReadOnlySwitch = () => {
-    const { isCommentsDisabled } = this.props;
-    return (
-      <Button
-        kind="link"
-        className={styles.adminAction}
-        {...getHandleClickProps(this.toggleCommentsAvailability)}
-        role="link"
-      >
-        {isCommentsDisabled ? (
-          <FormattedMessage id="authPanel.enable-comments" defaultMessage="Enable comments" />
-        ) : (
-          <FormattedMessage id="authPanel.disable-comments" defaultMessage="Disable comments" />
-        )}
-      </Button>
-    );
-  };
-
-  render({ user, postInfo }: Props, { isBlockedVisible }: State) {
-    const { read_only } = postInfo;
-    const isAdmin = user && user.admin;
-    const isSettingsLabelVisible = Object.keys(this.props.hiddenUsers).length > 0 || isAdmin || isBlockedVisible;
-
-    return (
-      <div className={styles.root} data-nosnippet>
-        <div className={styles.column}>{user ? this.renderAuthorized(user) : read_only && <Auth />}</div>
-        {this.renderThirdPartyWarning()}
-        {this.renderCookiesWarning()}
-        <div className={clsx(styles.column, styles.columnSeparated)}>
-          {isSettingsLabelVisible && <span>{this.renderSettingsLabel()}</span>}
-          {isAdmin && <span>{this.renderReadOnlySwitch()}</span>}
-          {!isAdmin && read_only && (
-            <span>
-              <FormattedMessage id="authPanel.read-only" defaultMessage="Comments disabled" />
-            </span>
-          )}
-        </div>
-      </div>
-    );
-  }
-}
-
+/**
+ * Mounts the plain auth panel into a div preact renders without props or children, so a
+ * re-render of the page leaves the div's attributes and content to the plain component.
+ */
 export function AuthPanel(props: OwnProps) {
-  const intl = useIntl();
-  const theme = useTheme();
+  const deps = useSignInDeps();
+  const root = useRef<HTMLDivElement>(null);
+  const panel = useRef<ReturnType<typeof mountAuthPanel> | null>(null);
 
-  return <AuthPanelComponent intl={intl} theme={theme} {...props} />;
+  useLayoutEffect(() => {
+    panel.current = mountAuthPanel(root.current!, props, deps);
+    return () => panel.current?.destroy();
+    // mounted once; the props and deps of every later render reach it through update below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // every render, so each button calls the handler passed last
+  useLayoutEffect(() => {
+    panel.current?.update(props, deps);
+  });
+
+  return <div ref={root} />;
 }

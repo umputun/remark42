@@ -319,3 +319,27 @@ func profileMessages(t *testing.T, page playwright.Page) []map[string]any {
 func profileSignout(page playwright.Page) playwright.Locator {
 	return page.FrameLocator(`iframe[src*="page=profile"]`).Locator(".profile-signout")
 }
+
+// TestProfile_SlidesInAndClosesOnEscape opens the reader's own profile, waits for the sidebar to
+// slide into the window, and closes the profile with Escape pressed inside it
+func TestProfile_SlidesInAndClosesOnEscape(t *testing.T) {
+	t.Parallel()
+
+	page, frame, _ := quietReader(t, threadURL(t), "profileescape")
+	profile := profileFrame(t, page, frame)
+	sidebar := profile.Locator(".profile-sidebar")
+	waitVisible(t, profileSignout(page))
+
+	eventually(t, waitTimeout, "the sidebar did not slide into the window", func() bool {
+		box, err := sidebar.BoundingBox()
+		if err != nil || box == nil {
+			return false
+		}
+		size := page.ViewportSize()
+		return box.X >= 0 && box.X+box.Width <= float64(size.Width)+0.5
+	})
+
+	require.NoError(t, profile.Locator(".profile-id").Click())
+	require.NoError(t, page.Keyboard().Press("Escape"))
+	waitHidden(t, page.Locator(`iframe[src*="page=profile"]`), "Escape did not close the profile")
+}
