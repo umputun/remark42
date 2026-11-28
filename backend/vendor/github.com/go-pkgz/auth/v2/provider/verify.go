@@ -25,7 +25,7 @@ import (
 // can be email, IM or anything else implementing Sender interface
 //
 // Identity caveat: the local user id returned to the application is derived
-// from the verified address (ProviderName + "_" + HashID(address)). The
+// from the verified address (ProviderName + "_" + hex sha1 of the address). The
 // confirmation round-trip proves current control of the address at login
 // time; it does not guarantee a stable+unique identity over time. The owner
 // of an address can change without the address changing — employer
@@ -303,7 +303,9 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	u := token.User{
 		Name: user,
-		ID:   e.ProviderName + "_" + token.HashID(sha1.New(), address),
+		// plain sha1, not token.HashID: HashID passes 40-hex input through, so an address spelling
+		// the hash of another address would take that user's id
+		ID: e.ProviderName + "_" + fmt.Sprintf("%x", sha1.Sum([]byte(address))),
 	}
 	// try to get gravatar for email
 	if e.UseGravatar && strings.Contains(address, "@") { // TODO: better email check to avoid silly hits to gravatar api

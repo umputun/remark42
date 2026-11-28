@@ -4,7 +4,7 @@ go 1.27
 
 require (
 	github.com/go-pkgz/jrpc v0.4.2
-	github.com/go-pkgz/lgr v0.13.0
+	github.com/go-pkgz/lgr v0.14.0
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/stretchr/testify v1.12.1
 	github.com/umputun/remark42/backend v1.1000.0
@@ -16,9 +16,9 @@ require (
 	github.com/alecthomas/chroma/v2 v2.27.0 // indirect
 	github.com/andybalholm/cascadia v1.3.5 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
-	github.com/dlclark/regexp2/v2 v2.13.1 // indirect
+	github.com/dlclark/regexp2/v2 v2.13.3 // indirect
 	github.com/go-pkgz/rest v1.24.0 // indirect
-	github.com/go-pkgz/routegroup v1.6.2 // indirect
+	github.com/go-pkgz/routegroup v1.6.3 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect

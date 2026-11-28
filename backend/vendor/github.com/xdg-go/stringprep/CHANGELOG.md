@@ -1,5 +1,22 @@
 # CHANGELOG
 
+<a name="v1.0.5"></a>
+## [v1.0.5] - 2026-11-18
+
+### Bug Fixes
+
+- Profiles that normalize, including SASLprep, now reject input whose
+  decomposition has more than 30 consecutive combining characters. With
+  SASLprep, such input produced output that changed when prepared again.
+  This rejects some strings that v1.0.4 accepted. ([#7])
+
+### Maintenance
+
+- Change minimum Go version to 1.18
+- Add a fuzz test for SASLprep idempotence
+
+[#7]: https://github.com/xdg-go/stringprep/issues/7
+
 <a name="v1.0.4"></a>
 ## [v1.0.4] - 2022-12-07
 

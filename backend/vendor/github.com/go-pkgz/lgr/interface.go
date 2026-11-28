@@ -1,6 +1,7 @@
 package lgr
 
 import (
+	"fmt"
 	stdlog "log"
 )
 
@@ -28,18 +29,30 @@ var Std = Func(func(format string, args ...interface{}) { stdlog.Printf(format, 
 
 // Printf simplifies replacement of std logger
 func Printf(format string, args ...interface{}) {
-	def.logf(format, args...)
+	def.logf(0, format, args...)
 }
 
 // Print simplifies replacement of std logger
 func Print(line string) {
-	def.logf(line) //nolint:govet
+	def.logf(0, line) //nolint:govet
 }
 
-// Fatalf simplifies replacement of std logger
+// Fatalf logs the message and exits with os.Exit(1). A message without a level prefix is logged at FATAL,
+// so lgr's own output also writes it to the err writer; a message with a prefix is logged at that level.
 func Fatalf(format string, args ...interface{}) {
-	def.logf(format, args...)
-	def.fatal()
+	l := def
+	text := format // formatted once, so arguments with side effects in String are read once
+	if len(args) > 0 {
+		text = fmt.Sprintf(format, args...)
+	}
+	lv, _, found := extractLevel(text)
+	if !found {
+		lv, text = "FATAL", "FATAL "+text
+	}
+	l.logf(0, "%s", text)
+	if lv != "FATAL" && lv != "PANIC" { // logf exits on these levels itself
+		l.fatal()
+	}
 }
 
 // Setup default logger with options

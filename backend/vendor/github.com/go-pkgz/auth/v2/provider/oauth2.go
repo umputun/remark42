@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/go-pkgz/rest"
 	"github.com/golang-jwt/jwt/v5"
@@ -238,7 +241,7 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	if oauthClaims.NoAva {
 		u.Picture = "" // reset picture on no avatar request
 	}
-	u, err = setAvatar(p.AvatarSaver, u, client)
+	u, err = setAvatar(p.AvatarSaver, u, p.avatarClient(client))
 	if err != nil {
 		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to save avatar to proxy")
 		return
@@ -287,6 +290,67 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rest.RenderJSON(w, &u)
+}
+
+// avatarClient returns the client the avatar saver fetches the user's picture with. It sends the access
+// token only with requests to the scheme, host and port of the user info URL, so a picture served by the
+// provider's own API, like the Microsoft Graph photo, still loads, while a picture on any other host,
+// including one reached by a redirect, is fetched without the token. Both kinds of request go through
+// the base transport of the oauth2 client and follow its redirect policy.
+func (p Oauth2Handler) avatarClient(authed *http.Client) *http.Client {
+	plain := http.DefaultTransport
+	if ot, ok := authed.Transport.(*oauth2.Transport); ok && ot.Base != nil {
+		plain = ot.Base
+	}
+	client := &http.Client{Timeout: 5 * time.Second, Transport: plain, CheckRedirect: authed.CheckRedirect}
+	info, err := url.Parse(p.infoURL)
+	if err != nil || authed.Transport == nil {
+		return client
+	}
+	if origin := urlOrigin(info); origin != "" {
+		client.Transport = &infoOriginTransport{origin: origin, authed: authed.Transport, plain: plain}
+	}
+	return client
+}
+
+// infoOriginTransport sends requests to origin with the authed transport and all others with the plain one
+type infoOriginTransport struct {
+	origin string
+	authed http.RoundTripper
+	plain  http.RoundTripper
+}
+
+// RoundTrip picks the transport per request, so every redirect hop is checked on its own
+func (t *infoOriginTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	if o := urlOrigin(r.URL); o != "" && o == t.origin {
+		return t.authed.RoundTrip(r)
+	}
+	return t.plain.RoundTrip(r)
+}
+
+// urlOrigin returns scheme://host:port in lower case, with the default port filled in. It returns an empty
+// string for a URL without a host and for a host with non-ASCII characters, which net/http converts to
+// punycode before dialing, so lowercasing them could make a different host look like the info host.
+func urlOrigin(u *url.URL) string {
+	host := u.Hostname()
+	if host == "" {
+		return ""
+	}
+	for i := 0; i < len(host); i++ {
+		if host[i] >= utf8.RuneSelf {
+			return ""
+		}
+	}
+	scheme, port := strings.ToLower(u.Scheme), u.Port()
+	if port == "" {
+		switch scheme {
+		case "https":
+			port = "443"
+		case "http":
+			port = "80"
+		}
+	}
+	return scheme + "://" + net.JoinHostPort(strings.ToLower(host), port)
 }
 
 // LogoutHandler - GET /logout

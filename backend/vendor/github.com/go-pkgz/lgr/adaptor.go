@@ -13,7 +13,7 @@ type Writer struct {
 
 // Write to lgr.L
 func (w *Writer) Write(p []byte) (n int, err error) {
-	w.Logf(w.level + string(p))
+	w.Logf("%s", w.level+string(p))
 	return len(p), nil
 }
 

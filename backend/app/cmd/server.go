@@ -1603,10 +1603,11 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			if claims.User.BoolAttr("blocked") {
 				return false
 			}
-			// the middleware refreshes an expired token after this check and serves the request on the
-			// refreshed claims without checking them, so an expired token is also judged here by the
-			// claims its refresh gives it. A cookie from before a block, sent again and again, would
-			// otherwise pass for good. The user is copied, the claims in hand stay as they came
+			// the middleware checks the claims it refreshes an expired token to, but a refresh it has
+			// cached carries the block state of the moment it was cached, so an expired token is also
+			// judged here by the claims a refresh gives it now. A cookie refreshed before a block, sent
+			// again and again, would otherwise pass while that refresh stays cached. The user is
+			// copied, the claims in hand stay as they came
 			if tokenExpired(claims) {
 				user := *claims.User
 				user.Attributes = maps.Clone(user.Attributes)
@@ -1804,7 +1805,9 @@ func (c *authRefreshCache) Get(key string) (token.Claims, bool) {
 	return c.Peek(key)
 }
 
-// Set implements cache setter with key converted to string
+// Set implements cache setter with key converted to string. It replaces an entry already there:
+// the middleware sets the claims of a new refresh when the cached ones have expired
 func (c *authRefreshCache) Set(key string, value token.Claims) {
+	c.Delete(key)
 	_, _ = c.LoadingCache.Get(key, func() (token.Claims, error) { return value, nil })
 }

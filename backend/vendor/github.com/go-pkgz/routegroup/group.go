@@ -259,14 +259,15 @@ func (b *Bundle) Route(configureFn func(*Bundle)) {
 
 // HandleRoot adds a handler for the group's root path without trailing slash.
 // This avoids the 301 redirect that would occur with a "/" pattern.
+// On a bundle without a base path it handles the exact root "/" only, not every path.
 // Method parameter can be empty to register for all HTTP methods.
 func (b *Bundle) HandleRoot(method string, handler http.Handler) {
 	b.lockRoot() // lock root on first route registration
 
-	// for empty base path, use "/" to match the root
+	// for empty base path, use "/{$}" to match the exact root without becoming a catch-all
 	pattern := b.basePath
 	if pattern == "" {
-		pattern = "/"
+		pattern = "/{$}"
 	}
 
 	// add method if specified
@@ -281,10 +282,10 @@ func (b *Bundle) HandleRoot(method string, handler http.Handler) {
 func (b *Bundle) HandleRootFunc(method string, handler http.HandlerFunc) {
 	b.lockRoot() // lock root on first route registration
 
-	// for empty base path, use "/" to match the root
+	// for empty base path, use "/{$}" to match the exact root without becoming a catch-all
 	pattern := b.basePath
 	if pattern == "" {
-		pattern = "/"
+		pattern = "/{$}"
 	}
 
 	// add method if specified

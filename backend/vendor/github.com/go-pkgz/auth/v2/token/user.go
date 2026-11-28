@@ -88,13 +88,24 @@ func (u *User) IsPaidSub() bool {
 	return u.BoolAttr(paidSubscriberAttr)
 }
 
-// SliceAttr gets slice attribute
+// SliceAttr gets slice attribute. A token read back holds the list as []any; it is returned only when
+// every element is a string, otherwise the result is empty.
 func (u *User) SliceAttr(key string) []string {
-	r, ok := u.Attributes[key].([]string)
-	if !ok {
-		return []string{}
+	switch v := u.Attributes[key].(type) {
+	case []string:
+		return v
+	case []any:
+		res := make([]string, 0, len(v))
+		for _, e := range v {
+			s, ok := e.(string)
+			if !ok {
+				return []string{}
+			}
+			res = append(res, s)
+		}
+		return res
 	}
-	return r
+	return []string{}
 }
 
 // SetSliceAttr sets slice attribute for given key
@@ -105,7 +116,10 @@ func (u *User) SetSliceAttr(key string, val []string) {
 	u.Attributes[key] = val
 }
 
-// HashID tries to hash val with hash.Hash and fallback to crc if needed
+// HashID tries to hash val with hash.Hash and fallback to crc if needed.
+// A val of exactly 40 hex characters is returned unchanged, as already hashed, so HashID suits values the
+// app or the provider assigns. A value the user chooses, such as a login name or an address, could spell
+// the hash of another user's value and get that user's id; hash it with plain sha1 instead.
 func HashID(h hash.Hash, val string) string {
 
 	if reValidSha.MatchString(val) {

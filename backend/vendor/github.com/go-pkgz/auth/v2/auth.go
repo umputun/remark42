@@ -77,6 +77,18 @@ type Opts struct {
 	URL       string          // root url for the rest service, i.e. http://blah.example.com, required
 	Validator token.Validator // validator allows to reject some valid tokens with user-defined logic
 
+	// AuthRoutePath is the path the handler from Handlers is mounted at, as the handler sees it, i.e.
+	// "/auth" or "/api/v1/auth". When set, the handler answers only <path>/list, <path>/logout, <path>/user,
+	// <path>/status and <path>/<provider>/<action>, so a middleware in front of it that goes by the path
+	// sees no made-up paths. Any other path gets 404, a route element with an escape in it included, and a
+	// provider name that is not registered 400. The path is compared as written, so keep its segments to ASCII
+	// letters, digits and "-._~": a segment with other characters can get 404, as clients escape them
+	// differently, and one that has to be escaped in a URL, such as "café", always does. A middleware in front
+	// that removes a prefix has to trim RawPath along with Path, as http.StripPrefix does; otherwise a request
+	// whose removed part carries a character such as "(" or "!" unescaped gets 404. Empty (the default) takes
+	// the route from the last two elements of any path.
+	AuthRoutePath string
+
 	// AllowedRedirectHosts lists hostnames accepted in the "from" query
 	// parameter of OAuth/verify login flows. Setting this field enables
 	// host validation: the host of URL is always implicit, and any other
@@ -227,14 +239,28 @@ func (s *Service) Handlers() (authHandler, avatarHandler http.Handler) {
 	})
 
 	ah := func(w http.ResponseWriter, r *http.Request) {
-		elems := strings.Split(r.URL.Path, "/")
-		if len(elems) < 2 {
-			w.WriteHeader(http.StatusBadRequest)
-			return
+		// with AuthRoutePath only the paths right under it answer, one path for each endpoint
+		strict := s.opts.AuthRoutePath != ""
+		var provName, action string
+		if strict {
+			var ok bool
+			if provName, action, ok = s.routeUnder(r); !ok {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+		} else {
+			elems := strings.Split(r.URL.Path, "/")
+			if len(elems) < 2 {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			provName, action = elems[len(elems)-2], elems[len(elems)-1]
 		}
+		// list, user and status have no provider element under AuthRoutePath
+		ownPath := !strict || provName == ""
 
 		// list all providers
-		if elems[len(elems)-1] == "list" {
+		if action == "list" && ownPath {
 			list := []string{}
 			for _, p := range s.providers {
 				list = append(list, p.Name())
@@ -244,7 +270,7 @@ func (s *Service) Handlers() (authHandler, avatarHandler http.Handler) {
 		}
 
 		// allow logout without specifying provider
-		if elems[len(elems)-1] == "logout" {
+		if action == "logout" && (ownPath || s.isRegistered(provName)) {
 			if len(s.providers) == 0 {
 				_ = rest.EncodeJSON(w, http.StatusBadRequest, rest.JSON{"error": "providers not defined"})
 				return
@@ -254,19 +280,23 @@ func (s *Service) Handlers() (authHandler, avatarHandler http.Handler) {
 		}
 
 		// show user info
-		if elems[len(elems)-1] == "user" {
+		if action == "user" && ownPath {
 			userHandler.ServeHTTP(w, r)
 			return
 		}
 
 		// status of logged-in user
-		if elems[len(elems)-1] == "status" {
+		if action == "status" && ownPath {
 			statusHandler.ServeHTTP(w, r)
 			return
 		}
 
+		if strict && provName == "" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
 		// regular auth handlers
-		provName := elems[len(elems)-2]
 		p, err := s.Provider(provName)
 		if err != nil {
 			_ = rest.EncodeJSON(w, http.StatusBadRequest, rest.JSON{"error": fmt.Sprintf("provider %s not supported", provName)})
@@ -280,6 +310,51 @@ func (s *Service) Handlers() (authHandler, avatarHandler http.Handler) {
 	}
 
 	return withSecurityHeaders(http.HandlerFunc(ah)), withSecurityHeaders(http.HandlerFunc(s.avatarProxy.Handler))
+}
+
+// routeUnder splits a request path under Opts.AuthRoutePath into the provider and the action:
+// "<path>/list" gives an empty provider, "<path>/github/login" gives github and login. The route elements
+// are read from the escaped path, as chi and http.ServeMux see them, and an element with any escape is
+// refused: provider names and actions never need one, and a router keeps "direct%2Flogin" in one element
+// and may not match "%64irect" with "direct". A RawPath that is not a valid escaping of Path is refused as
+// well: EscapedPath then rebuilds the path from the decoded Path, where "%6Cogin" reads as "login", while a
+// router matching on RawPath saw another path. ok is false for a path outside AuthRoutePath, with fewer or
+// more route elements, or with an empty or escaped one
+func (s *Service) routeUnder(r *http.Request) (provName, action string, ok bool) {
+	routePath := strings.TrimSuffix(s.opts.AuthRoutePath, "/")
+	if !strings.HasPrefix(routePath, "/") {
+		routePath = "/" + routePath
+	}
+	prefix := strings.Split(strings.TrimSuffix(routePath, "/"), "/")
+	escaped := r.URL.EscapedPath()
+	if r.URL.RawPath != "" && r.URL.RawPath != escaped {
+		return "", "", false
+	}
+	elems := strings.Split(escaped, "/")
+	if len(elems) <= len(prefix) || len(elems) > len(prefix)+2 {
+		return "", "", false
+	}
+	for i, want := range prefix { // as written, so "/%61uth" is not "/auth"
+		if elems[i] != want {
+			return "", "", false
+		}
+	}
+	route := elems[len(prefix):]
+	for _, elem := range route {
+		if elem == "" || strings.Contains(elem, "%") {
+			return "", "", false
+		}
+	}
+	if len(route) == 1 {
+		return "", route[0], true
+	}
+	return route[0], route[1], true
+}
+
+// isRegistered reports whether a provider of that name is registered
+func (s *Service) isRegistered(name string) bool {
+	_, err := s.Provider(name)
+	return err == nil
 }
 
 // withSecurityHeaders wraps a handler to set Content-Security-Policy

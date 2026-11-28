@@ -48,12 +48,21 @@ Add routes to your group, optionally with middleware:
 For routes under a specific path prefix `Mount` method can be used to create a nested group:
 
 ```go
-    apiGroup := routegroup.Mount(mux, "/api")
-    apiGroup.Use(loggingMiddleware, corsMiddleware)
+    apiGroup := group.Mount("/api")
+    apiGroup.Use(authMiddleware)
     apiGroup.Handle("/v1", apiV1Handler)
     apiGroup.Handle("/v2", apiV2Handler)
-
 ```
+
+**Serving the Routes**
+
+Pass the bundle, not the mux it was built on, to the server:
+
+```go
+    http.ListenAndServe(":8080", group)
+```
+
+Root bundle middlewares run inside the bundle's `ServeHTTP`, so serving the `mux` directly skips them without any error. The same applies to the bundle returned by the package-level `routegroup.Mount(mux, "/api")`: it is a separate root bundle, and its `Use` middlewares run only when that bundle, or one derived from it, is the handler being served.
 
 **Complete Example**
 
@@ -133,12 +142,12 @@ router.Group().Route(func(b *routegroup.Bundle) {
 
 **Setting optional `NotFoundHandler`**
 
-Set a custom `NotFoundHandler` for the group. It runs only when `http.ServeMux` would return 404:
+Set a custom `NotFoundHandler`. The router has one such handler, so a later call on any group replaces it. It runs only when `http.ServeMux` would return 404:
 
 ```go
 group.NotFoundHandler(func(w http.ResponseWriter, _ *http.Request) {
     http.Error(w, "404 page not found, something is wrong!", http.StatusNotFound)
-}
+})
 ```
 
 Without a custom `NotFoundHandler`, `routegroup` uses the standard library behavior.
@@ -151,6 +160,8 @@ Native mux responses: `routegroup` applies root-level middlewares to all request
 
 - Call `Use(...)` before registering routes on the same bundle. Calling `Use` after any handler has been registered on that bundle will panic with a descriptive error.
 - Root bundle middlewares (added via `router.Use(...)`) are applied globally to all requests at serve time.
+- Root bundle middlewares see the matched route pattern in `r.Pattern`, but they run before `http.ServeMux` fills in path values, so `r.PathValue(...)` is empty there until they call `next.ServeHTTP`. Group middlewares see both.
+- When `Route` is called on the root bundle, routes registered directly on the bundle passed to its function lock the root bundle, so a later `router.Use(...)` panics. Routes registered on a bundle from `router.Group()` or `router.Mount(...)`, or on one derived inside the function with `With`, `Group` or `Mount`, do not lock it.
 - Group/bundle middlewares (added via `group.Use(...)`) apply to the routes registered on that bundle and its descendants, provided they are added before those routes.
 - `With(...)` returns a new bundle; you can add middlewares there first, then register routes. This is the preferred way to add scoped middlewares without affecting previously defined routes.
 
@@ -243,7 +254,15 @@ usersGroup.HandleRoot("POST", http.HandlerFunc(func(w http.ResponseWriter, r *ht
 }))
 ```
 
+An empty method, as in `HandleRoot("", handler)`, registers the handler for every HTTP method.
+
+On a bundle without a base path, such as the one returned by `routegroup.New`, `HandleRoot` and `HandleRootFunc` handle the exact root `/` only, so requests to unknown paths still get a 404 response or the custom `NotFoundHandler`.
+
+Because that pattern overlaps a catch-all for the same method, `HandleRoot("", landing)` together with `Handle("GET /", spa)` on the same bundle panics at registration. To keep the routing of earlier versions, where `HandleRoot` on such a bundle was a catch-all, replace `HandleRoot("", landing)` with `Handle("/", landing)` on the same bundle.
+
 While it's also possible to handle such paths using a trailing slash pattern (`"/"`) with the regular `Handle` or `HandleFunc` methods, that approach results in a redirect from non-trailing slash URLs (e.g., `/api`) to the trailing slash version (e.g., `/api/`). The `HandleRoot` method avoids this redirect, providing a more direct response and avoiding an extra round-trip, which is especially important for non-GET requests or when clients don't automatically follow redirects.
+
+`Handle` and `HandleFunc` treat the `"/"` pattern differently. `HandleFunc("/", h)` and `HandleFunc("GET /", h)` match the group's root only (`/`, or `/api/` on a group mounted at `/api`), and other paths still get a 404 response. `Handle("/", h)` and `Handle("GET /", h)` keep the `http.ServeMux` meaning of a trailing slash and match every path under the group that no other route matches, which makes them a catch-all.
 
 ### Using derived groups
 
@@ -279,7 +298,7 @@ Sometimes route's group is not necessary, and all you need is to apply middlewar
 
 ```go
 mux := http.NewServeMux()
-mux.HandleFunc("/hello", routegroup.Wrap(helloHandler, loggingMiddleware, corsMiddleware))
+mux.Handle("/hello", routegroup.Wrap(helloHandler, loggingMiddleware, corsMiddleware))
 http.ListenAndServe(":8080", mux)
 ```
 
@@ -299,6 +318,8 @@ You can optionally configure a custom 404 handler with `NotFoundHandler(fn)`. It
 // serve static files from the "assets/static" directory
 router.HandleFiles("/static/", http.Dir("assets/static"))
 ```
+
+The pattern may carry a method, as in `HandleFiles("GET /static/", ...)`, and a missing trailing slash is added, so `"/static"` registers `"/static/"`.
 
 ## Real-world example
 
@@ -343,7 +364,7 @@ func (s *Service) Routes() http.Handler {
 		})
 	})
 
-	router.HandleFunc("GET /static/*", s.fileServerHandlerFunc()) // serve static files
+	router.HandleFunc("GET /static/", s.fileServerHandlerFunc()) // serve static files
 	return router
 }
 

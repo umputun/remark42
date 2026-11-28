@@ -4,11 +4,11 @@ package lgr
 // Only some mapFunc can be defined, by default does nothing. Can be used to alter the output, for example making some
 // part of the output colorful.
 type Mapper struct {
-	MessageFunc mapFunc // message mapper on all levels
-	ErrorFunc   mapFunc // message mapper on ERROR level
-	WarnFunc    mapFunc // message mapper on WARN level
-	InfoFunc    mapFunc // message mapper on INFO level
-	DebugFunc   mapFunc // message mapper on DEBUG level
+	MessageFunc mapFunc // message mapper on all levels, runs before the level's function
+	ErrorFunc   mapFunc // level and message mapper on ERROR, PANIC and FATAL levels
+	WarnFunc    mapFunc // level and message mapper on WARN level
+	InfoFunc    mapFunc // level and message mapper on INFO level
+	DebugFunc   mapFunc // level and message mapper on DEBUG and TRACE levels
 
 	CallerFunc mapFunc // caller mapper, all levels
 	TimeFunc   mapFunc // time mapper, all levels
