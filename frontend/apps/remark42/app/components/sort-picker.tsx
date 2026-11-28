@@ -1,93 +1,35 @@
 import { h } from 'preact';
-import { useMemo } from 'preact/hooks';
+import { useLayoutEffect, useRef } from 'preact/hooks';
 
-import { defineMessages, useIntl } from 'common/intl';
+import { useIntl } from 'common/intl';
 import type { StoreState } from 'store';
 import { useAppDispatch, useAppSelector } from 'store';
-import { Select } from 'components/select';
 import { updateSorting } from 'store/comments/actions';
-import type { Sorting } from 'common/types';
 
+import { mountSortPicker } from './sort-picker-element.js';
+
+/**
+ * Mounts the plain sort picker into a span preact renders without props or children, so a
+ * re-render of the page leaves the span's class and content to the plain component.
+ */
 export function SortPicker() {
-  const dispatch = useAppDispatch();
   const intl = useIntl();
-  const [items, itemsById] = useMemo(() => {
-    const sortOptions = {
-      '-score': intl.formatMessage(messages.best),
-      '+score': intl.formatMessage(messages.worst),
-      '-time': intl.formatMessage(messages.newest),
-      '+time': intl.formatMessage(messages.oldest),
-      '-active': intl.formatMessage(messages.recentlyUpdated),
-      '+active': intl.formatMessage(messages.leastRecentlyUpdated),
-      '-controversy': intl.formatMessage(messages.mostControversial),
-      '+controversy': intl.formatMessage(messages.leastControversial),
-    };
-    type SortItem = { value: string; label: string };
-    const sortItems: SortItem[] = Object.entries(sortOptions).map(([k, v]) => ({ value: k, label: v }));
-    const sortById = sortItems.reduce(
-      (accum, s) => ({ ...accum, [s.value]: s }),
-      {} as Record<keyof typeof sortOptions, SortItem>
-    );
+  const dispatch = useAppDispatch();
+  const sort = useAppSelector((s: StoreState) => s.comments.sort);
+  const root = useRef<HTMLSpanElement>(null);
+  const picker = useRef<ReturnType<typeof mountSortPicker> | null>(null);
+  const props: Parameters<typeof mountSortPicker>[1] = { sort, onChange: (next) => dispatch(updateSorting(next)) };
 
-    return [sortItems, sortById];
-  }, [intl]);
-  const sort = useAppSelector((s: StoreState) => s.comments.sort) || items[0].value;
-  const selected = itemsById[sort];
+  useLayoutEffect(() => {
+    picker.current = mountSortPicker(root.current!, props, intl);
+    // mounted once; the props and intl of every later render reach it through update below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  function handleSortChange(evt: Event) {
-    const { value } = evt.target as HTMLOptionElement;
+  // every render, so a change of order in the store moves the selection
+  useLayoutEffect(() => {
+    picker.current?.update(props, intl);
+  });
 
-    if (!(value in itemsById)) {
-      return;
-    }
-
-    dispatch(updateSorting(value as Sorting));
-  }
-
-  const sortBy = intl.formatMessage(messages.sortBy);
-
-  return (
-    <span className="sort-picker">
-      {sortBy} <Select items={items} selected={selected} onChange={handleSortChange} aria-label={sortBy} />
-    </span>
-  );
+  return <span ref={root} />;
 }
-
-const messages = defineMessages({
-  sortBy: {
-    id: 'sort-by',
-    defaultMessage: 'Sort by',
-  },
-  best: {
-    id: 'commentsSort.best',
-    defaultMessage: 'Best',
-  },
-  worst: {
-    id: 'commentsSort.worst',
-    defaultMessage: 'Worst',
-  },
-  newest: {
-    id: 'commentsSort.newest',
-    defaultMessage: 'Newest',
-  },
-  oldest: {
-    id: 'commentsSort.oldest',
-    defaultMessage: 'Oldest',
-  },
-  recentlyUpdated: {
-    id: 'commentsSort.recently-updated',
-    defaultMessage: 'Recently updated',
-  },
-  leastRecentlyUpdated: {
-    id: 'commentsSort.least-recently-updated',
-    defaultMessage: 'Least recently updated',
-  },
-  mostControversial: {
-    id: 'commentsSort.most-controversial',
-    defaultMessage: 'Most controversial',
-  },
-  leastControversial: {
-    id: 'commentsSort.least-controversial',
-    defaultMessage: 'Least controversial',
-  },
-});
