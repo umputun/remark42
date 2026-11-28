@@ -14,13 +14,16 @@ import { NODE_ID, THEMES } from 'common/constants';
 import type { Theme } from 'common/types';
 import { StaticStore } from 'common/static-store';
 import { getConfig } from 'common/api';
-import { fetchHiddenUsers } from 'store/user/actions';
+import { fetchHiddenUsers, followReaderAcrossFrames } from 'store/user/actions';
 import { restoreCollapsedThreads } from 'store/thread/actions';
 import { setTheme } from 'store/theme/actions';
 import { locale, theme, rawParams } from 'common/settings';
 
 // above the call below: init can run right away, and a const declared after it is not yet initialized
-const boundActions = bindActionCreators({ fetchHiddenUsers, restoreCollapsedThreads, setTheme }, store.dispatch);
+const boundActions = bindActionCreators(
+  { fetchHiddenUsers, followReaderAcrossFrames, restoreCollapsedThreads, setTheme },
+  store.dispatch
+);
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -80,6 +83,9 @@ async function init(): Promise<void> {
 
   boundActions.fetchHiddenUsers();
   boundActions.restoreCollapsedThreads();
+  if (rawParams.page !== 'profile') {
+    boundActions.followReaderAcrossFrames();
+  }
 
   const config = await getConfig();
   StaticStore.config = {

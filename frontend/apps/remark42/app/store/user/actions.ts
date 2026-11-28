@@ -1,4 +1,5 @@
 import * as api from 'common/api';
+import { dropSession } from 'common/fetcher';
 import { logout } from 'components/auth/auth.api';
 import type { User, BlockedUser, BlockTTL } from 'common/types';
 import { ttlToTime } from 'utils/ttl-to-time';
@@ -40,6 +41,48 @@ const reloadCommentsForReader = (): StoreAction => (dispatch) => {
   });
 };
 
+// tells the other widget frames of this site, on this page or in another tab, that the reader
+// signed in ('signin') or out ('signout') here. They share the session but show the reader they
+// loaded with
+let readerChannel: BroadcastChannel | null = null;
+// counts the notices, so only the answer to the newest one is shown
+let readerProbe = 0;
+
+/** Makes this frame show the reader that signed in or out in another one, and tell the others */
+export const followReaderAcrossFrames = (): StoreAction => (dispatch, getState) => {
+  if (typeof BroadcastChannel !== 'function') {
+    return;
+  }
+  try {
+    readerChannel = new BroadcastChannel('remark42-reader');
+  } catch {
+    // Firefox refuses it to a frame it denies storage, and the widget works on without it
+    return;
+  }
+  readerChannel.onmessage = (event: MessageEvent) => {
+    // a sign-out elsewhere ends the session here too, the copy of the token this frame holds included
+    if (event.data === 'signout') {
+      dropSession();
+    }
+    const probe = ++readerProbe;
+    api.getUser().then(
+      (user) => {
+        // an earlier notice's answer can come back after a later one's
+        if (probe !== readerProbe) {
+          return;
+        }
+        const before = getState().user?.id;
+        dispatch(setUser(user));
+        if (user?.id !== before) {
+          dispatch(unsetCommentMode());
+          dispatch(reloadCommentsForReader());
+        }
+      },
+      () => undefined
+    );
+  };
+};
+
 /**
  * Ends the session and then shows the reader as signed out. The same for the button above the
  * comments and for a sign-out asked for in the profile: the profile is a document of its own, which
@@ -52,6 +95,7 @@ export function signout(): StoreAction<Promise<void>> {
     dispatch(setUser());
     dispatch(unsetCommentMode());
     dispatch(reloadCommentsForReader());
+    readerChannel?.postMessage('signout');
   };
 }
 
@@ -66,6 +110,7 @@ export const signin =
   async (dispatch) => {
     dispatch(setUser(user));
     dispatch(reloadCommentsForReader());
+    readerChannel?.postMessage('signin');
   };
 
 export const fetchBlockedUsers = (): StoreAction<Promise<BlockedUser[]>> => async (dispatch) => {

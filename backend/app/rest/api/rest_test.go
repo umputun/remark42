@@ -414,6 +414,47 @@ func TestRest_AuthEndpointsHaveOnePath(t *testing.T) {
 	}
 }
 
+// TestRest_AuthStatusTakesAWidgetPerRequest checks the limits of the auth routes from one reader:
+// the session probe, which every comment widget on a page makes as it loads, takes 20 requests at
+// once, while a sign-in is still refused past its 2. The probes come first and the sign-ins after,
+// so the probes must not use up what the sign-ins are allowed either
+func TestRest_AuthStatusTakesAWidgetPerRequest(t *testing.T) {
+	ts, _ := startupT(t)
+
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+	// the limiter announces its rate on every answer it lets through
+	limits := map[string]string{}
+	get := func(path string) int {
+		t.Helper()
+		resp, err := client.Get(ts.URL + path)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		limits[strings.SplitN(path, "?", 2)[0]] = resp.Header.Get("X-Rate-Limit-Limit")
+		return resp.StatusCode
+	}
+
+	// a full bucket takes its whole burst at once, however long the requests take
+	for i := range 20 {
+		require.Equal(t, http.StatusOK, get("/auth/status"), "status request %d of 20", i+1)
+	}
+	assert.Equal(t, "20.00", limits["/auth/status"], "the status probe is not limited to 20 a second")
+
+	// the sign-in bucket refills twice a second, so the first two pass and one of the next five
+	// is refused unless the five take two and a half seconds or more
+	const login = "/auth/email/login?user=someone&passwd=password&aud=remark42"
+	assert.Equal(t, http.StatusOK, get(login), "the first sign-in, after the status requests")
+	assert.Equal(t, http.StatusOK, get(login), "the second sign-in")
+	refused := 0
+	for range 5 {
+		if get(login) == http.StatusTooManyRequests {
+			refused++
+		}
+	}
+	assert.Positive(t, refused, "sign-in past its allowance of 2 a second was not refused")
+	assert.Equal(t, "2.00", limits["/auth/email/login"], "sign-in is not limited to 2 a second")
+}
+
 // regression: a browser holding cached admin basic credentials replayed them for a cross-site page
 func TestRest_CrossSiteBasicAuthRejected(t *testing.T) {
 	ts, _ := startupT(t)

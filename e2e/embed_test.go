@@ -236,3 +236,63 @@ func widgetColorScheme(t *testing.T, page playwright.Page) string {
 	scheme, _ := v.(string)
 	return scheme
 }
+
+// TestEmbed_ThreeWidgetsKeepTheirOwnThreads covers several widgets on one page, each mounted with
+// createInstance into an element of its own for a thread of its own. Every widget asks for the
+// session as it loads and again when the reader signs in through another, and at the sign-in
+// routes' limit of two a second some of those requests were refused, which showed the reader as
+// signed out. Signing in through one shows the reader in the others without a reload, and a
+// comment posted in each lands in its own thread, which the page shows again after a reload
+func TestEmbed_ThreeWidgetsKeepTheirOwnThreads(t *testing.T) {
+	t.Parallel()
+
+	ids := []string{"remark42", "second", "third"}
+	urls := make([]string, len(ids))
+	for i, id := range ids {
+		urls[i] = threadURL(t) + "-" + id
+	}
+	page := newPage(t)
+	open := func() []playwright.FrameLocator {
+		embedConfig(t, page, map[string]any{"url": urls[0]})
+		widget(t, page)
+		_, err := page.Evaluate(`([ids, urls]) => ids.forEach((id, i) => {
+			let node = document.getElementById(id);
+			if (!node) {
+				node = document.createElement('div');
+				node.id = id;
+				document.body.appendChild(node);
+			}
+			window.REMARK42.createInstance({ ...window.remark_config, node, url: urls[i] });
+		})`, []any{ids, urls})
+		require.NoError(t, err)
+		frames := make([]playwright.FrameLocator, len(ids))
+		for i, id := range ids {
+			frames[i] = page.FrameLocator("#" + id + " iframe")
+			waitVisible(t, frames[i].Locator(commentFormSel).First())
+		}
+		return frames
+	}
+
+	frames := open()
+	signInAnon(t, page, frames[0], anonName("threewidgets"))
+	for _, frame := range frames[1:] {
+		waitVisible(t, frame.Locator(`[title="Sign out"]`))
+	}
+
+	texts := make([]string, len(ids))
+	for i, frame := range frames {
+		texts[i] = ids[i] + " thread " + runID
+		postComment(t, frame, texts[i])
+	}
+
+	// all three ask for the session again as the page loads, and each has to show the reader
+	frames = open()
+	for i, frame := range frames {
+		waitVisible(t, frame.Locator(`[title="Sign out"]`))
+		// the widgets sit below the fold of the host page, and a comment out of view is an empty
+		// placeholder until the reader scrolls to it
+		require.NoError(t, page.Locator("#"+ids[i]+" iframe").ScrollIntoViewIfNeeded())
+		waitVisible(t, comment(frame, texts[i]))
+		assert.Equal(t, 1, articleCount(t, frame), "the %s thread holds a comment posted in another widget", ids[i])
+	}
+}

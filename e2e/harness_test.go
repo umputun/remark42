@@ -63,7 +63,7 @@ func TestHarness_ForwardedIPSeparatesAuthLimiter(t *testing.T) {
 		err    error
 	}
 	status := func(ip string) result {
-		req, err := http.NewRequest(http.MethodGet, probeURL+"/auth/status?site=remark", http.NoBody)
+		req, err := http.NewRequest(http.MethodGet, probeURL+"/auth/list?site=remark", http.NoBody)
 		if err != nil {
 			return result{err: err}
 		}
@@ -126,7 +126,7 @@ func TestHarness_BrowserContextsHaveIndependentAuthLimiters(t *testing.T) {
 	}
 	burst := func(page playwright.Page) burstResult {
 		value, err := page.Evaluate(`url => Promise.all([fetch(url), fetch(url)]).then(rs => rs.map(r => r.status))`,
-			probeURL+"/auth/status?site=remark")
+			probeURL+"/auth/list?site=remark")
 		if err != nil {
 			return burstResult{err: err}
 		}

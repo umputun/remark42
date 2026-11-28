@@ -413,6 +413,7 @@ describe('<ConnectedRoot />', () => {
 
     it('loads the rest of the thread when the linked comment is on a page not loaded yet', async () => {
       jest.spyOn(api, 'getUser').mockResolvedValue(null);
+      const getComment = jest.spyOn(api, 'getComment').mockResolvedValue({ id: 'fourth' } as Comment);
       const getPostComments = jest.spyOn(api, 'getPostComments').mockResolvedValue({ comments: [], info: state.info! });
       window.history.replaceState(null, '', '#remark42__comment-fourth');
 
@@ -422,6 +423,24 @@ describe('<ConnectedRoot />', () => {
       });
 
       await waitFor(() => expect(getPostComments).toHaveBeenCalledWith('-active', { limit: 0, offsetId: 'third' }));
+      expect(getComment).toHaveBeenCalledWith('fourth');
+    });
+
+    // with several widgets on one page, every one of them gets the link to a comment only one holds
+    it('loads nothing more for a linked comment of another thread', async () => {
+      jest.spyOn(api, 'getUser').mockResolvedValue(null);
+      const getComment = jest.spyOn(api, 'getComment').mockRejectedValue(new Error("can't get comment by id"));
+      const getPostComments = jest.spyOn(api, 'getPostComments').mockResolvedValue({ comments: [], info: state.info! });
+      window.history.replaceState(null, '', '#remark42__comment-elsewhere');
+
+      render(<ConnectedRoot />, {
+        ...state,
+        comments: { ...state.comments!, page: { countLeft: 2, lastComment: 'third', loaded: 3, undeleted: 3 } },
+      });
+
+      await waitFor(() => expect(getComment).toHaveBeenCalledWith('elsewhere'));
+      await Promise.resolve();
+      expect(getPostComments).not.toHaveBeenCalledWith('-active', { limit: 0, offsetId: 'third' });
     });
 
     it('renders the linked comment and reports the height before asking the page to scroll to it', async () => {

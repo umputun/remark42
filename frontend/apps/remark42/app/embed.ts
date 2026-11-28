@@ -13,13 +13,17 @@ const IFRAME_MARKER = 'data-remark42-iframe';
 // preference
 const DARK_SCHEME_QUERY = '(prefers-color-scheme: dark)';
 
-// detaches the listeners of whichever instance is current. every createInstance installs four of
-// them plus a title observer, all closing over that call's iframe, while the call reuses an
-// existing iframe rather than building one. Without this a second call leaves the first set
-// attached for good, since destroy() can only reach the newest closure. Given the iframe the new
-// instance uses, it also removes its own when that is another one, as when `node` names an element
-// other than the one the widget was in: nothing would update or remove that iframe any more
-let detachCurrentInstance: ((next?: HTMLIFrameElement) => void) | null = null;
+// the widgets on the page, by the element each one is in. Every createInstance installs four
+// listeners plus a title observer, all closing over that call's iframe, and `detach` takes them
+// off. Given the iframe the next instance uses, it also removes its own when that is another one.
+// A call into an element that holds a widget takes it over, keeping its iframe and the thread it
+// shows, and a call into another element adds one. It still replaces a widget for the same `url`, one whose element has left the page,
+// and the one the script mounted by itself as it loaded: a single-page site that mounts into its
+// own element, or into a new one on each route, has no instance of those to destroy
+const instances = new Map<Element, { url: string; auto: boolean; detach: (next?: HTMLIFrameElement) => void }>();
+
+// the comments iframe that opened the profile overlay, which is one for the whole page
+let profileOpener: HTMLIFrameElement | null = null;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -29,13 +33,13 @@ if (document.readyState === 'loading') {
 
 function init() {
   window.REMARK42 = window.REMARK42 || {};
-  window.REMARK42.createInstance = createInstance;
+  window.REMARK42.createInstance = (config) => createInstance(config);
 
   // a single-page site loads this script once, often on a route without the comments node, and
   // waits for the event to call createInstance itself later, so it goes out even when this first
   // call throws
   try {
-    createInstance(window.remark_config);
+    createInstance(window.remark_config, true);
   } finally {
     window.dispatchEvent(new Event('REMARK42::ready'));
   }
@@ -56,7 +60,8 @@ function withResolvedTheme(config: typeof window.remark_config) {
   return config.theme ? { ...config, theme: resolveTheme(config.theme) } : config;
 }
 
-function createInstance(config: typeof window.remark_config) {
+// `auto` marks the widget the script mounts by itself as it loads
+function createInstance(config: typeof window.remark_config, auto = false) {
   // `node` lets a single-page application mount the widget into an element it owns instead of
   // the one carrying the default id. config may be undefined here, the check below reports it
   const node = config?.node;
@@ -83,14 +88,22 @@ function createInstance(config: typeof window.remark_config) {
 
   config.url = (config.url || `${window.location.origin}${window.location.pathname}`).split('#')[0];
 
-  const iframe = root.querySelector<HTMLIFrameElement>(`:scope > iframe[${IFRAME_MARKER}]`) ?? createIframe(params());
+  const reused = root.querySelector<HTMLIFrameElement>(`:scope > iframe[${IFRAME_MARKER}]`);
+  const iframe = reused ?? createIframe(params());
+  // a reused iframe goes on showing the thread it was built for, whatever this call asks for
+  const shownUrl = (reused && instances.get(root)?.url) || config.url;
   iframe.setAttribute(IFRAME_MARKER, '');
 
   root.appendChild(iframe);
 
   // after the throwing validation above, so a rejected call leaves a working instance alone
-  detachCurrentInstance?.(iframe);
-  detachCurrentInstance = detach;
+  instances.forEach((instance, element) => {
+    if (element === root || instance.url === shownUrl || instance.auto || !element.isConnected) {
+      instance.detach(iframe);
+      instances.delete(element);
+    }
+  });
+  instances.set(root, { url: shownUrl, auto, detach });
 
   window.addEventListener('message', handleReceiveMessage);
   window.addEventListener('hashchange', handleHashChange);
@@ -126,6 +139,11 @@ function createInstance(config: typeof window.remark_config) {
     if (event.source === null || (event.source !== iframe.contentWindow && !ownsWindow(event.source))) {
       return;
     }
+    // the profile overlay is one for the page and talks to the widget that opened it; with every
+    // widget acting on its sign-out, each would end the session again
+    if (event.source !== iframe.contentWindow && profileOpener !== iframe) {
+      return;
+    }
 
     const data = parseMessage(event);
 
@@ -157,6 +175,7 @@ function createInstance(config: typeof window.remark_config) {
       if (data.profile === null) {
         closeProfile();
       } else {
+        profileOpener = iframe;
         openProfile({ ...params(), ...data.profile });
       }
     }
@@ -232,6 +251,10 @@ function createInstance(config: typeof window.remark_config) {
   function detach(next?: HTMLIFrameElement) {
     if (next && next !== iframe) {
       iframe.remove();
+      // the widget taking this one's place takes over the profile it opened
+      if (profileOpener === iframe) {
+        profileOpener = next;
+      }
     }
 
     window.removeEventListener('message', handleReceiveMessage);
@@ -251,12 +274,16 @@ function createInstance(config: typeof window.remark_config) {
     detach();
 
     // a later createInstance must not detach an instance that is already gone
-    if (detachCurrentInstance === detach) {
-      detachCurrentInstance = null;
+    if (instances.get(root!)?.detach === detach) {
+      instances.delete(root!);
     }
 
     iframe.remove();
-    removeProfile();
+    // the overlay belongs to the widget that opened it; another widget's goes on
+    if (profileOpener === iframe) {
+      profileOpener = null;
+      removeProfile();
+    }
   }
 
   // TODO: These do not appear in Chrome DevTools

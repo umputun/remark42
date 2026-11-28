@@ -263,7 +263,7 @@ func (s *Rest) routes() http.Handler {
 		// sign-in and sign-out are not for an image or another embedded resource. Refused ahead of
 		// the limiter, so such requests do not use up what it allows the reader's own. singleAuthPath
 		// also goes ahead of the limiter and of validEmailAuth, which both go by the path
-		r.Use(logInfoWithBody, rejectEmbedded, singleAuthPath(s.authProviderRegistered), rateLimiter(2), R.NoCache)
+		r.Use(logInfoWithBody, rejectEmbedded, singleAuthPath(s.authProviderRegistered), authRateLimiter(), R.NoCache)
 		r.Use(validEmailAuth()) // reject suspicious email logins
 		r.Handle(authRoutePrefix, authHandler)
 	})
