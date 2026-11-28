@@ -114,6 +114,7 @@
   "errors.failed-fetch": "فشل الاتصال. فضلاً تأكد من اتصالك بالإنترنت.",
   "errors.forbidden": "ليس لديك صلاحية لتنفيذ هذا الإجراء.",
   "errors.not-authorized": "فضلاً سجّل الدخول لتنفيذ هذا الإجراء.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "طلبات كثيرة جداً. فضلاً انتظر قليلاً وعاود المحاولة.",
   "errors.unexpected-error": "ثمة عطلٌ ما.",
   "profile.close": "أغلق الملف.",

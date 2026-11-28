@@ -7,6 +7,10 @@ export const errorMessages = defineMessages<string | number>({
     id: 'errors.failed-fetch',
     defaultMessage: 'Failed to fetch. Please check your internet connection or try again a bit later',
   },
+  'popup-blocked': {
+    id: 'errors.popup-blocked',
+    defaultMessage: 'Your browser blocked the sign-in window. Allow pop-ups for this site and try again.',
+  },
   0: {
     id: 'errors.0',
     defaultMessage: 'Something went wrong. Please try again a bit later.',

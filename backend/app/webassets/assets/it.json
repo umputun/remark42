@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Aggiornamento fallito. Verifica la tua connessione a internet o riprova più tardi.",
   "errors.forbidden": "Non hai i permessi per questa operazione.",
   "errors.not-authorized": "Accedi per eseguire questa operazione.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Troppe richieste. Attendi un momento e riprova.",
   "errors.unexpected-error": "Qualcosa è andato storto.",
   "profile.close": "Chiudi profilo",

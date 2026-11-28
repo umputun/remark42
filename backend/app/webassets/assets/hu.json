@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Az adatok lekérése sikertelen. Kérjük, ellenőrizze az internetkapcsolatot, vagy próbálja újra később",
   "errors.forbidden": "Nincs jogosultsága ehhez a művelethez.",
   "errors.not-authorized": "A művelet végrehajtásához jelentkezzen be.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Túl sok kérés. Kérjük, várjon egy kicsit, és próbálja újra.",
   "errors.unexpected-error": "Valami hiba történt.",
   "profile.close": "Profil bezárása",

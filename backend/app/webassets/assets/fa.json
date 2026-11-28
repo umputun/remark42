@@ -114,6 +114,7 @@
   "errors.failed-fetch": "عدم موفقیت در دریافت. لطفاً اتصال اینترنت خود را بررسی کنید یا کمی بعد دوباره تلاش کنید.",
   "errors.forbidden": "شما اجازه انجام این کار را ندارید.",
   "errors.not-authorized": "لطفاً برای انجام این کار وارد شوید.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "تعداد درخواست‌ها بیش از حد است. لطفاً کمی صبر کنید و دوباره تلاش کنید.",
   "errors.unexpected-error": "مشکلی پیش آمده است.",
   "profile.close": "بستن پروفایل",

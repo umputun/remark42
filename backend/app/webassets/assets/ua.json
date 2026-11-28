@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Немає відповіді від сервера. Перевірте ваше з’єднання з інтернетом або спробуйте пізніше.",
   "errors.forbidden": "У вас немає дозволу на цю дію.",
   "errors.not-authorized": "Увійдіть, щоб виконати цю дію.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Забагато запитів. Зачекайте трохи й спробуйте ще раз.",
   "errors.unexpected-error": "Щось пішло не так.",
   "profile.close": "Закрити профіль",

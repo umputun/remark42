@@ -19,7 +19,7 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-sources="backend frontend Dockerfile docker-init.sh .dockerignore compose-e2e-test.yml compose-e2e-coverage.yml e2e/telegramstub"
+sources="backend frontend Dockerfile docker-init.sh .dockerignore compose-e2e-test.yml compose-e2e-coverage.yml e2e/telegramstub e2e/oauthstub"
 
 if command -v sha256sum >/dev/null 2>&1; then
 	sha256=sha256sum

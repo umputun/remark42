@@ -22,6 +22,7 @@ import { textareaElement } from '../textarea-element.js';
 import { buttonClassName, buttonElement, suffixElement } from './components/button-element.js';
 import { oauthList } from './components/oauth-list.js';
 import { messages } from './auth.messages.ts';
+import { POPUP_BLOCKED, prepareHandoff } from './auth.handoff.ts';
 import { getProviders, getTokenInvalidReason, isCompleteToken, persistEmail } from './auth.utils.ts';
 import inputStyles from '../input/input.module.css';
 import styles from './auth.module.css';
@@ -160,6 +161,10 @@ export function mountSignIn(root, initialDeps) {
 
     const oauthTitle = element('h5', { class: classes('auth-form-title', styles.title) });
     const oauth = oauthList(oauthProviders, { intl, theme: deps.theme, onOauthClick: handleOauthClick });
+    if (oauthProviders.length > 0) {
+      // ready before the click, which has to open the sign-in window at once
+      prepareHandoff();
+    }
     const divider = element('div', { class: classes('auth-divider', styles.divider), title: '' });
     const formTitle = element('h5', { class: classes('auth-form-title', styles.title) });
     const tabs = element('div', { class: classes('auth-tabs', styles.tabs) });
@@ -374,6 +379,10 @@ export function mountSignIn(root, initialDeps) {
           oauthTitle.textContent = intl.formatMessage(messages.oauthSource);
           oauth.update({ intl, theme, onOauthClick: handleOauthClick });
           children.push(oauthTitle, oauth.root);
+          // with a form below, its footer shows the error
+          if (message && !hasForm) {
+            children.push(error);
+          }
         }
         if (hasOAuth && hasForm) {
           divider.title = intl.formatMessage(messages.or);
@@ -553,7 +562,10 @@ export function mountSignIn(root, initialDeps) {
       }
       deps.signin(user);
     } catch (e) {
-      setError(e);
+      // by its code, which has a message of its own in every language, and not by the English text
+      // it was thrown with
+      const code = e instanceof RequestError ? e.code : undefined;
+      setError(code === POPUP_BLOCKED || code === 0 || code === 'fetch-error' ? code : e);
       render();
     }
   }

@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Ekki tókst að sækja gögn. Athugaðu nettenginguna eða reyndu aftur síðar.",
   "errors.forbidden": "Þú hefur ekki heimild til að framkvæma þessa aðgerð.",
   "errors.not-authorized": "Skráðu þig inn til að framkvæma þessa aðgerð.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Of margar fyrirspurnir. Bíddu aðeins og reyndu aftur.",
   "errors.unexpected-error": "Eitthvað fór úrskeiðis.",
   "profile.close": "Loka prófíl",

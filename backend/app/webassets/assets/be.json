@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Няма адказу сервера. Праверце сваё злучэнне з інтэрнэтам або паспрабуйце яшчэ раз крыху пазней.",
   "errors.forbidden": "Вы не маеце дазволу для гэтага дзеяння.",
   "errors.not-authorized": "Калі ласка, увайдзіце, каб выканаць гэтае дзеянне.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Зашмат запытаў. Калі ласка, крыху пачакайце і паспрабуйце яшчэ раз.",
   "errors.unexpected-error": "Нешта пайшло не так.",
   "profile.close": "Закрыць профіль",

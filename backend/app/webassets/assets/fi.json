@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Nouto epäonnistui. Tarkista internet-yhteytesi tai yritä uudelleen myöhemmin.",
   "errors.forbidden": "Sinulla ei ole lupaa tehdä tätä.",
   "errors.not-authorized": "Kirjaudu sisään tehdäksesi tämän.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Liian monta pyyntöä. Odota hetki ja yritä uudelleen.",
   "errors.unexpected-error": "Jotain meni pieleen.",
   "profile.close": "Sulje profiili",

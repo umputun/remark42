@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Gegevens ophalen mislukt. Controleer je internetverbinding of probeer het later opnieuw",
   "errors.forbidden": "Je hebt geen toestemming voor deze handeling.",
   "errors.not-authorized": "Log in om dit te doen.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Te veel verzoeken. Wacht even en probeer het opnieuw.",
   "errors.unexpected-error": "Er is iets misgegaan.",
   "profile.close": "Profiel sluiten",

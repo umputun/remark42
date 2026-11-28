@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -79,6 +80,8 @@ type Rest struct {
 	adminRest        admin
 	rssRest          rss
 	openRouteLimiter float64
+	handoffWait      time.Duration // how long a handoff status request waits, handoffStatusWait when unset
+	handoffs         *handoffs     // set by routes
 }
 
 // LoadingCache defines interface for caching
@@ -255,7 +258,30 @@ func (s *Rest) routes() http.Handler {
 		// pair is issued in header mode only, and expired at sign-out in either mode, for a reader
 		// who was given one before the mode was switched off
 		authCookies = partitionedAuthCookies(s.SendJWTHeader, "JWT", "XSRF-TOKEN")
+		partitioned := authCookies
+		// inside the partitioned copies, so a frame on its embedded session gets none of them
+		authCookies = func(next http.Handler) http.Handler { return partitioned(embeddedSession(next)) }
 	}
+
+	ho := &handoffs{store: newHandoffStore(), tokens: s.Authenticator.TokenService(), remarkURL: strings.TrimSuffix(s.RemarkURL, "/"),
+		registered: s.authProviderRegistered, wait: cmp.Or(s.handoffWait, handoffStatusWait),
+		waiters: make(chan struct{}, handoffMaxWaiters)}
+	s.handoffs = ho
+
+	// the OAuth popup of a framed widget, see handoff.go. A group of its own: these paths are not the
+	// auth handler's, so singleAuthPath would refuse them, and the status request waits longer than
+	// the auth group's timeout
+	router.Mount(strings.TrimSuffix(handoffRoutePrefix, "/")).Route(func(r *routegroup.Bundle) {
+		r.Use(noCORS, authCookies)
+		r.Use(R.Timeout(handoffStatusWait + 10*time.Second))
+		// without the body, which carries the verifier that redeems a sign-in
+		r.Use(logger.New(reqLog, logger.IPfn(ipFn), logger.Prefix("[INFO]")).Handler, rejectEmbedded, rateLimiter(2), R.NoCache)
+		r.HandleFunc("GET /start", ho.startCtrl)
+		r.HandleFunc("GET /done", ho.doneCtrl)
+		r.HandleFunc("POST /status", ho.statusCtrl)
+		r.HandleFunc("POST /redeem", ho.redeemCtrl)
+		r.HandleFunc("POST /cancel", ho.cancelCtrl)
+	})
 
 	router.Route(func(r *routegroup.Bundle) {
 		r.Use(authCookies)
@@ -265,7 +291,7 @@ func (s *Rest) routes() http.Handler {
 		// also goes ahead of the limiter and of validEmailAuth, which both go by the path
 		r.Use(logInfoWithBody, rejectEmbedded, singleAuthPath(s.authProviderRegistered), rateLimiter(2), R.NoCache)
 		r.Use(validEmailAuth()) // reject suspicious email logins
-		r.Handle(authRoutePrefix, authHandler)
+		r.Handle(authRoutePrefix, ho.recordHandoff(authHandler))
 	})
 
 	// avatars are served at the root, where pictures stored by older versions point, and under the api

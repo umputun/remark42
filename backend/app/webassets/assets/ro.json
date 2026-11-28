@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Eroare la preluare. Verifică conexiunea la internet sau încearcă mai târziu",
   "errors.forbidden": "Nu ai permisiunea să faci acest lucru.",
   "errors.not-authorized": "Autentifică-te pentru a face acest lucru.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "Prea multe cereri. Așteaptă puțin și încearcă din nou.",
   "errors.unexpected-error": "Ceva nu a mers bine.",
   "profile.close": "Închide profilul",

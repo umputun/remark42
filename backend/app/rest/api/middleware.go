@@ -20,6 +20,7 @@ import (
 	R "github.com/go-pkgz/rest"
 	"github.com/umputun/remark42/backend/app/rest"
 	"github.com/umputun/remark42/backend/app/store"
+	"golang.org/x/net/idna"
 )
 
 // ipForwardingHeaders are the request headers R.RealIP and realip.Get derive the client IP from.
@@ -232,21 +233,34 @@ func matchSiteID(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
+// ownOrigin is remarkURL's origin as a browser writes it in an Origin header: an internationalised
+// host in its ASCII form and the default port left out. Compare it with strings.EqualFold, since
+// the host may be spelled in any case. Empty for a URL that names no host
+func ownOrigin(remarkURL string) string {
+	u, err := url.Parse(remarkURL)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return ""
+	}
+	host := u.Hostname()
+	if ip := net.ParseIP(host); ip != nil {
+		host = ip.String() // an IP address the way a browser writes it, as ::1 for 0:0:0:0:0:0:0:1
+	} else if ascii, aerr := idna.Lookup.ToASCII(host); aerr == nil {
+		host = ascii
+	}
+	defaultPort := (u.Scheme == "https" && u.Port() == "443") || (u.Scheme == "http" && u.Port() == "80")
+	if port := u.Port(); port != "" && !defaultPort {
+		host = net.JoinHostPort(host, port)
+	} else if strings.Contains(host, ":") { // an IPv6 literal keeps its brackets
+		host = "[" + host + "]"
+	}
+	return u.Scheme + "://" + host
+}
+
 // rejectCrossSiteBasicAuth refuses Basic-auth requests a browser marks as cross-site or sends
 // from another origin. Basic auth skips the XSRF check, and the reflected CORS policy would let
 // any page drive the API with credentials a browser has cached. CLI tools send neither header.
 func (s *Rest) rejectCrossSiteBasicAuth(next http.Handler) http.Handler {
-	own := ""
-	if u, err := url.Parse(s.RemarkURL); err == nil && u.Scheme != "" && u.Host != "" {
-		host := u.Host
-		switch u.Scheme { // browsers leave the default port out of Origin
-		case "https":
-			host = strings.TrimSuffix(host, ":443")
-		case "http":
-			host = strings.TrimSuffix(host, ":80")
-		}
-		own = u.Scheme + "://" + host
-	}
+	own := ownOrigin(s.RemarkURL)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, _, ok := r.BasicAuth(); !ok {
 			next.ServeHTTP(w, r)

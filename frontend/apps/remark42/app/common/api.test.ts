@@ -23,8 +23,8 @@ describe('getUser', () => {
 
     await expect(getUser()).resolves.toBeNull();
     expect(apiSpy).not.toHaveBeenCalled();
-    expect(clearSpy).toHaveBeenCalledWith(JWT_COOKIE_NAME);
-    expect(clearSpy).toHaveBeenCalledWith(XSRF_COOKIE);
+    expect(clearSpy).toHaveBeenCalledWith(JWT_COOKIE_NAME, false);
+    expect(clearSpy).toHaveBeenCalledWith(XSRF_COOKIE, false);
   });
 
   it('should return null without clearing cookies when /auth/status request fails', async () => {

@@ -114,6 +114,7 @@
   "errors.failed-fetch": "Hämtningen misslyckades. Kontrollera din internetanslutning eller försök igen om en liten stund",
   "errors.forbidden": "Du har inte behörighet att göra detta.",
   "errors.not-authorized": "Logga in för att göra detta.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "För många förfrågningar. Vänta en stund och försök igen.",
   "errors.unexpected-error": "Något gick fel.",
   "profile.close": "Stäng profil",

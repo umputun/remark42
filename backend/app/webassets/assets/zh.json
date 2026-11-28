@@ -114,6 +114,7 @@
   "errors.failed-fetch": "请求失败，请检查您的网络连接或稍候重试。",
   "errors.forbidden": "您无权执行此操作。",
   "errors.not-authorized": "请先登录以执行此操作。",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "请求过多，请稍等片刻后重试。",
   "errors.unexpected-error": "出了些问题。",
   "profile.close": "关闭个人资料页面",

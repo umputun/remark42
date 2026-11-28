@@ -28,6 +28,23 @@ export { JWT_HEADER, XSRF_HEADER };
 export const JWT_COOKIE_NAME = 'JWT';
 /** Cookie field with XSRF token */
 export const XSRF_COOKIE = 'XSRF-TOKEN';
+/**
+ * The XSRF cookie of an embedded session: the session the backend hands a frame on another site
+ * after an OAuth sign-in in a popup, kept apart from the pair above. Its JWT is HttpOnly, like the
+ * ordinary one
+ */
+export const EMBEDDED_XSRF_COOKIE = '__Host-XSRF-TOKEN-EMBEDDED';
+/**
+ * Set by the backend with an embedded session and kept after a sign-out. While a frame holds it, or
+ * the embedded XSRF cookie, the backend reads the embedded session alone, so the widget reads the
+ * embedded XSRF cookie alone as well
+ */
+export const EMBEDDED_MARKER_COOKIE = '__Host-REMARK42-EMBEDDED';
+
+/** Whether this frame is on its embedded session, see EMBEDDED_MARKER_COOKIE */
+export function isEmbeddedSession(): boolean {
+  return getCookie(EMBEDDED_MARKER_COOKIE) === '1' || Boolean(getCookie(EMBEDDED_XSRF_COOKIE));
+}
 
 type BodylessMethod = <T>(url: string, query?: QueryParams) => Promise<T>;
 type BodyMethod = <T>(url: string, query?: QueryParams, body?: Payload) => Promise<T>;
@@ -67,8 +84,11 @@ const createFetcher = (baseUrl: string = ''): Methods => {
     // aside before it expires and the request reaches the backend on the cookie alone. The xsrf
     // cookie is the sign that there is a cookie session to step aside for: without one the copy
     // in memory is all the request has, and it is sent for as long as it lasts
-    const xsrf = getCookie(XSRF_COOKIE);
-    const jwt = xsrf && Date.now() >= activeJwtStaleAt ? undefined : activeJwtToken;
+    // an embedded session has its own XSRF cookie, and no token in memory: the backend sends none
+    // for it and would not read one
+    const embedded = isEmbeddedSession();
+    const xsrf = getCookie(embedded ? EMBEDDED_XSRF_COOKIE : XSRF_COOKIE);
+    const jwt = embedded || (xsrf && Date.now() >= activeJwtStaleAt) ? undefined : activeJwtToken;
     const headers = {
       ...frameHeaders(
         IS_THIRD_PARTY,
@@ -181,10 +201,55 @@ async function responseError(res: Response): Promise<unknown> {
  * `clearAuthCookie`. For a sign-out, which has to hold whatever the backend answered
  */
 export function dropSession(bothForms = false): void {
+  forgetToken();
+  clearSessionCookies(bothForms);
+}
+
+/**
+ * Forgets the JWT kept in memory, and nothing else. For the moment a frame moves to its embedded
+ * session, when the token it holds is the other session's
+ */
+export function forgetToken(): void {
   activeJwtToken = undefined;
   activeJwtStaleAt = Infinity;
+}
+
+/**
+ * Clears the auth cookies of the session this frame is on that script can reach. On an embedded
+ * session that is its XSRF cookie only: the ordinary pair belongs to remark42's own site, which the
+ * frame may share it with, and the marker stays, so the frame stays on its own session
+ */
+export function clearSessionCookies(bothForms = false): void {
+  if (isEmbeddedSession()) {
+    clearAuthCookie(EMBEDDED_XSRF_COOKIE, bothForms);
+    return;
+  }
   clearAuthCookie(JWT_COOKIE_NAME, bothForms);
   clearAuthCookie(XSRF_COOKIE, bothForms);
+}
+
+/**
+ * Asks the API who is signed in, and leaves the session alone whatever the answer: no token from
+ * memory is sent, and a refusal clears nothing. For a sign-in that is still settling, where a 401
+ * that comes back late would clear the XSRF cookie the sign-in has just set, and a token in memory
+ * may be another session's. The status says how it went; the user comes with a 2xx
+ */
+export async function probeSignedInUser<T>(): Promise<{ status: number; user?: T }> {
+  const embedded = isEmbeddedSession();
+  const xsrf = getCookie(embedded ? EMBEDDED_XSRF_COOKIE : XSRF_COOKIE);
+  const headers = {
+    ...frameHeaders(
+      IS_THIRD_PARTY,
+      window.location.protocol === 'https:',
+      sameOrigin(BASE_URL, window.location.origin)
+    ),
+    ...authHeaders(undefined, xsrf),
+  };
+  const res = await fetch(requestURL(`${BASE_URL}${API_BASE}`, '/user', {}, siteId), { headers });
+  if (!res.ok) {
+    return { status: res.status };
+  }
+  return { status: res.status, user: (await res.json()) as T };
 }
 
 export const apiFetcher = createFetcher(`${BASE_URL}${API_BASE}`);

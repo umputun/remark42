@@ -114,6 +114,7 @@
   "errors.failed-fetch": "האחזור נכשל. יש לבדוק את חיבור האינטרנט או לנסות שוב מאוחר יותר",
   "errors.forbidden": "אין לך הרשאה לבצע פעולה זו.",
   "errors.not-authorized": "יש להתחבר כדי לבצע פעולה זו.",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "יותר מדי בקשות. יש להמתין רגע ולנסות שוב.",
   "errors.unexpected-error": "משהו השתבש.",
   "profile.close": "סגירת פרופיל",

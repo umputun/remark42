@@ -114,6 +114,7 @@
   "errors.failed-fetch": "無法取得資料，請檢查網路連線或稍候再試。",
   "errors.forbidden": "你沒有權限執行此操作。",
   "errors.not-authorized": "請先登入以執行此操作。",
+  "errors.popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
   "errors.to-many-request": "請求過於頻繁，請稍候再試。",
   "errors.unexpected-error": "發生錯誤。",
   "profile.close": "關閉個人資料",
