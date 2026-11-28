@@ -3,6 +3,7 @@ package cmd
 import (
 	"cmp"
 	"context"
+	"crypto/md5"  //nolint:gosec // the hash gravatar looks pictures up by, not for security
 	"crypto/sha1" //nolint:gosec // used only for stable ID hashing, not for security
 	"embed"
 	"encoding/json"
@@ -182,6 +183,7 @@ type CustomAuthGroup struct {
 	NameField    string   `long:"name-field" env:"NAME_FIELD" default:"name" description:"user info field used as display name"`
 	PictureField string   `long:"picture-field" env:"PICTURE_FIELD" default:"picture" description:"user info field used as avatar url"`
 	EmailField   string   `long:"email-field" env:"EMAIL_FIELD" default:"email" description:"user info field used as email"`
+	Gravatar     bool     `long:"gravatar" env:"GRAVATAR" description:"use the email's Gravatar picture when the provider returns no picture"`
 }
 
 // StoreGroup defines options group for store params
@@ -543,6 +545,10 @@ func customProviderLargeInt(raw []byte, field string) string {
 //
 // User info with neither a value in the id field nor an email gives a user without an id, whom
 // customAvatarSaver refuses to sign in.
+//
+// With cfg.Gravatar set, a user without a picture gets the address of the Gravatar one for their
+// email. Nothing is requested here: customAvatarSaver fetches it with the sign-in, and a user whose
+// email has no Gravatar picture gets an identicon from there.
 func customProviderUser(name string, data provider.UserData, raw []byte, cfg CustomAuthGroup) token.User {
 	sourceID := customProviderSourceID(data, raw, cfg)
 	if sourceID == "" {
@@ -560,12 +566,27 @@ func customProviderUser(name string, data provider.UserData, raw []byte, cfg Cus
 	if user.Name == "" {
 		user.Name = "noname_" + hashID[:4]
 	}
+	if cfg.Gravatar && user.Picture == "" && strings.Contains(user.Email, "@") {
+		user.Picture = gravatarURL(user.Email)
+	}
 	return user
+}
+
+// gravatarAvatarURL is where Gravatar serves the picture of an email, under the hash of the email
+const gravatarAvatarURL = "https://www.gravatar.com/avatar/"
+
+// gravatarURL returns the address of the Gravatar picture of email, found by the md5 of the trimmed,
+// lower-cased address. d=404 makes Gravatar answer 404 for an address without a picture instead of
+// sending its default image
+func gravatarURL(email string) string {
+	hash := md5.Sum([]byte(strings.ToLower(strings.TrimSpace(email)))) //nolint:gosec // the hash Gravatar looks pictures up by
+	return fmt.Sprintf("%s%x?d=404&s=80", gravatarAvatarURL, hash)
 }
 
 func (c CustomAuthGroup) isConfigured() bool {
 	return c.Name != "" || c.CID != "" || c.CSEC != "" || c.AuthURL != "" || c.TokenURL != "" || c.InfoURL != "" ||
-		len(c.Scopes) > 0 || c.IDField != "sub" || c.NameField != "name" || c.PictureField != "picture" || c.EmailField != "email"
+		len(c.Scopes) > 0 || c.IDField != "sub" || c.NameField != "name" || c.PictureField != "picture" || c.EmailField != "email" ||
+		c.Gravatar
 }
 
 func (c CustomAuthGroup) missingRequired() []string {

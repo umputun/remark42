@@ -473,6 +473,10 @@ func TestServerApp_Failed(t *testing.T) {
 			"--avatar.fs.path=" + tmp, "--auth.custom.name=oidc", "--auth.custom.cid=123"},
 			err: "failed to make authenticator: custom oauth provider configuration is incomplete, missing: " +
 				"AUTH_CUSTOM_CSEC, AUTH_CUSTOM_AUTH_URL, AUTH_CUSTOM_TOKEN_URL, AUTH_CUSTOM_INFO_URL"},
+		{name: "custom oauth gravatar set without the provider", args: []string{"--store.bolt.path=" + tmp, "--backup=" + tmp,
+			"--image.fs.path=" + tmp, "--avatar.fs.path=" + tmp, "--auth.custom.gravatar"},
+			err: "failed to make authenticator: custom oauth provider configuration is incomplete, missing: " +
+				"AUTH_CUSTOM_NAME, AUTH_CUSTOM_CID, AUTH_CUSTOM_CSEC, AUTH_CUSTOM_AUTH_URL, AUTH_CUSTOM_TOKEN_URL, AUTH_CUSTOM_INFO_URL"},
 	}
 	for _, tt := range tbl {
 		t.Run(tt.name, func(t *testing.T) {
@@ -557,6 +561,35 @@ func TestCustomProviderSourceID(t *testing.T) {
 	cfg.EmailField = "mail"
 	assert.Equal(t, "a@example.com", customProviderSourceID(provider.UserData{"mail": "a@example.com", "email": "b@example.com"}, nil, cfg))
 	assert.Empty(t, customProviderSourceID(provider.UserData{"email": "b@example.com"}, nil, cfg))
+}
+
+func TestCustomProviderUser_Gravatar(t *testing.T) {
+	cfg := CustomAuthGroup{IDField: "sub", EmailField: "email", NameField: "name", PictureField: "picture"}
+	// md5 of "a@example.com", the hash Gravatar finds the picture by
+	const gravatar = "https://www.gravatar.com/avatar/b418773a2c51fb9777a1648346fa7394?d=404&s=80"
+
+	tbl := []struct {
+		name     string
+		data     provider.UserData
+		disabled bool
+		picture  string
+	}{
+		{name: "picture of the email", data: provider.UserData{"sub": "user-1", "email": "a@example.com"}, picture: gravatar},
+		{name: "email trimmed and lower-cased", data: provider.UserData{"sub": "user-1", "email": " A@Example.COM "}, picture: gravatar},
+		{name: "provider picture wins", data: provider.UserData{"sub": "user-1", "email": "a@example.com",
+			"picture": "https://example.com/avatar.png"}, picture: "https://example.com/avatar.png"},
+		{name: "option off", data: provider.UserData{"sub": "user-1", "email": "a@example.com"}, disabled: true},
+		{name: "no email", data: provider.UserData{"sub": "user-1"}},
+		{name: "not an email", data: provider.UserData{"sub": "user-1", "email": "not-an-email"}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			c := cfg
+			c.Gravatar = !tt.disabled
+			user := customProviderUser("oidc", tt.data, nil, c)
+			assert.Equal(t, tt.picture, user.Picture)
+		})
+	}
 }
 
 func TestServerApp_InvalidCustomOAuthProviderName(t *testing.T) {

@@ -110,7 +110,8 @@ services:
 | auth.custom.id-field           | AUTH_CUSTOM_ID_FIELD           | `sub`                   | user info field used as unique id; without a value in it the email identifies the user, and without both the sign-in is refused |
 | auth.custom.name-field         | AUTH_CUSTOM_NAME_FIELD         | `name`                  | user info field used as display name                     |
 | auth.custom.picture-field      | AUTH_CUSTOM_PICTURE_FIELD      | `picture`               | user info field used as avatar URL                       |
-| auth.custom.email-field        | AUTH_CUSTOM_EMAIL_FIELD        | `email`                 | user info field holding the email, used only as a fallback id |
+| auth.custom.email-field        | AUTH_CUSTOM_EMAIL_FIELD        | `email`                 | user info field holding the email, used only as a fallback id and for `AUTH_CUSTOM_GRAVATAR` |
+| auth.custom.gravatar           | AUTH_CUSTOM_GRAVATAR           | `false`                 | use the email's Gravatar picture when the custom provider returns no picture |
 | auth.telegram                  | AUTH_TELEGRAM                  | `false`                 | Enable Telegram auth (telegram.token must be present)    |
 | auth.yandex.cid                | AUTH_YANDEX_CID                |                         | Yandex OAuth client ID                                   |
 | auth.yandex.csec               | AUTH_YANDEX_CSEC               |                         | Yandex OAuth client secret                               |
